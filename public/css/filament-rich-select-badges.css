@@ -1,0 +1,21 @@
+/**
+ * Les badges du Select multiple Filament appliquent truncate sur .fi-badge,
+ * ce qui masque les avatars HTML (user-fields). On neutralise ça dans ce contexte uniquement.
+ */
+.fi-select-input-value-badges-ctn .fi-badge:not(.fi-wrapped) {
+    max-width: none;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+}
+
+.fi-select-input-value-badges-ctn .fi-badge .fi-badge-label:not(.fi-wrapped) {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+}
+
+.fi-select-input-value-badges-ctn .fi-badge .fi-user-avatar,
+.fi-select-input-value-badges-ctn .fi-badge .fi-avatar {
+    flex-shrink: 0;
+}

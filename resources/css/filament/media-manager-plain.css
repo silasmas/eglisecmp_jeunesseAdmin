@@ -1,0 +1,328 @@
+/**
+ * Styles du gestionnaire de medias (equivalent compile du package slimani/filament-media-manager).
+ * Le fichier publie par le package contient du @apply Tailwind non traite par le navigateur ;
+ * cette feuille est copiee dans public/css pour un rendu correct (grille, tailles d'icones).
+ * Couleurs "primary" alignees sur le panel admin (#7b1d3e).
+ */
+
+.fi-media-picker-preview-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+@media (min-width: 640px) {
+    .fi-media-picker-preview-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 768px) {
+    .fi-media-picker-preview-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1024px) {
+    .fi-media-picker-preview-grid {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+}
+
+.fi-media-picker-preview-item {
+    aspect-ratio: 1 / 1;
+    background-color: rgb(243 244 246);
+    border-radius: 0.75rem;
+    overflow: hidden;
+    border: 1px solid rgb(229 231 235);
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    position: relative;
+    transition-property: all;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+}
+
+.fi-media-picker-preview-item:hover {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+.dark .fi-media-picker-preview-item {
+    background-color: rgb(31 41 55);
+    border-color: rgb(55 65 81);
+}
+
+.fi-media-item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    border-radius: 0.75rem;
+    border-width: 1px;
+    border-style: solid;
+    transition-property: all;
+    transition-duration: 200ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    border-color: rgb(229 231 235);
+    background-color: rgb(255 255 255);
+}
+
+.fi-media-item:hover {
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+.dark .fi-media-item {
+    border-color: rgb(55 65 81);
+    background-color: rgb(31 41 55);
+}
+
+.fi-media-item.fi-is-selected {
+    box-shadow:
+        0 20px 25px -5px rgb(0 0 0 / 0.1),
+        0 8px 10px -6px rgb(0 0 0 / 0.1);
+    transform: scale(1.02);
+    border-color: #7b1d3e;
+    background-color: rgb(250 242 245);
+    box-shadow:
+        0 0 0 2px #7b1d3e,
+        0 20px 25px -5px rgb(0 0 0 / 0.1),
+        0 8px 10px -6px rgb(0 0 0 / 0.1);
+}
+
+.dark .fi-media-item.fi-is-selected {
+    background-color: rgb(59 7 28 / 0.2);
+}
+
+.fi-media-item.fi-is-disabled {
+    opacity: 0.5;
+    filter: grayscale(0.5);
+    cursor: not-allowed;
+    user-select: none;
+}
+
+.fi-media-item.fi-is-disabled .fi-media-item-selection-badge {
+    display: none;
+}
+
+.fi-media-item-thumbnail-container {
+    aspect-ratio: 1 / 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-top-left-radius: 0.75rem;
+    border-top-right-radius: 0.75rem;
+    overflow: hidden;
+    background-color: rgb(249 250 251 / 0.5);
+}
+
+.dark .fi-media-item-thumbnail-container {
+    background-color: rgb(17 24 39 / 0.3);
+}
+
+.fi-media-item-folder-icon {
+    width: 3.5rem;
+    height: 3.5rem;
+    color: rgb(251 191 36);
+    filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.05));
+    transition-property: transform;
+    transition-duration: 300ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+}
+
+.fi-media-item-video-icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 3.5rem;
+    height: 3.5rem;
+    color: rgb(255 255 255 / 0.7);
+    filter: drop-shadow(0 10px 8px rgb(0 0 0 / 0.04)) drop-shadow(0 4px 3px rgb(0 0 0 / 0.1));
+    transition-property: transform, color;
+    transition-duration: 300ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+    z-index: 10;
+}
+
+.fi-media-item:hover .fi-media-item-video-icon {
+    transform: translate(-50%, -50%) scale(1.1);
+    color: rgb(255 255 255 / 0.9);
+}
+
+.fi-media-item:hover .fi-media-item-folder-icon {
+    transform: scale(1.1);
+}
+
+.fi-media-item-file-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    transition-property: transform;
+    transition-duration: 500ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fi-media-item:hover .fi-media-item-file-image {
+    transform: scale(1.05);
+}
+
+.fi-media-item-file-icon {
+    width: 3rem;
+    height: 3rem;
+    color: rgb(156 163 175);
+    transition-property: transform;
+    transition-duration: 300ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+}
+
+.fi-media-item:hover .fi-media-item-file-icon {
+    transform: scale(1.1);
+}
+
+.fi-media-item-selection-badge {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    z-index: 20;
+    transition-property: opacity, transform;
+    transition-duration: 200ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fi-media-item-selection-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 9999px;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    border-width: 1px;
+    border-style: solid;
+    transition-property: color, background-color, border-color;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+    background-color: rgb(255 255 255);
+    color: rgb(156 163 175);
+    border-color: rgb(229 231 235);
+}
+
+.dark .fi-media-item-selection-button {
+    background-color: rgb(31 41 55);
+    border-color: rgb(55 65 81);
+}
+
+.fi-media-item-selection-button:hover {
+    background-color: #7b1d3e;
+    color: rgb(255 255 255);
+    border-color: rgb(212 165 184);
+}
+
+.fi-media-item.fi-is-selected .fi-media-item-selection-button {
+    background-color: #7b1d3e;
+    color: rgb(255 255 255);
+    border-color: rgb(212 165 184);
+}
+
+.fi-media-item-info {
+    padding: 0.625rem 0.75rem;
+    border-top-width: 1px;
+    border-top-style: solid;
+    border-top-color: rgb(243 244 246);
+}
+
+.dark .fi-media-item-info {
+    border-top-color: rgb(55 65 81 / 0.5);
+}
+
+.fi-media-grid-container {
+    container-type: inline-size;
+    container-name: media-grid;
+}
+
+.fi-media-grid {
+    display: grid !important;
+    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 128px), 1fr)) !important;
+}
+
+.multi-item-select .fi-badge.fi-size-xs {
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+}
+
+.multi-item-select .fi-in-entry .fi-in-entry-content-col {
+    display: grid;
+    grid-auto-columns: unset;
+    row-gap: unset;
+}
+
+@container media-grid (max-width: 400px) {
+    .fi-media-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+}
+
+.fi-media-extension-badge.ext-jpg,
+.fi-media-extension-badge.ext-jpeg,
+.fi-media-extension-badge.ext-png,
+.fi-media-extension-badge.ext-webp,
+.fi-media-extension-badge.ext-gif,
+.fi-media-extension-badge.ext-svg {
+    background-color: rgb(224 231 255);
+    color: rgb(67 56 202);
+    border-color: rgb(199 210 254);
+}
+
+.fi-media-extension-badge.ext-pdf {
+    background-color: rgb(254 226 226);
+    color: rgb(185 28 28);
+    border-color: rgb(254 202 202);
+}
+
+.fi-media-extension-badge.ext-doc,
+.fi-media-extension-badge.ext-docx {
+    background-color: rgb(219 234 254);
+    color: rgb(29 78 216);
+    border-color: rgb(191 219 254);
+}
+
+.fi-media-extension-badge.ext-xls,
+.fi-media-extension-badge.ext-xlsx,
+.fi-media-extension-badge.ext-csv {
+    background-color: rgb(209 250 229);
+    color: rgb(4 120 87);
+    border-color: rgb(167 243 208);
+}
+
+.fi-media-extension-badge.ext-mp4,
+.fi-media-extension-badge.ext-mov,
+.fi-media-extension-badge.ext-avi,
+.fi-media-extension-badge.ext-webm,
+.fi-media-extension-badge.ext-mkv {
+    background-color: rgb(243 232 255);
+    color: rgb(126 34 206);
+    border-color: rgb(233 213 255);
+}
+
+.fi-media-extension-badge.ext-zip,
+.fi-media-extension-badge.ext-rar,
+.fi-media-extension-badge.ext-7z,
+.fi-media-extension-badge.ext-tar,
+.fi-media-extension-badge.ext-gz {
+    background-color: rgb(254 243 199);
+    color: rgb(180 83 9);
+    border-color: rgb(253 230 138);
+}
+
+.fi-media-extension-badge.ext-md,
+.fi-media-extension-badge.ext-txt {
+    background-color: rgb(241 245 249);
+    color: rgb(51 65 85);
+    border-color: rgb(226 232 240);
+}

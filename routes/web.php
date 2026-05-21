@@ -1,0 +1,58 @@
+<?php
+
+use App\Http\Controllers\RetreatInscriptionCardReturnController;
+use App\Http\Controllers\RetreatInscriptionJustificatifController;
+use App\Http\Controllers\RetreatVerificationPortalController;
+use App\Models\ChurchEvent;
+use Illuminate\Support\Facades\Route;
+
+Route::get('/', function () {
+    $portalRetreatEvent = ChurchEvent::query()
+        ->where('type', 'retraite')
+        ->where('is_active', true)
+        ->whereNotNull('start_at')
+        ->orderBy('start_at')
+        ->first();
+
+    $portalProgrammeLocked = ! $portalRetreatEvent
+        || now()->lt($portalRetreatEvent->start_at);
+
+    return view('welcome', [
+        'portalRetreatEvent' => $portalRetreatEvent,
+        'portalProgrammeLocked' => $portalProgrammeLocked,
+    ]);
+});
+
+/** Formulaire public Grande Retraite des Jeunes (UI Blade + assets dans public/retraite-inscription) */
+Route::view('/inscription-retraite', 'retraite-inscription.index')->name('retraite.inscription');
+
+/** Page publique liée au QR code imprimé après inscription (token unique) */
+Route::get('/inscription-retraite/justificatif/{token}', RetreatInscriptionJustificatifController::class)
+    ->where('token', '[A-Za-z0-9]{32}')
+    ->name('retraite.inscription.justificatif');
+
+/** Retour FlexPay après paiement carte (parcours inscription retraite) — montant peut être 100 ou 100.00 */
+Route::get('/inscription-retraite/paiement-carte/{reference}/{amount}/{currency}/{status}', RetreatInscriptionCardReturnController::class)
+    ->where('amount', '[0-9]+(?:\.[0-9]{1,2})?')
+    ->whereIn('status', ['success', 'cancel', 'decline', 'failure', 'failed', 'error'])
+    ->name('retraite.inscription.card-return');
+
+Route::prefix('verification-retraite')
+    ->name('retraite.verification.')
+    ->controller(RetreatVerificationPortalController::class)
+    ->group(function (): void {
+        Route::get('status', 'status')->name('status');
+        Route::post('otp/request', 'requestOtp')->middleware('throttle:5,1')->name('otp.request');
+        Route::post('otp/verify', 'verifyOtp')->middleware('throttle:10,1')->name('otp.verify');
+        Route::post('logout', 'logout')->name('logout');
+        Route::post('search', 'search')->middleware('throttle:60,1')->name('search');
+        Route::post('participants/{participant}/action', 'workerAction')
+            ->middleware('throttle:60,1')
+            ->name('participants.action');
+        Route::get('attendance/context', 'attendanceContext')->name('attendance.context');
+        Route::get('attendance/blocks', 'attendanceBlocks')->name('attendance.blocks');
+        Route::post('attendance/set', 'attendanceSet')->middleware('throttle:120,1')->name('attendance.set');
+        Route::post('attendance/excuse', 'attendanceExcuse')->middleware('throttle:120,1')->name('attendance.excuse');
+        Route::post('public-lookup', 'publicLookup')->middleware('throttle:30,1')->name('public.lookup');
+        Route::get('chatbot/context', 'chatbotContext')->name('chatbot.context');
+    });

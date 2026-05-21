@@ -1,0 +1,73 @@
+/* ═══════════════════════════════════════════
+   UTILITIES
+═══════════════════════════════════════════ */
+.text-center { text-align: center; }
+.mt-1 { margin-top: 0.5rem; }
+.mt-2 { margin-top: 1rem; }
+.mt-3 { margin-top: 1.5rem; }
+.mb-1 { margin-bottom: 0.5rem; }
+.mb-2 { margin-bottom: 1rem; }
+.mb-3 { margin-bottom: 1.5rem; }
+.hidden { display: none !important; }
+.text-muted { color: var(--text-muted); }
+.text-sm { font-size: 0.85rem; }
+.divider {
+  height: 1px;
+  background: var(--border-light);
+  margin: 1.5rem 0;
+}
+.info-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 1rem 1.2rem;
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+.info-box.info { background: #E3F2FD; color: #0D47A1; }
+.info-box.warning { background: #FFF3E0; color: #E65100; }
+.info-box.success { background: var(--success-light); color: var(--success); }
+.info-box i { font-size: 1.1rem; margin-top: 1px; }
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════════════ */
+@media (max-width: 900px) {
+  .app-layout {
+    grid-template-columns: 1fr;
+  }
+  .stepper-sidebar { display: none; }
+  .stepper-mobile { display: block; }
+  .content-area { padding: 1.8rem 1.2rem 2rem; }
+  .fields-grid { grid-template-columns: 1fr; }
+  .phone-row { grid-template-columns: 1fr; }
+  .badge-card { width: 300px; }
+  .recap-row { flex-direction: column; gap: 2px; }
+  .recap-label { width: auto; min-width: auto; }
+  .payment-methods { grid-template-columns: 1fr; }
+  .nav-buttons { gap: 0.8rem; }
+  .btn { padding: 0.65rem 1.2rem; font-size: 0.88rem; }
+}
+@media (max-width: 480px) {
+  .hero { padding: 2rem 1rem 1.5rem; }
+  .hero h1 { font-size: 1.2rem; }
+  .content-area { padding: 1.2rem 0.8rem 1.5rem; }
+  .step-title { font-size: 1.15rem; }
+  .badge-card { width: 280px; }
+  .badge-name { font-size: 1rem; }
+}
+
+.flexpay-prov-active {
+  outline: 2px solid var(--accent-terracotta, #D4772C);
+  outline-offset: 3px;
+}
+
+/* ═══════════════════════════════════════════
+   PRINT
+═══════════════════════════════════════════ */
+@media print {
+  body { background: #fff; }
+  .hero, .stepper-sidebar, .stepper-mobile, .nav-buttons, .btn { display: none; }
+  .content-area { padding: 0; }
+}

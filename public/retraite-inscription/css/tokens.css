@@ -1,0 +1,39 @@
+/* ═══════════════════════════════════════════
+   DESIGN TOKENS
+═══════════════════════════════════════════ */
+:root {
+  --primary: #D4772C;
+  --primary-light: #F0A050;
+  --primary-dark: #B85D1A;
+  --primary-glow: rgba(212,119,44,0.18);
+  --gold: #C9973E;
+  --gold-light: #E8C876;
+  --dark: #1A1018;
+  --dark-warm: #2D1F17;
+  --dark-surface: #231A24;
+  --cream: #FFFAF5;
+  --surface: #FFFFFF;
+  --surface-alt: #F8F3EE;
+  --border: #E8DDD4;
+  --border-light: #F0EAE3;
+  --text: #1A1018;
+  --text-secondary: #5C5C5C;
+  --text-muted: #9A9A9A;
+  --success: #2E7D32;
+  --success-light: #E8F5E9;
+  --error: #C62828;
+  --error-light: #FFEBEE;
+  --info: #1565C0;
+  --radius: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --shadow-xs: 0 1px 3px rgba(26,16,24,0.04);
+  --shadow-sm: 0 2px 8px rgba(26,16,24,0.06);
+  --shadow-md: 0 4px 20px rgba(26,16,24,0.08);
+  --shadow-lg: 0 8px 40px rgba(26,16,24,0.12);
+  --shadow-glow: 0 4px 24px rgba(212,119,44,0.2);
+  --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-fast: 0.15s ease;
+  --font: 'Poppins', system-ui, -apple-system, sans-serif;
+  --stepper-width: 280px;
+}
