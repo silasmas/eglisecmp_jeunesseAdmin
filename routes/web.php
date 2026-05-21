@@ -1,10 +1,16 @@
 <?php
 
+use App\Http\Controllers\ProductionBaseSyncController;
 use App\Http\Controllers\RetreatInscriptionCardReturnController;
 use App\Http\Controllers\RetreatInscriptionJustificatifController;
 use App\Http\Controllers\RetreatVerificationPortalController;
 use App\Models\ChurchEvent;
 use Illuminate\Support\Facades\Route;
+
+/** Synchronisation données de base + Shield (token PRODUCTION_BASE_SYNC_TOKEN) */
+Route::get('/system/sync-production-base/{token}', ProductionBaseSyncController::class)
+    ->middleware('throttle:5,1')
+    ->name('system.sync-production-base');
 
 Route::get('/', function () {
     $portalRetreatEvent = ChurchEvent::query()
