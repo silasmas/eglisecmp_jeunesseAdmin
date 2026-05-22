@@ -41,6 +41,18 @@
 
     <x-filament::section class="mt-6">
         <x-slot name="heading">
+            Lien symbolique storage
+        </x-slot>
+
+        <p class="text-sm text-gray-600 dark:text-gray-300">
+            Le bouton « Lien storage » en haut de page exécute
+            <code class="text-xs">php artisan storage:link</code> (public/storage → storage/app/public).
+            Utile après un déploiement si les médias ne s’affichent pas.
+        </p>
+    </x-filament::section>
+
+    <x-filament::section class="mt-6">
+        <x-slot name="heading">
             Ligne de commande
         </x-slot>
 

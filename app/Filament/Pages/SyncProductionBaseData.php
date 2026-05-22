@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Models\User;
 use App\Services\ProductionBaseDataSyncService;
+use App\Services\StorageLinkService;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -80,6 +81,44 @@ class SyncProductionBaseData extends Page
                         ->body('Données de base et rôles Shield mis à jour.')
                         ->success()
                         ->send();
+                }),
+            Action::make('storageLink')
+                ->label('Lien storage')
+                ->icon('heroicon-o-link')
+                ->color('gray')
+                ->requiresConfirmation()
+                ->modalHeading('Créer le lien storage ?')
+                ->modalDescription(
+                    'Exécute php artisan storage:link : lie public/storage à storage/app/public '
+                    .'pour servir les fichiers uploadés (médias, pièces jointes).'
+                )
+                ->modalSubmitActionLabel('Exécuter storage:link')
+                ->action(function (): void {
+                    try {
+                        $result = app(StorageLinkService::class)->run();
+                    } catch (Throwable $e) {
+                        report($e);
+
+                        Notification::make()
+                            ->title('Échec storage:link')
+                            ->body($e->getMessage())
+                            ->danger()
+                            ->send();
+
+                        return;
+                    }
+
+                    $notification = Notification::make()
+                        ->title($result['success'] ? 'storage:link terminé' : 'storage:link')
+                        ->body($result['message']);
+
+                    if ($result['success']) {
+                        $notification->success()->send();
+
+                        return;
+                    }
+
+                    $notification->warning()->send();
                 }),
         ];
     }
