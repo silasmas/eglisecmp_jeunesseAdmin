@@ -65,9 +65,8 @@ class RetreatPaymentInfolist
                             ->label("Date d'autorisation")
                             ->dateTime()
                             ->placeholder('-'),
-                        TextEntry::make('access_granted_by')
-                            ->label('Autorise par (ID)')
-                            ->numeric()
+                        TextEntry::make('accessGrantedBy.name')
+                            ->label('Autorise par')
                             ->placeholder('-'),
                         IconEntry::make('is_active')
                             ->label('Actif')

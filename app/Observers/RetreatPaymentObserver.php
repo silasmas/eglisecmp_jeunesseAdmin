@@ -6,6 +6,7 @@ use App\Models\RetreatPayment;
 use App\Models\User;
 use App\Services\PanelNotificationDispatcher;
 use App\Services\RetreatRegistrationFulfillmentService;
+use Illuminate\Support\Facades\Auth;
 
 class RetreatPaymentObserver
 {
@@ -13,6 +14,17 @@ class RetreatPaymentObserver
         protected PanelNotificationDispatcher $dispatcher,
         protected RetreatRegistrationFulfillmentService $fulfillment,
     ) {}
+
+    public function updating(RetreatPayment $payment): void
+    {
+        if ($payment->isDirty('access_granted') && $payment->access_granted && blank($payment->access_granted_by)) {
+            $user = Auth::user();
+            if ($user instanceof User) {
+                $payment->access_granted_by = $user->id;
+                $payment->access_granted_at = $payment->access_granted_at ?? now();
+            }
+        }
+    }
 
     public function updated(RetreatPayment $payment): void
     {

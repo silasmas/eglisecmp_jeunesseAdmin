@@ -281,7 +281,8 @@
 
       downloadBtn.addEventListener('click', function () {
         var exportSize = 512;
-        var padding = 48;
+        var outerPadding = 48;
+        var innerPadding = 24;
         var tempMount = document.getElementById('qrDownloadMount');
         tempMount.innerHTML = '';
 
@@ -294,32 +295,46 @@
           correctLevel: QRCode.CorrectLevel.M
         });
 
-        var qrImg = tempMount.querySelector('img');
-        if (!qrImg) {
-          return;
-        }
+        var buildAndDownload = function () {
+          var sourceCanvas = tempMount.querySelector('canvas');
+          if (!sourceCanvas) {
+            var qrImg = tempMount.querySelector('img');
+            if (!qrImg || !qrImg.src) {
+              return;
+            }
+            sourceCanvas = document.createElement('canvas');
+            sourceCanvas.width = exportSize;
+            sourceCanvas.height = exportSize;
+            var sourceCtx = sourceCanvas.getContext('2d');
+            sourceCtx.fillStyle = '#ffffff';
+            sourceCtx.fillRect(0, 0, exportSize, exportSize);
+            sourceCtx.drawImage(qrImg, 0, 0, exportSize, exportSize);
+          }
 
-        var canvas = document.createElement('canvas');
-        canvas.width = exportSize + (padding * 2);
-        canvas.height = exportSize + (padding * 2);
-        var ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+          var cardSize = exportSize + (innerPadding * 2);
+          var canvas = document.createElement('canvas');
+          canvas.width = cardSize + (outerPadding * 2);
+          canvas.height = cardSize + (outerPadding * 2);
+          var ctx = canvas.getContext('2d');
 
-        var draw = function () {
-          ctx.drawImage(qrImg, padding, padding, exportSize, exportSize);
+          ctx.fillStyle = '#e8ecef';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(outerPadding, outerPadding, cardSize, cardSize);
+
+          ctx.drawImage(sourceCanvas, outerPadding + innerPadding, outerPadding + innerPadding, exportSize, exportSize);
+
           var link = document.createElement('a');
-          link.download = 'qrcode-billet-{{ Str::slug($participant->nom.'-'.$participant->prenom, '-') }}.png';
-          link.href = canvas.toDataURL('image/png');
+          link.download = 'qrcode-billet-{{ Str::slug($participant->nom.'-'.$participant->prenom, '-') }}.jpg';
+          link.href = canvas.toDataURL('image/jpeg', 0.92);
           link.click();
           tempMount.innerHTML = '';
         };
 
-        if (qrImg.complete) {
-          draw();
-        } else {
-          qrImg.onload = draw;
-        }
+        window.requestAnimationFrame(function () {
+          window.requestAnimationFrame(buildAndDownload);
+        });
       });
     });
   </script>

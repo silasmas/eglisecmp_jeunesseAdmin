@@ -47,6 +47,22 @@ class RetreatParticipant extends Model implements HasAvatar, HasName
         return $this->belongsTo(User::class, 'owner_id');
     }
 
+    /**
+     * Utilisateur ayant accordé l'accès à la retraite (scan / portail).
+     */
+    public function retreatAccessGrantedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'retreat_access_granted_by');
+    }
+
+    /**
+     * Utilisateur ayant remis le badge physique.
+     */
+    public function badgeReceivedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'badge_received_by');
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');

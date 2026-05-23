@@ -3,9 +3,13 @@
 namespace App\Filament\Resources\RetreatParticipants\Pages;
 
 use App\Filament\Resources\RetreatParticipants\RetreatParticipantResource;
+use App\Models\User;
+use App\Services\RetreatParticipantRegistrationService;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
+use Illuminate\Support\Facades\Auth;
 
 class ViewRetreatParticipant extends ViewRecord
 {
@@ -23,11 +27,19 @@ class ViewRetreatParticipant extends ViewRecord
                 ->modalHeading('Confirmer la remise du badge')
                 ->modalDescription('Indique que le participant a recu son badge physique sur place.')
                 ->action(function (): void {
-                    $this->record->update([
-                        'badge_received' => true,
-                        'badge_received_at' => now(),
-                    ]);
-                    $this->refreshFormData(['badge_received', 'badge_received_at']);
+                    $admin = Auth::user();
+                    if (! $admin instanceof User) {
+                        return;
+                    }
+
+                    app(RetreatParticipantRegistrationService::class)->markBadgeReceived($this->record, $admin);
+
+                    Notification::make()
+                        ->title('Badge marqué comme remis')
+                        ->success()
+                        ->send();
+
+                    $this->refreshFormData(['badge_received', 'badge_received_at', 'badge_received_by']);
                 }),
             EditAction::make(),
         ];

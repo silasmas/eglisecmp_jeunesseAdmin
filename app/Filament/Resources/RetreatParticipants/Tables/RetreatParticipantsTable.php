@@ -462,10 +462,19 @@ class RetreatParticipantsTable
                         ->requiresConfirmation()
                         ->modalHeading('Confirmer la remise du badge')
                         ->modalDescription('Indique que le participant a recu son badge physique sur place.')
-                        ->action(fn (RetreatParticipant $record) => $record->update([
-                            'badge_received' => true,
-                            'badge_received_at' => now(),
-                        ])),
+                        ->action(function (RetreatParticipant $record): void {
+                            $admin = Auth::user();
+                            if (! $admin instanceof User) {
+                                return;
+                            }
+
+                            app(RetreatParticipantRegistrationService::class)->markBadgeReceived($record, $admin);
+
+                            Notification::make()
+                                ->title('Badge marqué comme remis')
+                                ->success()
+                                ->send();
+                        }),
                     Action::make('open_in_new_tab')
                         ->label('Ouvrir dans un onglet')
                         ->icon('heroicon-o-arrow-top-right-on-square')

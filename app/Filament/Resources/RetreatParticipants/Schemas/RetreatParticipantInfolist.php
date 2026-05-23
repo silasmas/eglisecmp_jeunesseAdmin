@@ -56,12 +56,19 @@ class RetreatParticipantInfolist
                             ->dateTime()
                             ->placeholder('En attente de remise')
                             ->visible(fn ($record): bool => (bool) $record->paiement_valide),
+                        TextEntry::make('badgeReceivedBy.name')
+                            ->label('Badge remis par')
+                            ->placeholder('-')
+                            ->visible(fn ($record): bool => (bool) $record->paiement_valide),
                     ])
                     ->columns(2),
                 Section::make('Presence et inscription')
                     ->schema([
                         IconEntry::make('present')->boolean(),
                         TextEntry::make('date_presence')->dateTime()->placeholder('-'),
+                        TextEntry::make('retreatAccessGrantedBy.name')
+                            ->label('Acces retraite par')
+                            ->placeholder('-'),
                         IconEntry::make('exit_allowed')->boolean(),
                         TextEntry::make('curfew_time')->time()->placeholder('-'),
                         TextEntry::make('guardian_name')->placeholder('-'),

@@ -324,17 +324,14 @@ class RetreatVerificationPortalController extends Controller
         $sendResult = null;
 
         match ($validated['action']) {
-            'retreat_access' => $participant->update([
-                'present' => true,
-                'date_presence' => $participant->date_presence ?? now(),
-            ]),
-            'activity_access' => $this->markCurrentActivityAccess($participant),
+            'retreat_access' => $registrationService->grantRetreatAccess($participant, $user),
+            'activity_access' => $this->markCurrentActivityAccess($participant, $user),
             'exit_permission' => $participant->update(['exit_allowed' => true]),
             'exclude_retreat' => $participant->update([
                 'is_active' => false,
                 'observation' => trim(((string) $participant->observation)."\nExclu de la retraite le ".now()->format('d/m/Y H:i')),
             ]),
-            'mark_badge_received' => $registrationService->markBadgeReceived($participant),
+            'mark_badge_received' => $registrationService->markBadgeReceived($participant, $user),
             'validate_registration' => $registrationService->validateRegistration($participant, $user),
             'send_billet' => $sendResult = $registrationService->sendBilletNotification($participant, true),
         };
@@ -636,7 +633,14 @@ class RetreatVerificationPortalController extends Controller
         ];
     }
 
-    protected function markCurrentActivityAccess(RetreatParticipant $participant): void
+    /**
+     * Marque la présence à l'activité en cours et enregistre l'acteur si accès retraite accordé.
+     *
+     * @param RetreatParticipant $participant Participant concerné
+     * @param User $actor Ouvrier ou administrateur
+     * @return void
+     */
+    protected function markCurrentActivityAccess(RetreatParticipant $participant, User $actor): void
     {
         $plan = RetreatActivityPlan::query()
             ->where('is_active', true)
@@ -644,11 +648,17 @@ class RetreatVerificationPortalController extends Controller
             ->orderBy('starts_at')
             ->first();
 
+        $presencePayload = [
+            'present' => true,
+            'date_presence' => $participant->date_presence ?? now(),
+        ];
+
+        if (! $participant->present) {
+            $presencePayload['retreat_access_granted_by'] = $actor->id;
+        }
+
         if (! $plan) {
-            $participant->update([
-                'present' => true,
-                'date_presence' => $participant->date_presence ?? now(),
-            ]);
+            $participant->update($presencePayload);
 
             return;
         }
@@ -666,24 +676,7 @@ class RetreatVerificationPortalController extends Controller
             ],
         );
 
-        $participant->update([
-            'present' => true,
-            'date_presence' => $participant->date_presence ?? now(),
-        ]);
-    }
-
-    /**
-     * Marque le badge physique comme remis au participant.
-     *
-     * @param RetreatParticipant $participant Participant concerné
-     * @return void
-     */
-    protected function markBadgeReceived(RetreatParticipant $participant): void
-    {
-        $participant->update([
-            'badge_received' => true,
-            'badge_received_at' => now(),
-        ]);
+        $participant->update($presencePayload);
     }
 
     protected function publicParticipantPayload(RetreatParticipant $participant): array

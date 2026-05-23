@@ -142,12 +142,37 @@ class RetreatParticipantRegistrationService
     }
 
     /**
+     * Accorde l'accès à la retraite (présence) et enregistre l'acteur.
+     *
+     * @param RetreatParticipant $participant Participant
+     * @param User $actor Ouvrier ou administrateur
+     * @return void
+     */
+    public function grantRetreatAccess(RetreatParticipant $participant, User $actor): void
+    {
+        if (! $participant->paiement_valide) {
+            throw new \InvalidArgumentException('Le paiement doit être validé avant d\'accorder l\'accès.');
+        }
+
+        if ($participant->present) {
+            throw new \InvalidArgumentException('L\'accès à la retraite a déjà été accordé.');
+        }
+
+        $participant->update([
+            'present' => true,
+            'date_presence' => $participant->date_presence ?? now(),
+            'retreat_access_granted_by' => $actor->id,
+        ]);
+    }
+
+    /**
      * Marque le badge physique comme remis.
      *
      * @param RetreatParticipant $participant Participant
+     * @param User $actor Ouvrier ou administrateur
      * @return void
      */
-    public function markBadgeReceived(RetreatParticipant $participant): void
+    public function markBadgeReceived(RetreatParticipant $participant, User $actor): void
     {
         if (! $participant->paiement_valide) {
             throw new \InvalidArgumentException('Le badge ne peut être remis qu\'après validation du paiement.');
@@ -164,6 +189,7 @@ class RetreatParticipantRegistrationService
         $participant->update([
             'badge_received' => true,
             'badge_received_at' => now(),
+            'badge_received_by' => $actor->id,
         ]);
     }
 
