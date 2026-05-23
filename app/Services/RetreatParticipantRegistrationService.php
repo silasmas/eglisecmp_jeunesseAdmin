@@ -153,6 +153,14 @@ class RetreatParticipantRegistrationService
             throw new \InvalidArgumentException('Le badge ne peut être remis qu\'après validation du paiement.');
         }
 
+        if ($participant->badge_received) {
+            throw new \InvalidArgumentException('Le badge a déjà été remis à ce participant.');
+        }
+
+        if (! $participant->present) {
+            throw new \InvalidArgumentException('Accordez d\'abord l\'accès à la retraite avant de remettre le badge.');
+        }
+
         $participant->update([
             'badge_received' => true,
             'badge_received_at' => now(),

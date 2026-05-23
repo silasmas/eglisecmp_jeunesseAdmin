@@ -19,6 +19,7 @@ class RetreatRegistrationFulfillmentService
     public function __construct(
         protected KeccelSmsService $sms,
         protected RetreatPlacementAssignmentService $placementAssignment,
+        protected RetreatSmsMessageBuilder $smsMessageBuilder,
     ) {}
 
     /**
@@ -200,11 +201,10 @@ class RetreatRegistrationFulfillmentService
             return false;
         }
 
-        $body = __('retraite.sms_confirmation_body', [
-            'name' => $participant->prenom ?: $participant->full_name,
-            'ref' => $payment->reference,
-            'billet_url' => $billetUrl,
-        ]);
+        $body = $this->smsMessageBuilder->billetConfirmation(
+            (string) ($participant->prenom ?: $participant->full_name),
+            $billetUrl,
+        );
 
         try {
             $this->sms->send((string) $participant->telephone, $body, 'retreat_payment_confirmation');

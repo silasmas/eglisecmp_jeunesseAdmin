@@ -280,7 +280,7 @@ class RetreatVerificationPortalController extends Controller
             return response()->json(['message' => 'Action réservée aux administrateurs.'], 403);
         }
 
-        $preEventActions = ['validate_registration', 'send_billet', 'mark_badge_received'];
+        $preEventActions = ['validate_registration', 'send_billet'];
 
         if (! in_array($validated['action'], $preEventActions, true) && ! $eventStarted) {
             return response()->json([
@@ -288,9 +288,35 @@ class RetreatVerificationPortalController extends Controller
             ], 422);
         }
 
+        if ($validated['action'] === 'retreat_access') {
+            if (! $participant->paiement_valide) {
+                return response()->json([
+                    'message' => 'Le paiement doit être validé avant d\'accorder l\'accès.',
+                ], 422);
+            }
+
+            if ($participant->present) {
+                return response()->json([
+                    'message' => 'L\'accès à la retraite a déjà été accordé.',
+                ], 422);
+            }
+        }
+
         if ($validated['action'] === 'mark_badge_received' && ! $participant->paiement_valide) {
             return response()->json([
                 'message' => 'Le badge ne peut être remis qu\'après validation du paiement.',
+            ], 422);
+        }
+
+        if ($validated['action'] === 'mark_badge_received' && $participant->badge_received) {
+            return response()->json([
+                'message' => 'Le badge a déjà été remis à ce participant.',
+            ], 422);
+        }
+
+        if ($validated['action'] === 'mark_badge_received' && ! $participant->present) {
+            return response()->json([
+                'message' => 'Accordez d\'abord l\'accès à la retraite avant de remettre le badge.',
             ], 422);
         }
 

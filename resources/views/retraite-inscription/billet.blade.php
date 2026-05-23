@@ -157,6 +157,19 @@
       color: #fff;
       background: var(--primary);
     }
+    .btn.qr-download {
+      border-color: #146c43;
+      color: #146c43;
+      background: #fff;
+    }
+    #qrDownloadMount {
+      position: absolute;
+      left: -9999px;
+      top: 0;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+    }
     @media (max-width: 720px) {
       .layout { grid-template-columns: 1fr; }
       .qr-box { margin: 0 auto; }
@@ -233,14 +246,19 @@
 
     <div class="actions">
       <a class="btn" href="{{ url('/') }}">Portail</a>
+      <button class="btn qr-download" type="button" id="downloadQrBtn">Télécharger QR seul</button>
       <button class="btn primary" type="button" onclick="window.print()">Imprimer</button>
     </div>
   </main>
+  <div id="qrDownloadMount" aria-hidden="true"></div>
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       var url = @json($accessUrl);
       var mount = document.getElementById('billetQrMount');
-      if (!mount || typeof QRCode !== 'function' || !url) return;
+      if (!mount || typeof QRCode !== 'function' || !url) {
+        return;
+      }
+
       mount.innerHTML = '';
       new QRCode(mount, {
         text: url,
@@ -250,8 +268,59 @@
         colorLight: '#ffffff',
         correctLevel: QRCode.CorrectLevel.M
       });
+
       var img = mount.querySelector('img');
-      if (img) img.alt = 'QR code billet retraite';
+      if (img) {
+        img.alt = 'QR code billet retraite';
+      }
+
+      var downloadBtn = document.getElementById('downloadQrBtn');
+      if (!downloadBtn) {
+        return;
+      }
+
+      downloadBtn.addEventListener('click', function () {
+        var exportSize = 512;
+        var padding = 48;
+        var tempMount = document.getElementById('qrDownloadMount');
+        tempMount.innerHTML = '';
+
+        new QRCode(tempMount, {
+          text: url,
+          width: exportSize,
+          height: exportSize,
+          colorDark: '#000000',
+          colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.M
+        });
+
+        var qrImg = tempMount.querySelector('img');
+        if (!qrImg) {
+          return;
+        }
+
+        var canvas = document.createElement('canvas');
+        canvas.width = exportSize + (padding * 2);
+        canvas.height = exportSize + (padding * 2);
+        var ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        var draw = function () {
+          ctx.drawImage(qrImg, padding, padding, exportSize, exportSize);
+          var link = document.createElement('a');
+          link.download = 'qrcode-billet-{{ Str::slug($participant->nom.'-'.$participant->prenom, '-') }}.png';
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+          tempMount.innerHTML = '';
+        };
+
+        if (qrImg.complete) {
+          draw();
+        } else {
+          qrImg.onload = draw;
+        }
+      });
     });
   </script>
 </body>

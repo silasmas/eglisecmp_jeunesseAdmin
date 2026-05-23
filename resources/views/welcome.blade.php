@@ -310,6 +310,61 @@
 
         .modal.modal-wide {
             width: min(640px, 100%);
+            max-height: min(92vh, 900px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        #workerParticipantModal .modal-body {
+            overflow-y: auto;
+            flex: 1 1 auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        #workerParticipantModal .modal-footer {
+            flex-shrink: 0;
+        }
+
+        #workerParticipantModal #workerParticipantModalStatus:not(.hidden) {
+            margin: 0 20px 12px;
+        }
+
+        .worker-modal-status {
+            margin: 0 0 12px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 0.92rem;
+            line-height: 1.45;
+        }
+
+        .worker-modal-status.info {
+            background: #eef4ff;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+        }
+
+        .worker-modal-status.success {
+            background: #ecfdf3;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+
+        .worker-modal-status.warning {
+            background: #fffbeb;
+            color: #92400e;
+            border: 1px solid #fde68a;
+        }
+
+        .worker-modal-status.error {
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .worker-modal-note {
+            margin: 0 0 10px;
+            font-size: 0.88rem;
+            color: var(--muted);
         }
 
         .modal-footer {
@@ -1034,6 +1089,7 @@
                 </div>
                 <button id="closeWorkerParticipantModal" class="modal-close" type="button" aria-label="Fermer">×</button>
             </div>
+            <p id="workerParticipantModalStatus" class="worker-modal-status hidden" role="status" aria-live="polite"></p>
             <div class="modal-body" id="workerParticipantModalBody"></div>
             <div class="modal-footer worker-modal-actions" id="workerParticipantModalActions"></div>
         </div>
@@ -1556,38 +1612,99 @@
             `;
         }
 
+        function setWorkerModalStatus(message = '', type = 'info') {
+            const el = document.getElementById('workerParticipantModalStatus');
+            if (!el) {
+                return;
+            }
+            if (!message) {
+                el.textContent = '';
+                el.className = 'worker-modal-status hidden';
+                return;
+            }
+            el.textContent = message;
+            el.className = `worker-modal-status ${type}`;
+        }
+
         function renderWorkerModalActions(participant) {
-            const enabled = !!participant.actions_enabled;
-            const badgePending = participant.paiement_valide && !participant.badge_received;
             const canAdmin = canManageRegistrations || participant.can_manage_registrations;
+            const eventStarted = !!participant.actions_enabled || !!participant.event?.has_started;
+            const paid = !!participant.paiement_valide;
+            const hasAccess = !!participant.present;
+            const hasBadge = !!participant.badge_received;
+            const fullyDone = hasAccess && hasBadge;
 
             if (canAdmin) {
-                const needsValidation = !participant.registration_validated;
-                const canSendBillet = !!participant.paiement_valide;
-                const badgeDisabled = badgePending ? '' : (participant.badge_received ? 'disabled' : '');
+                const buttons = [];
 
+                if (!participant.registration_validated) {
+                    buttons.push(`<button type="button" class="button" data-worker-action="validate_registration" data-participant-id="${participant.id}">Valider inscription</button>`);
+                }
+
+                if (paid) {
+                    buttons.push(`<button type="button" class="button secondary" data-worker-action="send_billet" data-participant-id="${participant.id}">${participant.billet_envoye ? 'Renvoyer billet' : 'Envoyer billet'}</button>`);
+                }
+
+                if (eventStarted && paid && !hasAccess) {
+                    buttons.push(`<button type="button" class="button" data-worker-action="retreat_access" data-participant-id="${participant.id}">Donner accès retraite</button>`);
+                }
+
+                if (eventStarted && hasAccess && !hasBadge && paid) {
+                    buttons.push(`<button type="button" class="button secondary" data-worker-action="mark_badge_received" data-participant-id="${participant.id}">Marquer badge remis</button>`);
+                }
+
+                if (fullyDone) {
+                    return '<p class="worker-modal-note">Accès et badge déjà traités pour ce participant.</p>';
+                }
+
+                if (!eventStarted && !buttons.length) {
+                    return '<p class="worker-modal-note">Aucune action admin disponible pour le moment.</p>';
+                }
+
+                if (!eventStarted && buttons.length) {
+                    return buttons.join('') + '<p class="worker-modal-note">Remise du badge disponible au début de la retraite, après l\'accès.</p>';
+                }
+
+                return buttons.join('') || '<p class="worker-modal-note">Toutes les étapes admin sont complètes.</p>';
+            }
+
+            if (fullyDone) {
+                return '<p class="worker-modal-note">Participant déjà entré et badge déjà remis.</p>';
+            }
+
+            if (!eventStarted) {
+                return '<p class="worker-modal-note">Les actions d\'accès et de badge seront disponibles lorsque la retraite aura commencé.</p>';
+            }
+
+            if (!paid) {
+                return '<p class="worker-modal-note">Paiement non validé — accès impossible.</p>';
+            }
+
+            if (!hasAccess) {
+                return `<button type="button" class="button" data-worker-action="retreat_access" data-participant-id="${participant.id}">Donner accès retraite</button>`;
+            }
+
+            if (!hasBadge) {
                 return `
-                    <button type="button" class="button" data-worker-action="validate_registration" data-participant-id="${participant.id}" ${needsValidation ? '' : 'disabled'}>Valider inscription</button>
-                    <button type="button" class="button secondary" data-worker-action="send_billet" data-participant-id="${participant.id}" ${canSendBillet ? '' : 'disabled'}>${participant.billet_envoye ? 'Renvoyer billet' : 'Envoyer billet'}</button>
-                    <button type="button" class="button secondary" data-worker-action="mark_badge_received" data-participant-id="${participant.id}" ${badgeDisabled}>${participant.badge_received ? 'Badge remis' : 'Marquer badge'}</button>
+                    <p class="worker-modal-note">Accès retraite déjà accordé.</p>
+                    <button type="button" class="button secondary" data-worker-action="mark_badge_received" data-participant-id="${participant.id}">Marquer badge remis</button>
                 `;
             }
 
-            return `
-                <button type="button" class="button" data-worker-action="retreat_access" data-participant-id="${participant.id}" ${enabled ? '' : 'disabled'}>Donner accès retraite</button>
-                <button type="button" class="button secondary" data-worker-action="mark_badge_received" data-participant-id="${participant.id}" ${badgePending ? '' : 'disabled'}>${participant.badge_received ? 'Badge déjà remis' : 'Marquer badge remis'}</button>
-            `;
+            return '<p class="worker-modal-note">Badge déjà remis.</p>';
         }
 
-        function openWorkerParticipantModal(participant) {
+        function openWorkerParticipantModal(participant, statusMessage = '', statusType = 'info') {
             activeWorkerParticipant = participant;
             document.getElementById('workerParticipantModalBody').innerHTML = renderWorkerParticipantModalContent(participant);
             document.getElementById('workerParticipantModalActions').innerHTML = renderWorkerModalActions(participant);
+            setWorkerModalStatus(statusMessage, statusType);
             document.getElementById('workerParticipantModal').classList.remove('hidden');
         }
 
         function closeWorkerParticipantModal() {
             document.getElementById('workerParticipantModal').classList.add('hidden');
+            setWorkerModalStatus('');
             activeWorkerParticipant = null;
         }
 
@@ -1607,12 +1724,17 @@
             try {
                 const url = endpoints.workerActionTemplate.replace('__ID__', encodeURIComponent(activeWorkerParticipant.id));
                 const payload = await postJson(url, { action });
-                searchStatus.textContent = payload.message || 'Action effectuée.';
+                const message = payload.message || 'Action effectuée.';
+                searchStatus.textContent = message;
                 if (payload.data) {
-                    openWorkerParticipantModal(payload.data);
+                    openWorkerParticipantModal(payload.data, message, 'success');
+                } else {
+                    setWorkerModalStatus(message, 'success');
                 }
             } catch (error) {
-                searchStatus.textContent = error.message;
+                const message = error.message || 'Action impossible.';
+                searchStatus.textContent = message;
+                setWorkerModalStatus(message, 'error');
                 button.disabled = false;
                 button.textContent = original;
             }
