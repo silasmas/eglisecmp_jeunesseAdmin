@@ -2094,16 +2094,21 @@ class RetreatPublicRegistrationController extends Controller
             $payment->reference = 'RET-'.now()->format('YmdHis').'-'.Str::upper(Str::random(5));
         }
 
-        $payment->fill([
+        $attributes = [
             'amount_expected' => $event->price_to_pay ?? 0,
-            'amount_paid' => 0,
             'currency' => $event->currency ?? 'USD',
             'channel' => $channel,
             'phone' => $participant->telephone,
             'etat' => 'init',
             'access_granted' => false,
             'is_active' => true,
-        ])->save();
+        ];
+
+        if (! $payment->exists) {
+            $attributes['amount_paid'] = 0;
+        }
+
+        $payment->fill($attributes)->save();
 
         return $payment->fresh();
     }

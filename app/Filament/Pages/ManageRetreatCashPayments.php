@@ -90,6 +90,7 @@ class ManageRetreatCashPayments extends Page implements HasTable
                     ->money(fn (RetreatPayment $record): string => $record->currency ?: 'USD'),
                 TextColumn::make('amount_paid')
                     ->label('Montant payé')
+                    ->state(fn (RetreatPayment $record): float => $record->resolveReceivedAmount())
                     ->money(fn (RetreatPayment $record): string => $record->currency ?: 'USD'),
                 TextColumn::make('etat')
                     ->label('Statut')

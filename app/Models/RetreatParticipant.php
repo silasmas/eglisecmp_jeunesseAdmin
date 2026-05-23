@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 use Wezlo\FilamentRecordWatcher\Concerns\HasWatchers;
 
@@ -81,6 +82,16 @@ class RetreatParticipant extends Model implements HasAvatar, HasName
     public function payments(): HasMany
     {
         return $this->hasMany(RetreatPayment::class, 'participant_id');
+    }
+
+    /**
+     * Dernier paiement cash du participant (validation admin).
+     */
+    public function latestCashPayment(): HasOne
+    {
+        return $this->hasOne(RetreatPayment::class, 'participant_id')
+            ->where('channel', 'cash')
+            ->latestOfMany('id');
     }
 
     public function activityAttendances(): HasMany

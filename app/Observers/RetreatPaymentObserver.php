@@ -24,6 +24,10 @@ class RetreatPaymentObserver
                 $payment->access_granted_at = $payment->access_granted_at ?? now();
             }
         }
+
+        if ($payment->channel === 'cash' && $payment->etat === 'payee' && (float) $payment->amount_paid <= 0) {
+            $payment->amount_paid = $payment->amount_expected;
+        }
     }
 
     public function updated(RetreatPayment $payment): void

@@ -41,6 +41,11 @@ class RetreatParticipantsTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
+                'retreatAccessGrantedBy',
+                'badgeReceivedBy',
+                'latestCashPayment.accessGrantedBy',
+            ]))
             ->columns([
                 HoverImageColumn::make('photo')
                     ->label('Profil')
@@ -182,8 +187,33 @@ class RetreatParticipantsTable
                     ->toggleable(),
                 TextColumn::make('date_presence')
                     ->label('Date presence')
-                    ->dateTime()
+                    ->dateTime('d/m/Y H:i')
                     ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                UserColumn::make('retreatAccessGrantedBy')
+                    ->label('Acces retraite par')
+                    ->wrapped()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('badge_received_at')
+                    ->label('Badge remis le')
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable()
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                UserColumn::make('badgeReceivedBy')
+                    ->label('Badge remis par')
+                    ->wrapped()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('cash_payment_validated_at')
+                    ->label('Cash valide le')
+                    ->state(fn (RetreatParticipant $record) => $record->latestCashPayment?->access_granted_at)
+                    ->dateTime('d/m/Y H:i')
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                UserColumn::make('cash_payment_validator')
+                    ->label('Cash valide par')
+                    ->state(fn (RetreatParticipant $record) => $record->latestCashPayment?->accessGrantedBy)
+                    ->wrapped()
                     ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('present')
                     ->label('Present')

@@ -33,7 +33,7 @@ class RetreatPaymentInfolist
                             ->numeric(),
                         TextEntry::make('amount_paid')
                             ->label('Montant recu')
-                            ->numeric(),
+                            ->formatStateUsing(fn ($state, $record): string => number_format($record->resolveReceivedAmount(), 2, ',', ' ')),
                         TextEntry::make('currency')
                             ->label('Devise'),
                         TextEntry::make('channel')

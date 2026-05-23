@@ -41,4 +41,21 @@ class RetreatPayment extends Model
     {
         return $this->belongsTo(User::class, 'access_granted_by');
     }
+
+    /**
+     * Montant effectivement reçu (cash validé = montant attendu si amount_paid est vide).
+     *
+     * @return float Montant reçu affichable
+     */
+    public function resolveReceivedAmount(): float
+    {
+        $paid = (float) $this->amount_paid;
+        $expected = (float) $this->amount_expected;
+
+        if ($this->channel === 'cash' && $this->etat === 'payee') {
+            return $paid > 0 ? $paid : $expected;
+        }
+
+        return $paid;
+    }
 }

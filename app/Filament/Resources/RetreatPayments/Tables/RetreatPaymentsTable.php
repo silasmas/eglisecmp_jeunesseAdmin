@@ -22,6 +22,11 @@ class RetreatPaymentsTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => $query->with([
+                'participant',
+                'event',
+                'accessGrantedBy',
+            ]))
             ->columns([
                 HoverImageColumn::make('participant.photo')
                     ->label('Profil')
@@ -46,8 +51,14 @@ class RetreatPaymentsTable
                     ->sortable(),
                 TextColumn::make('amount_paid')
                     ->label('Montant recu')
-                    ->numeric()
-                    ->sortable(),
+                    ->state(fn ($record): float => $record->resolveReceivedAmount())
+                    ->numeric(decimalPlaces: 2)
+                    ->sortable(query: function ($query, string $direction): void {
+                        $query->orderByRaw(
+                            'CASE WHEN channel = ? AND etat = ? AND amount_paid <= 0 THEN amount_expected ELSE amount_paid END '.$direction,
+                            ['cash', 'payee']
+                        );
+                    }),
                 TextColumn::make('currency')
                     ->label('Devise')
                     ->searchable()
