@@ -142,7 +142,8 @@ class ListRetreatParticipants extends ListRecords
             ->orderBy('nom');
 
         match ($operation) {
-            'assign_chambre' => $query->whereNull('chambre_id'),
+            'assign_chambre' => app(RetreatPlacementAssignmentService::class)
+                ->scopeEligibleForChambreAssignment($query->whereNull('chambre_id')),
             'remove_chambre' => $query->whereNotNull('chambre_id'),
             'integrate_atelier' => $query->whereNull('atelier_id'),
             'remove_atelier' => $query->whereNotNull('atelier_id'),
@@ -151,10 +152,19 @@ class ListRetreatParticipants extends ListRecords
 
         $participants = $query->get();
 
-        if ($operation === 'assign_chambre' && filled($chambreId)) {
-            $chambre = RetreatChambre::query()->find($chambreId);
-            if ($chambre) {
-                $participants = $participants->filter(fn (RetreatParticipant $participant): bool => $this->participantMatchesChambre($participant, $chambre));
+        if ($operation === 'assign_chambre') {
+            $placement = app(RetreatPlacementAssignmentService::class);
+            $participants = $participants->filter(
+                fn (RetreatParticipant $participant): bool => $placement->requiresChambrePlacement($participant)
+            );
+
+            if (filled($chambreId)) {
+                $chambre = RetreatChambre::query()->find($chambreId);
+                if ($chambre) {
+                    $participants = $participants->filter(
+                        fn (RetreatParticipant $participant): bool => $this->participantMatchesChambre($participant, $chambre)
+                    );
+                }
             }
         }
 
@@ -270,7 +280,7 @@ class ListRetreatParticipants extends ListRecords
         if (filled($path)) {
             return Str::startsWith($path, ['http://', 'https://', '/'])
                 ? $path
-                : asset('storage/'.$path);
+                : (app(\App\Services\PublicStorageUrl::class)->fromPath($path) ?? AvatarFallback::url());
         }
 
         return AvatarFallback::url();

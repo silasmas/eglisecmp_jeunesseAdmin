@@ -21,6 +21,9 @@ class RetreatActivityPlan extends Model
             'starts_at' => 'datetime:H:i:s',
             'ends_at' => 'datetime:H:i:s',
             'is_mandatory' => 'boolean',
+            'attendance_window_minutes' => 'integer',
+            'attendance_reminder_sent_at' => 'datetime',
+            'attendance_overdue_notified_at' => 'datetime',
             'is_active' => 'boolean',
         ];
     }

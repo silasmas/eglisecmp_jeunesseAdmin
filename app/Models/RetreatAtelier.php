@@ -19,6 +19,8 @@ class RetreatAtelier extends Model
     {
         return [
             'numero' => 'integer',
+            'age_min' => 'integer',
+            'age_max' => 'integer',
             'is_active' => 'boolean',
         ];
     }

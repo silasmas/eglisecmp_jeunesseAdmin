@@ -89,6 +89,7 @@ class AdminPanelProvider extends PanelProvider
                 FilamentApiDocsBuilderPlugin::make(),
                 FilamentShieldPlugin::make(),
                 MediaManagerPlugin::make()
+                    ->disk('media')
                     ->navigationGroup('Configuration')
                     ->navigationLabel('Mediatheque')
                     ->navigationIcon('heroicon-o-photo')

@@ -6,7 +6,7 @@
     $fullName = trim(($participant?->prenom ?? '').' '.($participant?->nom ?? '')) ?: 'Participant';
     $photo = $participant?->photo;
     $photoUrl = filled($photo)
-        ? (str_starts_with($photo, 'http') ? $photo : asset('storage/'.$photo))
+        ? (app(\App\Services\PublicStorageUrl::class)->fromPath($photo) ?? 'https://ui-avatars.com/api/?name='.urlencode($fullName).'&background=7b1d3e&color=fff')
         : 'https://ui-avatars.com/api/?name='.urlencode($fullName).'&background=7b1d3e&color=fff';
     $participantUrl = $participant
         ? \App\Filament\Resources\RetreatParticipants\RetreatParticipantResource::getUrl('view', ['record' => $participant])

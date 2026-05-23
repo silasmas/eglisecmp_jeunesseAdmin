@@ -12,6 +12,7 @@ use App\Models\RetreatPolicy;
 use App\Models\User;
 use App\Services\RetreatAtelierAttendancePanelService;
 use App\Services\RetreatAtelierAuthorizationService;
+use App\Services\RetreatParticipantRegistrationService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -38,7 +39,10 @@ class RetreatVerificationPortalController extends Controller
                 'email' => $user->email,
             ] : null,
             'can_mark_atelier_attendance' => $user
-                ? app(RetreatAtelierAuthorizationService::class)->isAtelierLead($user)
+                ? app(RetreatAtelierAuthorizationService::class)->managesAnyAtelier($user)
+                : false,
+            'can_manage_registrations' => $user
+                ? $user->hasAnyRole(['super_admin', 'panel_user'])
                 : false,
         ]);
     }
@@ -126,7 +130,8 @@ class RetreatVerificationPortalController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
             ],
-            'can_mark_atelier_attendance' => app(RetreatAtelierAuthorizationService::class)->isAtelierLead($user),
+            'can_mark_atelier_attendance' => app(RetreatAtelierAuthorizationService::class)->managesAnyAtelier($user),
+            'can_manage_registrations' => $user->hasAnyRole(['super_admin', 'panel_user']),
         ]);
     }
 
@@ -197,7 +202,10 @@ class RetreatVerificationPortalController extends Controller
             ->get();
 
         return response()->json([
-            'data' => $participants->map(fn (RetreatParticipant $participant): array => $this->participantPayload($participant))->values(),
+            'data' => $participants->map(fn (RetreatParticipant $participant): array => $this->participantPayload(
+                $participant,
+                $this->currentVerifier($request),
+            ))->values(),
         ]);
     }
 
@@ -254,21 +262,40 @@ class RetreatVerificationPortalController extends Controller
 
     public function workerAction(Request $request, RetreatParticipant $participant): JsonResponse
     {
-        if (! $this->currentVerifier($request)) {
+        $user = $this->currentVerifier($request);
+        if (! $user) {
             return response()->json(['message' => 'Connexion ouvrier requise.'], 401);
         }
 
         $validated = $request->validate([
-            'action' => ['required', 'string', 'in:retreat_access,activity_access,exit_permission,exclude_retreat'],
+            'action' => ['required', 'string', 'in:retreat_access,activity_access,exit_permission,exclude_retreat,mark_badge_received,validate_registration,send_billet'],
         ]);
 
         $participant->loadMissing('event');
+        $isRegistrationAdmin = $user->hasAnyRole(['super_admin', 'panel_user']);
+        $registrationActions = ['validate_registration', 'send_billet'];
+        $eventStarted = $participant->event?->start_at?->isPast() ?? false;
 
-        if (! $participant->event || ! $participant->event->start_at || $participant->event->start_at->isFuture()) {
+        if (in_array($validated['action'], $registrationActions, true) && ! $isRegistrationAdmin) {
+            return response()->json(['message' => 'Action réservée aux administrateurs.'], 403);
+        }
+
+        $preEventActions = ['validate_registration', 'send_billet', 'mark_badge_received'];
+
+        if (! in_array($validated['action'], $preEventActions, true) && ! $eventStarted) {
             return response()->json([
                 'message' => 'Ces actions seront disponibles lorsque la retraite aura commencé.',
             ], 422);
         }
+
+        if ($validated['action'] === 'mark_badge_received' && ! $participant->paiement_valide) {
+            return response()->json([
+                'message' => 'Le badge ne peut être remis qu\'après validation du paiement.',
+            ], 422);
+        }
+
+        $registrationService = app(RetreatParticipantRegistrationService::class);
+        $sendResult = null;
 
         match ($validated['action']) {
             'retreat_access' => $participant->update([
@@ -281,16 +308,27 @@ class RetreatVerificationPortalController extends Controller
                 'is_active' => false,
                 'observation' => trim(((string) $participant->observation)."\nExclu de la retraite le ".now()->format('d/m/Y H:i')),
             ]),
+            'mark_badge_received' => $registrationService->markBadgeReceived($participant),
+            'validate_registration' => $registrationService->validateRegistration($participant, $user),
+            'send_billet' => $sendResult = $registrationService->sendBilletNotification($participant, true),
+        };
+
+        $message = match ($validated['action']) {
+            'retreat_access' => 'Accès à la retraite validé.',
+            'activity_access' => 'Accès à l\'activité validé.',
+            'exit_permission' => 'Permission de sortie accordée.',
+            'exclude_retreat' => 'Participant exclu de la retraite.',
+            'mark_badge_received' => 'Badge physique marqué comme remis.',
+            'validate_registration' => 'Inscription validée.',
+            'send_billet' => is_array($sendResult) ? ($sendResult['message'] ?? 'Notification billet traitée.') : 'Notification billet traitée.',
         };
 
         return response()->json([
-            'message' => match ($validated['action']) {
-                'retreat_access' => 'Accès à la retraite validé.',
-                'activity_access' => 'Accès à l\'activité validé.',
-                'exit_permission' => 'Permission de sortie accordée.',
-                'exclude_retreat' => 'Participant exclu de la retraite.',
-            },
-            'data' => $this->participantPayload($participant->fresh(['event', 'chambre', 'atelier', 'payments.event'])),
+            'message' => $message,
+            'data' => $this->participantPayload(
+                $participant->fresh(['event', 'chambre', 'atelier', 'payments.event']),
+                $user,
+            ),
         ]);
     }
 
@@ -305,7 +343,7 @@ class RetreatVerificationPortalController extends Controller
         }
 
         $auth = app(RetreatAtelierAuthorizationService::class);
-        if (! $auth->isAtelierLead($user)) {
+        if (! $auth->managesAnyAtelier($user)) {
             return response()->json(['message' => 'Réservé au responsable ou à l\'adjoint d\'atelier.'], 403);
         }
 
@@ -329,7 +367,7 @@ class RetreatVerificationPortalController extends Controller
         }
 
         $auth = app(RetreatAtelierAuthorizationService::class);
-        if (! $auth->isAtelierLead($user)) {
+        if (! $auth->managesAnyAtelier($user)) {
             return response()->json(['message' => 'Réservé au responsable ou à l\'adjoint d\'atelier.'], 403);
         }
 
@@ -505,6 +543,14 @@ class RetreatVerificationPortalController extends Controller
             return $matches[1];
         }
 
+        if (preg_match('#/acces/([A-Za-z0-9]{32})#', $value, $matches)) {
+            return $matches[1];
+        }
+
+        if (preg_match('#/billet/([A-Za-z0-9]{32})#', $value, $matches)) {
+            return $matches[1];
+        }
+
         if (preg_match('/^[A-Za-z0-9]{32}$/', $value)) {
             return $value;
         }
@@ -512,10 +558,11 @@ class RetreatVerificationPortalController extends Controller
         return null;
     }
 
-    protected function participantPayload(RetreatParticipant $participant): array
+    protected function participantPayload(RetreatParticipant $participant, ?User $verifier = null): array
     {
         $payment = $participant->payments->sortByDesc('id')->first();
         $eventStarted = $participant->event?->start_at?->isPast() ?? false;
+        $canManageRegistrations = $verifier?->hasAnyRole(['super_admin', 'panel_user']) ?? false;
 
         return [
             'id' => $participant->id,
@@ -531,6 +578,13 @@ class RetreatVerificationPortalController extends Controller
             'registration_status' => $participant->registration_status,
             'paiement_valide' => $participant->paiement_valide,
             'present' => $participant->present,
+            'badge_received' => (bool) $participant->badge_received,
+            'badge_received_at' => $participant->badge_received_at?->toISOString(),
+            'billet_envoye' => (bool) $participant->billet_envoye,
+            'date_billet_envoye' => $participant->date_billet_envoye?->toISOString(),
+            'can_manage_registrations' => $canManageRegistrations,
+            'registration_validated' => (bool) $participant->paiement_valide
+                && in_array($participant->registration_status, ['completed', 'confirmed', 'valide'], true),
             'photo_url' => $participant->getFilamentAvatarUrl(),
             'event' => $participant->event ? [
                 'name' => $participant->event->name,
@@ -589,6 +643,20 @@ class RetreatVerificationPortalController extends Controller
         $participant->update([
             'present' => true,
             'date_presence' => $participant->date_presence ?? now(),
+        ]);
+    }
+
+    /**
+     * Marque le badge physique comme remis au participant.
+     *
+     * @param RetreatParticipant $participant Participant concerné
+     * @return void
+     */
+    protected function markBadgeReceived(RetreatParticipant $participant): void
+    {
+        $participant->update([
+            'badge_received' => true,
+            'badge_received_at' => now(),
         ]);
     }
 

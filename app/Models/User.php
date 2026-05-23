@@ -13,7 +13,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Spatie\Permission\Traits\HasRoles;
 
@@ -101,7 +100,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
             return $this->profile_photo_path;
         }
 
-        return Storage::url($this->profile_photo_path);
+        return app(\App\Services\PublicStorageUrl::class)->fromPath($this->profile_photo_path);
     }
 
     public function owner(): BelongsTo

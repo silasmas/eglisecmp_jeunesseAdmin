@@ -7,6 +7,7 @@ use App\Models\RetreatAtelier;
 use App\Models\RetreatChambre;
 use App\Models\RetreatParticipant;
 use App\Models\User;
+use App\Services\RetreatParticipantRegistrationService;
 use App\Services\RetreatPlacementAssignmentService;
 use App\Support\AvatarFallback;
 use Filament\Actions\Action;
@@ -18,6 +19,7 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Support\Enums\Alignment;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\IconColumn;
@@ -26,6 +28,7 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use TinusG\FilamentHoverImageColumn\HoverImageColumn;
 use Wezlo\FilamentRecordWatcher\Actions\UnwatchAction;
@@ -113,6 +116,36 @@ class RetreatParticipantsTable
                 TextColumn::make('atelier.numero')
                     ->label('Atelier')
                     ->searchable(),
+                TextColumn::make('badge_status')
+                    ->label('Badge physique')
+                    ->badge()
+                    ->state(fn (RetreatParticipant $record): string => self::resolveBadgeStatus($record))
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'received' => 'Remis',
+                        'pending' => 'En attente',
+                        default => '—',
+                    })
+                    ->color(fn (string $state): string => match ($state) {
+                        'received' => 'success',
+                        'pending' => 'warning',
+                        default => 'gray',
+                    })
+                    ->tooltip(fn (RetreatParticipant $record): ?string => $record->badge_received_at?->format('d/m/Y H:i')),
+                TextColumn::make('billet_notification_status')
+                    ->label('Billet notifié')
+                    ->badge()
+                    ->state(fn (RetreatParticipant $record): string => $record->billet_envoye ? 'sent' : 'pending')
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'sent' => 'Envoyé',
+                        'pending' => 'Non envoyé',
+                        default => '—',
+                    })
+                    ->color(fn (string $state): string => match ($state) {
+                        'sent' => 'success',
+                        'pending' => 'warning',
+                        default => 'gray',
+                    })
+                    ->tooltip(fn (RetreatParticipant $record): ?string => $record->date_billet_envoye?->format('d/m/Y H:i')),
                 TextColumn::make('preuve_paiement')
                     ->label('Preuve paiement')
                     ->searchable()
@@ -294,6 +327,11 @@ class RetreatParticipantsTable
                     ->relationship('owner', 'name')
                     ->searchable()
                     ->preload(),
+                Filter::make('badge_pending')
+                    ->label('Badge en attente de remise')
+                    ->query(fn (Builder $query): Builder => $query
+                        ->where('paiement_valide', true)
+                        ->where('badge_received', false)),
                 Filter::make('has_family_group')
                     ->label('Avec regroupement foyer')
                     ->query(fn (Builder $query): Builder => $query->whereNotNull('family_group_id')),
@@ -333,7 +371,8 @@ class RetreatParticipantsTable
                     Action::make('affecter_chambre')
                         ->label('Affecter chambre')
                         ->icon('heroicon-o-home-modern')
-                        ->visible(fn ($record): bool => blank($record->chambre_id))
+                        ->visible(fn (RetreatParticipant $record): bool => blank($record->chambre_id)
+                            && app(RetreatPlacementAssignmentService::class)->requiresChambrePlacement($record))
                         ->form([
                             Select::make('chambre_id')
                                 ->label('Chambre')
@@ -370,6 +409,63 @@ class RetreatParticipantsTable
                         ->requiresConfirmation()
                         ->color('danger')
                         ->action(fn ($record) => $record->update(['atelier_id' => null])),
+                    Action::make('valider_inscription')
+                        ->label('Valider inscription')
+                        ->icon('heroicon-o-check-badge')
+                        ->color('success')
+                        ->visible(fn (RetreatParticipant $record): bool => ! $record->paiement_valide
+                            || ! in_array($record->registration_status, ['completed', 'confirmed', 'valide'], true))
+                        ->requiresConfirmation()
+                        ->modalHeading('Valider l\'inscription ?')
+                        ->modalDescription('Confirme le paiement et finalise l\'inscription du participant.')
+                        ->action(function (RetreatParticipant $record): void {
+                            $admin = Auth::user();
+                            if (! $admin instanceof User) {
+                                return;
+                            }
+
+                            app(RetreatParticipantRegistrationService::class)->validateRegistration($record, $admin);
+
+                            Notification::make()
+                                ->title('Inscription validée')
+                                ->success()
+                                ->send();
+                        }),
+                    Action::make('envoyer_billet')
+                        ->label(fn (RetreatParticipant $record): string => $record->billet_envoye ? 'Renvoyer billet' : 'Envoyer billet')
+                        ->icon('heroicon-o-ticket')
+                        ->color(fn (RetreatParticipant $record): string => $record->billet_envoye ? 'gray' : 'primary')
+                        ->visible(fn (RetreatParticipant $record): bool => (bool) $record->paiement_valide)
+                        ->requiresConfirmation()
+                        ->modalHeading(fn (RetreatParticipant $record): string => $record->billet_envoye
+                            ? 'Renvoyer la notification billet ?'
+                            : 'Envoyer la notification billet ?')
+                        ->action(function (RetreatParticipant $record): void {
+                            $result = app(RetreatParticipantRegistrationService::class)
+                                ->sendBilletNotification($record, true);
+
+                            $notification = Notification::make()
+                                ->title($result['success'] ? 'Notification billet' : 'Échec envoi billet')
+                                ->body($result['message']);
+
+                            if ($result['success']) {
+                                $notification->success()->send();
+                            } else {
+                                $notification->danger()->send();
+                            }
+                        }),
+                    Action::make('marquer_badge_remis')
+                        ->label('Marquer badge remis')
+                        ->icon('heroicon-o-identification')
+                        ->color('success')
+                        ->visible(fn (RetreatParticipant $record): bool => (bool) $record->paiement_valide && ! $record->badge_received)
+                        ->requiresConfirmation()
+                        ->modalHeading('Confirmer la remise du badge')
+                        ->modalDescription('Indique que le participant a recu son badge physique sur place.')
+                        ->action(fn (RetreatParticipant $record) => $record->update([
+                            'badge_received' => true,
+                            'badge_received_at' => now(),
+                        ])),
                     Action::make('open_in_new_tab')
                         ->label('Ouvrir dans un onglet')
                         ->icon('heroicon-o-arrow-top-right-on-square')
@@ -393,7 +489,13 @@ class RetreatParticipantsTable
                                 ->searchable()
                                 ->required(),
                         ])
-                        ->action(fn ($records, array $data) => $records->each(fn ($record) => $record->update(['chambre_id' => $data['chambre_id']]))),
+                        ->action(function ($records, array $data): void {
+                            $placement = app(RetreatPlacementAssignmentService::class);
+
+                            $records
+                                ->filter(fn (RetreatParticipant $record): bool => $placement->requiresChambrePlacement($record))
+                                ->each(fn (RetreatParticipant $record) => $record->update(['chambre_id' => $data['chambre_id']]));
+                        }),
                     BulkAction::make('integrer_atelier')
                         ->label('Integrer atelier (selection)')
                         ->icon('heroicon-o-wrench-screwdriver')
@@ -452,21 +554,34 @@ class RetreatParticipantsTable
             ->orderBy('numero');
 
         if ($participant) {
-            $numbers = app(RetreatPlacementAssignmentService::class)->atelierNumbersForAge((int) $participant->age);
-            $query->whereIn('numero', $numbers);
+            $placement = app(RetreatPlacementAssignmentService::class);
+            $age = (int) $participant->age;
+
+            $ateliers = $query->get()->filter(
+                fn (RetreatAtelier $atelier): bool => $placement->matchesAtelierAgeRange($atelier, $age)
+            );
+
+            if ($ateliers->isEmpty()) {
+                $numbers = $placement->atelierNumbersForAge($age);
+                $ateliers = RetreatAtelier::query()
+                    ->with('responsable')
+                    ->withCount('participants')
+                    ->whereIn('numero', $numbers)
+                    ->orderBy('numero')
+                    ->get();
+            }
+
+            return $ateliers
+                ->mapWithKeys(fn (RetreatAtelier $atelier): array => [
+                    $atelier->id => self::assignmentOptionLabel(
+                        self::atelierOptionTitle($atelier),
+                        $atelier->responsable
+                    ),
+                ])
+                ->all();
         }
 
-        $ateliers = $query->get();
-
-        if ($participant && $ateliers->isEmpty()) {
-            $ateliers = RetreatAtelier::query()
-                ->with('responsable')
-                ->withCount('participants')
-                ->orderBy('numero')
-                ->get();
-        }
-
-        return $ateliers
+        return $query->get()
             ->mapWithKeys(fn (RetreatAtelier $atelier): array => [
                 $atelier->id => self::assignmentOptionLabel(
                     "Atelier {$atelier->numero} · ".($atelier->participants_count ?? 0).' inscrit(s)',
@@ -474,6 +589,31 @@ class RetreatParticipantsTable
                 ),
             ])
             ->all();
+    }
+
+    protected static function atelierOptionTitle(RetreatAtelier $atelier): string
+    {
+        $ageLabel = '';
+        if (filled($atelier->age_min) || filled($atelier->age_max)) {
+            $min = $atelier->age_min ?? '…';
+            $max = $atelier->age_max ?? '…';
+            $ageLabel = " · {$min}–{$max} ans";
+        }
+
+        return "Atelier {$atelier->numero}{$ageLabel} · ".($atelier->participants_count ?? 0).' inscrit(s)';
+    }
+
+    /**
+     * @param RetreatParticipant $record Participant
+     * @return string Statut badge : received|pending|na
+     */
+    protected static function resolveBadgeStatus(RetreatParticipant $record): string
+    {
+        if (! $record->paiement_valide) {
+            return 'na';
+        }
+
+        return $record->badge_received ? 'received' : 'pending';
     }
 
     protected static function assignmentOptionLabel(string $title, ?User $responsable): string
@@ -503,7 +643,7 @@ class RetreatParticipantsTable
         if (filled($path)) {
             return Str::startsWith($path, ['http://', 'https://', '/'])
                 ? $path
-                : asset('storage/'.$path);
+                : (app(\App\Services\PublicStorageUrl::class)->fromPath($path) ?? AvatarFallback::url());
         }
 
         return AvatarFallback::url();

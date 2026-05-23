@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\ProductionBaseSyncController;
+use App\Http\Controllers\RetreatInscriptionAccessController;
+use App\Http\Controllers\RetreatInscriptionBilletController;
 use App\Http\Controllers\RetreatInscriptionCardReturnController;
 use App\Http\Controllers\RetreatInscriptionJustificatifController;
 use App\Http\Controllers\RetreatVerificationPortalController;
@@ -36,6 +38,16 @@ Route::view('/inscription-retraite', 'retraite-inscription.index')->name('retrai
 Route::get('/inscription-retraite/justificatif/{token}', RetreatInscriptionJustificatifController::class)
     ->where('token', '[A-Za-z0-9]{32}')
     ->name('retraite.inscription.justificatif');
+
+/** Billet participant (paiement validé) */
+Route::get('/inscription-retraite/billet/{token}', RetreatInscriptionBilletController::class)
+    ->where('token', '[A-Za-z0-9]{32}')
+    ->name('retraite.inscription.billet');
+
+/** Contrôle d'accès au scan du QR (état d'inscription) */
+Route::get('/inscription-retraite/acces/{token}', RetreatInscriptionAccessController::class)
+    ->where('token', '[A-Za-z0-9]{32}')
+    ->name('retraite.inscription.acces');
 
 /** Retour FlexPay après paiement carte (parcours inscription retraite) — montant peut être 100 ou 100.00 */
 Route::get('/inscription-retraite/paiement-carte/{reference}/{amount}/{currency}/{status}', RetreatInscriptionCardReturnController::class)

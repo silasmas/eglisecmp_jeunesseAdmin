@@ -10,7 +10,8 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Slimani\MediaManager\Form\MediaPicker;
+use App\Filament\Forms\FastMediaPicker;
+use App\Support\StoragePath;
 use UnitEnum;
 
 class ChurchEventForm
@@ -30,12 +31,13 @@ class ChurchEventForm
                         TextInput::make('location')
                             ->label('Lieu')
                             ->required(),
-                        MediaPicker::make('affiche_id')
+                        FastMediaPicker::make('affiche_id')
                             ->relationship('afficheMedia')
                             ->label("Affiche de l'evenement")
-                            ->helperText('Selectionne ou charge une affiche depuis la mediatheque.')
-                            ->directory('events-affiches')
-                            ->acceptedFileTypes(['image/*']),
+                            ->helperText('Selectionne ou charge une affiche depuis la mediatheque. Si le fichier est absent du stockage, supprimez-le puis choisissez-en un autre.')
+                            ->directory(StoragePath::EVENTS_AFFICHES)
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+                            ->maxSize(8192),
                         Toggle::make('is_active')
                             ->label('Actif')
                             ->required(),
@@ -83,7 +85,7 @@ class ChurchEventForm
                             ])
                             ->nullable()
                             ->dehydrateStateUsing(fn (mixed $state): ?string => self::normalizeEnumValue($state))
-                            ->helperText('Utilisé quand le mode d’authentification de l’événement est OTP.'),
+                            ->helperText('Canal OTP portail et envoi du billet après paiement (SMS ou e-mail).'),
                     ])
                     ->columns(2),
             ]);

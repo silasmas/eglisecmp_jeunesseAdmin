@@ -6,6 +6,7 @@
     $item = $item ?? $get('item');
     $isSelected = collect($this->selectedItems ?? [])->contains($item instanceof Folder ? "folder-{$item->id}" : "file-{$item->id}");
     $isFolder = $item instanceof Folder;
+    $imagePreviewUrl = $isFolder ? null : media_preview_url($item);
 @endphp
 
 <div
@@ -14,6 +15,9 @@
         'fi-is-selected' => $isSelected,
         'fi-is-disabled' => ! ($isAccepted ?? true),
     ]) }}
+    @if($isFolder)
+        x-on:dblclick.stop="$wire.setCurrentFolder({{ $item->id }})"
+    @endif
     x-data="{
         longPressTimeout: null,
         isLongPress: false,
@@ -31,16 +35,11 @@
         cancelPress() {
             clearTimeout(this.longPressTimeout);
         },
-        openFolder() {
-            @if($isFolder)
-                $wire.setCurrentFolder({{ $item->id }});
-            @endif
-        },
         handleSingleClick() {
             if (this.isLongPress) return;
 
             @if($isFolder)
-                this.openFolder();
+                $wire.toggleSelection('folder-{{ $item->id }}');
             @else
                 if (!{{ $isAccepted ? 'true' : 'false' }}) return;
 
@@ -48,6 +47,11 @@
                 if (! $wire.isPicker) {
                     $wire.showDetails = true;
                 }
+            @endif
+        },
+        openFolderOnDoubleClick() {
+            @if($isFolder)
+                $wire.setCurrentFolder({{ $item->id }});
             @endif
         }
     }"
@@ -59,9 +63,6 @@
     x-on:touchmove.passive="isDragging = true; cancelPress()"
     x-on:contextmenu.prevent=""
     x-on:click.capture="if (isLongPress) { $event.stopPropagation(); $event.preventDefault(); isLongPress = false; }"
-    @if($isFolder)
-        wire:dblclick.stop="setCurrentFolder({{ $item->id }})"
-    @endif
 >
     <div class="fi-media-item-thumbnail-container">
         @if($isFolder)
@@ -84,13 +85,18 @@
             </div>
         @else
             @if(str($item->mime_type)->startsWith('image/') || str($item->mime_type)->startsWith('video/'))
-                <img
-                    src="{{ $item->getUrl('thumb') }}"
-                    alt="{{ $item->name }}"
-                    class="fi-media-item-file-image"
-                    loading="lazy"
-                    onerror="this.onerror=null;this.src='{{ $item->getUrl() }}';"
-                >
+                @if($imagePreviewUrl)
+                    <img
+                        src="{{ $imagePreviewUrl }}"
+                        alt="{{ $item->name }}"
+                        class="fi-media-item-file-image"
+                        loading="lazy"
+                    >
+                @else
+                    <div class="flex h-full w-full items-center justify-center bg-gray-100 dark:bg-gray-800">
+                        <x-filament::icon icon="heroicon-s-photo" class="h-10 w-10 text-gray-400" />
+                    </div>
+                @endif
 
                 @if(str($item->mime_type)->startsWith('video/'))
                     <x-filament::icon icon="heroicon-s-play-circle" class="fi-media-item-video-icon" />
@@ -121,11 +127,17 @@
         <div
             class="absolute inset-0 z-10 cursor-pointer"
             x-on:click.stop="handleSingleClick"
-            x-on:dblclick.stop="openFolder()"
+            x-on:dblclick.stop="openFolderOnDoubleClick()"
+            title="@if($isFolder) Double-cliquer pour ouvrir @endif"
         ></div>
     </div>
 
-    <div class="fi-media-item-info">
+    <div
+        class="fi-media-item-info"
+        @if($isFolder)
+            x-on:dblclick.stop="$wire.setCurrentFolder({{ $item->id }})"
+        @endif
+    >
         <div class="min-w-0">
             <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate flex items-center gap-1.5" title="{{ $item->name }}">
                 @if($isFolder)

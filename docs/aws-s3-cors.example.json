@@ -1,0 +1,13 @@
+[
+  {
+    "AllowedHeaders": ["*"],
+    "AllowedMethods": ["GET", "PUT", "POST", "HEAD", "DELETE"],
+    "AllowedOrigins": [
+      "http://127.0.0.1:8000",
+      "http://localhost:8000",
+      "https://votre-domaine-production.com"
+    ],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3000
+  }
+]

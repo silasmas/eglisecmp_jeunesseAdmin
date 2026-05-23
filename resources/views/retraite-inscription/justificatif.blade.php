@@ -5,6 +5,7 @@
     : ['label' => 'En cours de validation', 'class' => 'pending'];
   $reference = $payment?->reference ?: '#'.$participant->id.'-'.substr((string) $participant->download_token, 0, 8);
   $participantPhotoUrl = $participant->getFilamentAvatarUrl();
+  $showPlacements = $showPlacements ?? false;
 @endphp
 <!DOCTYPE html>
 <html lang="fr">
@@ -212,6 +213,7 @@
           <span class="label">E-mail</span>
           <span class="value">{{ $participant->email ?: '-' }}</span>
         </div>
+        @if($showPlacements)
         <div class="field">
           <span class="label">Chambre</span>
           <span class="value">{{ $participant->chambre?->nom ?? 'Non assignee' }}</span>
@@ -220,6 +222,7 @@
           <span class="label">Atelier</span>
           <span class="value">{{ $participant->atelier?->numero ? 'Atelier '.$participant->atelier->numero : 'Non assigne' }}</span>
         </div>
+        @endif
         <div class="field">
           <span class="label">Paiement</span>
           <span class="value">{{ $payment?->etat ? ucfirst(str_replace('_', ' ', $payment->etat)) : 'Non renseigne' }}</span>

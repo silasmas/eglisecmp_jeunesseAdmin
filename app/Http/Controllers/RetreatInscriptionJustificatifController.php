@@ -17,6 +17,22 @@ class RetreatInscriptionJustificatifController extends Controller
 
         return view('retraite-inscription.justificatif', [
             'participant' => $participant,
+            'showPlacements' => $this->shouldShowPlacements($participant),
         ]);
+    }
+
+    /**
+     * @param RetreatParticipant $participant Participant
+     * @return bool Afficher chambre et atelier
+     */
+    private function shouldShowPlacements(RetreatParticipant $participant): bool
+    {
+        $startAt = $participant->event?->start_at;
+
+        if (! $startAt) {
+            return false;
+        }
+
+        return now()->gte($startAt->copy()->startOfDay());
     }
 }

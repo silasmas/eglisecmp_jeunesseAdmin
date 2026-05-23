@@ -469,9 +469,12 @@
               <div class="badge-qr-strip-inner">
                 <div id="badgeQrMount" class="badge-qr-mount" aria-hidden="true"></div>
                 <div class="badge-qr-copy">
-                  <strong>Justificatif en ligne</strong>
+                  <strong>Contrôle d'accès</strong>
                   <p class="badge-qr-link-line" id="badgeQrLinkLine"></p>
-                  <p class="badge-qr-hint">À présenter à l’accueil : ce code ouvre votre page personnelle sécurisée liée à l’inscription.</p>
+                  <p class="badge-qr-hint">À présenter à l'accueil : ce code ouvre la page de vérification pour autoriser l'accès.</p>
+                  <p class="badge-qr-hint" id="badgeBilletLinkWrap" style="display:none;margin-top:8px;">
+                    <a id="badgeBilletLink" href="#" target="_blank" rel="noopener">Ouvrir votre billet participant</a>
+                  </p>
                 </div>
               </div>
             </div>

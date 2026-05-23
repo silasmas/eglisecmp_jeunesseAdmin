@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Wezlo\FilamentRecordWatcher\Concerns\HasWatchers;
 
@@ -30,6 +29,8 @@ class RetreatParticipant extends Model implements HasAvatar, HasName
             'is_verified' => 'boolean',
             'billet_envoye_email' => 'boolean',
             'billet_envoye_whatsapp' => 'boolean',
+            'badge_received' => 'boolean',
+            'badge_received_at' => 'datetime',
             'is_active' => 'boolean',
             'date_presence' => 'datetime',
             'date_billet_envoye' => 'datetime',
@@ -101,6 +102,6 @@ class RetreatParticipant extends Model implements HasAvatar, HasName
             return $this->photo;
         }
 
-        return Storage::url($this->photo);
+        return app(\App\Services\PublicStorageUrl::class)->fromPath($this->photo);
     }
 }

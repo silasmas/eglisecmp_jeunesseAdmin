@@ -487,7 +487,7 @@ class RetreatIntegrationController extends Controller
             'participant_type' => $participant->participant_type,
             'role_participant' => $participant->role_participant,
             'observation' => $participant->observation,
-            'photo_url' => filled($photo) ? (Str::startsWith($photo, ['http://', 'https://']) ? $photo : asset('storage/'.$photo)) : null,
+            'photo_url' => app(\App\Services\PublicStorageUrl::class)->fromPath($photo),
             'paiement_valide' => $participant->paiement_valide,
             'preuve_paiement' => $participant->preuve_paiement,
             'present' => $participant->present,

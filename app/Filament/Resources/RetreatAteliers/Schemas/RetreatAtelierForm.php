@@ -24,6 +24,19 @@ class RetreatAtelierForm
                             ->helperText('Numero unique de reference de cet atelier.')
                             ->required()
                             ->numeric(),
+                        TextInput::make('age_min')
+                            ->label('Age minimum')
+                            ->helperText('Tranche d\'age cible (inclus). Laissez vide si non limite.')
+                            ->numeric()
+                            ->minValue(15)
+                            ->maxValue(99),
+                        TextInput::make('age_max')
+                            ->label('Age maximum')
+                            ->helperText('Tranche d\'age cible (inclus). Doit etre >= age minimum.')
+                            ->numeric()
+                            ->minValue(15)
+                            ->maxValue(99)
+                            ->gte('age_min'),
                         UserSelect::make('responsable_user_id')
                             ->label("Responsable d'atelier")
                             ->relationship('responsable', 'name')

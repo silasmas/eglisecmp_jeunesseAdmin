@@ -308,6 +308,71 @@
             font-weight: 900;
         }
 
+        .modal.modal-wide {
+            width: min(640px, 100%);
+        }
+
+        .modal-footer {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: flex-end;
+            padding: 16px 20px 20px;
+            border-top: 1px solid #efe4e9;
+        }
+
+        .worker-modal-meta {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .worker-modal-meta span {
+            display: block;
+            padding: 10px 12px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: #fbf7f9;
+            font-size: 0.92rem;
+        }
+
+        .worker-modal-meta strong {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        #qrReader {
+            width: min(360px, 100%);
+            min-height: 280px;
+            border-radius: 10px;
+            margin-top: 10px;
+            overflow: hidden;
+            background: #111;
+        }
+
+        #qrReader.hidden {
+            display: none;
+        }
+
+        #qrReader video {
+            border-radius: 10px;
+        }
+
+        .registration-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .registration-badges .badge {
+            font-size: 0.78rem;
+        }
+
         .otp-boxes {
             display: grid;
             grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -854,8 +919,8 @@
 
                     <div class="qr-area">
                         <div>
-                            <p class="status-line">Vous pouvez aussi scanner le QR code du justificatif avec la caméra de l'appareil.</p>
-                            <video id="qrVideo" class="hidden" playsinline muted></video>
+                            <p class="status-line">Scannez le QR du billet ou du justificatif : la caméra s'ouvre puis une fiche participant s'affiche.</p>
+                            <div id="qrReader" class="hidden"></div>
                         </div>
                         <div>
                             <button id="startQr" class="button secondary" type="button">Scanner un QR code</button>
@@ -960,6 +1025,21 @@
         </div>
     </div>
 
+    <div id="workerParticipantModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="workerParticipantModalTitle">
+        <div class="modal modal-wide">
+            <div class="modal-header">
+                <div>
+                    <h2 id="workerParticipantModalTitle">Participant scanné</h2>
+                    <p id="workerParticipantModalSubtitle">Vérifiez le dossier puis validez l'accès ou la remise du badge.</p>
+                </div>
+                <button id="closeWorkerParticipantModal" class="modal-close" type="button" aria-label="Fermer">×</button>
+            </div>
+            <div class="modal-body" id="workerParticipantModalBody"></div>
+            <div class="modal-footer worker-modal-actions" id="workerParticipantModalActions"></div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script>
         const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
         const endpoints = {
@@ -978,8 +1058,11 @@
         };
 
         let canMarkAtelierAttendance = false;
+        let canManageRegistrations = false;
         let activeVerifyTab = 'search';
         let attendanceActivityId = '';
+        let html5QrCode = null;
+        let activeWorkerParticipant = null;
 
         const portalProgrammeLocked = @json($portalProgrammeLocked ?? false);
 
@@ -995,12 +1078,13 @@
         const otpDigits = Array.from(document.querySelectorAll('.otp-digit'));
         let otpEmail = '';
         let otpVerifying = false;
-        let qrStream = null;
-        let qrLoopActive = false;
         let chatbotContext = null;
 
         async function getJson(url) {
-            const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
+            const response = await fetch(url, {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
+            });
             const payload = await response.json().catch(() => ({}));
             if (!response.ok) {
                 throw new Error(payload.message || 'Action impossible pour le moment.');
@@ -1011,10 +1095,12 @@
         async function postJson(url, body = {}) {
             const response = await fetch(url, {
                 method: 'POST',
+                credentials: 'same-origin',
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': csrf,
+                    'X-Requested-With': 'XMLHttpRequest',
                 },
                 body: JSON.stringify(body),
             });
@@ -1027,6 +1113,7 @@
 
         function setVerifierAuthenticated(user, options = {}) {
             canMarkAtelierAttendance = !!options.canMarkAtelierAttendance;
+            canManageRegistrations = !!options.canManageRegistrations;
             otpStepEmail.classList.add('hidden');
             otpStepCode.classList.add('hidden');
             workspace.classList.remove('hidden');
@@ -1041,6 +1128,7 @@
 
         function setVerifierGuest(message = '') {
             canMarkAtelierAttendance = false;
+            canManageRegistrations = false;
             activeVerifyTab = 'search';
             otpStepEmail.classList.remove('hidden');
             otpStepCode.classList.add('hidden');
@@ -1098,6 +1186,9 @@
                 });
             } catch (error) {
                 setStatusMessage(document.getElementById('attendanceStatus'), error.message, 'error');
+                if (String(error.message).includes('Connexion ouvrier')) {
+                    setVerifierGuest('Session expirée. Reconnectez-vous pour le pointage atelier.');
+                }
             }
         }
 
@@ -1123,6 +1214,9 @@
                 renderAttendanceBlocks(payload.data || []);
             } catch (error) {
                 setStatusMessage(statusEl, error.message, 'error');
+                if (String(error.message).includes('Connexion ouvrier')) {
+                    setVerifierGuest('Session expirée. Reconnectez-vous pour le pointage atelier.');
+                }
             } finally {
                 loader?.classList.add('hidden');
             }
@@ -1312,7 +1406,10 @@
                 const payload = await postJson(endpoints.verifyOtp, { email: otpEmail, otp });
                 setStatusMessage(otpModalStatus, 'Code validé.', 'success');
                 closeOtpModal();
-                setVerifierAuthenticated(payload.user, { canMarkAtelierAttendance: !!payload.can_mark_atelier_attendance });
+                setVerifierAuthenticated(payload.user, {
+                    canMarkAtelierAttendance: !!payload.can_mark_atelier_attendance,
+                    canManageRegistrations: !!payload.can_manage_registrations,
+                });
             } catch (error) {
                 setStatusMessage(otpModalStatus, error.message, 'error');
                 otpDigits.forEach((input) => input.value = '');
@@ -1363,20 +1460,163 @@
             await runSearch(query, mode);
         });
 
-        async function runSearch(query, mode = 'auto') {
+        async function runSearch(query, mode = 'auto', options = {}) {
             const searchSubmitBtn = document.getElementById('searchSubmitBtn');
             searchStatus.textContent = 'Recherche en cours...';
-            searchResults.innerHTML = '';
+            if (!options.keepResults) {
+                searchResults.innerHTML = '';
+            }
             setButtonLoading(searchSubmitBtn, true, 'Recherche…');
             try {
                 const payload = await postJson(endpoints.search, { query, mode });
-                renderParticipants(payload.data || []);
+                const participants = payload.data || [];
+                if (options.openModalOnSingle && participants.length === 1) {
+                    searchStatus.textContent = 'Participant identifié via QR code.';
+                    openWorkerParticipantModal(participants[0]);
+                    return participants;
+                }
+                renderParticipants(participants);
+                return participants;
             } catch (error) {
                 searchStatus.textContent = error.message;
+                if (String(error.message).includes('Connexion ouvrier')) {
+                    setVerifierGuest('Session expirée. Reconnectez-vous avec votre e-mail ouvrier.');
+                }
+                return [];
             } finally {
                 setButtonLoading(searchSubmitBtn, false);
             }
         }
+
+        function renderRegistrationBadges(participant) {
+            const regClass = participant.registration_validated ? 'ok' : 'pending';
+            const regLabel = participant.registration_validated ? 'Inscription validée' : 'Inscription à valider';
+            const billetClass = participant.billet_envoye ? 'ok' : 'pending';
+            const billetLabel = participant.billet_envoye ? 'Billet envoyé' : 'Billet non envoyé';
+            const badgeClass = participant.badge_received ? 'ok' : 'pending';
+            const badgeLabel = participant.badge_received ? 'Badge remis' : 'Badge non remis';
+
+            return `
+                <div class="registration-badges">
+                    <span class="badge ${regClass}">${regLabel}</span>
+                    <span class="badge ${billetClass}">${billetLabel}</span>
+                    <span class="badge ${badgeClass}">${badgeLabel}</span>
+                </div>
+            `;
+        }
+
+        function renderAdminRegistrationActions(participant) {
+            const canAdmin = canManageRegistrations || participant.can_manage_registrations;
+            if (!canAdmin) {
+                return '';
+            }
+
+            const needsValidation = !participant.registration_validated;
+            const canSendBillet = !!participant.paiement_valide;
+            const badgePending = participant.paiement_valide && !participant.badge_received;
+            const badgeDisabled = badgePending ? '' : (participant.badge_received ? 'disabled' : '');
+
+            return `
+                <div class="worker-actions admin-registration-actions">
+                    <button class="mini-action" data-worker-action="validate_registration" data-participant-id="${participant.id}" ${needsValidation ? '' : 'disabled'}>Valider inscription</button>
+                    <button class="mini-action" data-worker-action="send_billet" data-participant-id="${participant.id}" ${canSendBillet ? '' : 'disabled'}>${participant.billet_envoye ? 'Renvoyer billet' : 'Envoyer billet'}</button>
+                    <button class="mini-action" data-worker-action="mark_badge_received" data-participant-id="${participant.id}" ${badgeDisabled}>${participant.badge_received ? 'Badge remis' : 'Marquer badge'}</button>
+                </div>
+            `;
+        }
+
+        function renderWorkerParticipantModalContent(participant) {
+            const payment = participant.payment || {};
+            const status = getWorkerStatus(participant);
+            const badgeLabel = participant.badge_received
+                ? 'Badge remis'
+                : (participant.paiement_valide ? 'Badge en attente' : 'Paiement requis');
+            return `
+                <div class="participant-top">
+                    <div class="participant-identity">
+                        <img class="participant-avatar" src="${escapeHtml(participant.photo_url || '')}" alt="">
+                        <div>
+                            <h3>${escapeHtml(participant.full_name || 'Participant')}</h3>
+                            <p>${escapeHtml(participant.event?.name || 'Retraite')}</p>
+                        </div>
+                    </div>
+                    <span class="badge ${status.className}">${escapeHtml(status.label)}</span>
+                </div>
+                <div class="worker-modal-meta">
+                    <span><strong>Téléphone</strong>${escapeHtml(participant.telephone || '—')}</span>
+                    <span><strong>E-mail</strong>${escapeHtml(participant.email || '—')}</span>
+                    <span><strong>Référence</strong>${escapeHtml(payment.reference || '—')}</span>
+                    <span><strong>Paiement</strong>${participant.paiement_valide ? 'Validé' : 'En attente'}</span>
+                    <span><strong>Chambre</strong>${escapeHtml(participant.chambre || '—')}</span>
+                    <span><strong>Atelier</strong>${escapeHtml(String(participant.atelier || '—'))}</span>
+                    <span><strong>Badge</strong>${escapeHtml(badgeLabel)}</span>
+                    <span><strong>Présence</strong>${participant.present ? 'Oui' : 'Non'}</span>
+                </div>
+                ${renderRegistrationBadges(participant)}
+            `;
+        }
+
+        function renderWorkerModalActions(participant) {
+            const enabled = !!participant.actions_enabled;
+            const badgePending = participant.paiement_valide && !participant.badge_received;
+            const canAdmin = canManageRegistrations || participant.can_manage_registrations;
+
+            if (canAdmin) {
+                const needsValidation = !participant.registration_validated;
+                const canSendBillet = !!participant.paiement_valide;
+                const badgeDisabled = badgePending ? '' : (participant.badge_received ? 'disabled' : '');
+
+                return `
+                    <button type="button" class="button" data-worker-action="validate_registration" data-participant-id="${participant.id}" ${needsValidation ? '' : 'disabled'}>Valider inscription</button>
+                    <button type="button" class="button secondary" data-worker-action="send_billet" data-participant-id="${participant.id}" ${canSendBillet ? '' : 'disabled'}>${participant.billet_envoye ? 'Renvoyer billet' : 'Envoyer billet'}</button>
+                    <button type="button" class="button secondary" data-worker-action="mark_badge_received" data-participant-id="${participant.id}" ${badgeDisabled}>${participant.badge_received ? 'Badge remis' : 'Marquer badge'}</button>
+                `;
+            }
+
+            return `
+                <button type="button" class="button" data-worker-action="retreat_access" data-participant-id="${participant.id}" ${enabled ? '' : 'disabled'}>Donner accès retraite</button>
+                <button type="button" class="button secondary" data-worker-action="mark_badge_received" data-participant-id="${participant.id}" ${badgePending ? '' : 'disabled'}>${participant.badge_received ? 'Badge déjà remis' : 'Marquer badge remis'}</button>
+            `;
+        }
+
+        function openWorkerParticipantModal(participant) {
+            activeWorkerParticipant = participant;
+            document.getElementById('workerParticipantModalBody').innerHTML = renderWorkerParticipantModalContent(participant);
+            document.getElementById('workerParticipantModalActions').innerHTML = renderWorkerModalActions(participant);
+            document.getElementById('workerParticipantModal').classList.remove('hidden');
+        }
+
+        function closeWorkerParticipantModal() {
+            document.getElementById('workerParticipantModal').classList.add('hidden');
+            activeWorkerParticipant = null;
+        }
+
+        document.getElementById('closeWorkerParticipantModal')?.addEventListener('click', closeWorkerParticipantModal);
+
+        document.getElementById('workerParticipantModalActions')?.addEventListener('click', async (event) => {
+            const button = event.target.closest('[data-worker-action]');
+            if (!activeWorkerParticipant || !button || button.disabled) {
+                return;
+            }
+
+            const action = button.dataset.workerAction;
+            const original = button.textContent;
+            button.disabled = true;
+            button.textContent = '...';
+
+            try {
+                const url = endpoints.workerActionTemplate.replace('__ID__', encodeURIComponent(activeWorkerParticipant.id));
+                const payload = await postJson(url, { action });
+                searchStatus.textContent = payload.message || 'Action effectuée.';
+                if (payload.data) {
+                    openWorkerParticipantModal(payload.data);
+                }
+            } catch (error) {
+                searchStatus.textContent = error.message;
+                button.disabled = false;
+                button.textContent = original;
+            }
+        });
 
         function renderParticipants(participants) {
             if (!participants.length) {
@@ -1410,12 +1650,15 @@
                             <span><strong>Chambre</strong>${escapeHtml(participant.chambre || '-')}</span>
                             <span><strong>Atelier</strong>${escapeHtml(String(participant.atelier || '-'))}</span>
                         </div>
+                        ${renderRegistrationBadges(participant)}
                         ${participant.justificatif_url ? `<p class="status-line"><a href="${participant.justificatif_url}" target="_blank" rel="noopener">Ouvrir le justificatif</a></p>` : ''}
                         ${!enabled && countdown ? `<p class="countdown-note" data-countdown-to="${escapeHtml(participant.actions_available_at)}">${escapeHtml(countdown)}</p>` : ''}
+                        ${renderAdminRegistrationActions(participant)}
                         <div class="worker-actions">
                             <button class="mini-action" data-worker-action="retreat_access" data-participant-id="${participant.id}" ${enabled ? '' : 'disabled'}>Accès retraite</button>
                             <button class="mini-action" data-worker-action="activity_access" data-participant-id="${participant.id}" ${enabled ? '' : 'disabled'}>Accès activité</button>
                             <button class="mini-action warning" data-worker-action="exit_permission" data-participant-id="${participant.id}" ${enabled ? '' : 'disabled'}>Sortie</button>
+                            <button class="mini-action" data-worker-action="mark_badge_received" data-participant-id="${participant.id}" ${paid && !participant.badge_received ? '' : 'disabled'}>Badge remis</button>
                             <button class="mini-action danger" data-worker-action="exclude_retreat" data-participant-id="${participant.id}" ${enabled ? '' : 'disabled'}>Exclure</button>
                         </div>
                     </article>
@@ -1469,65 +1712,77 @@
         document.getElementById('stopQr')?.addEventListener('click', stopQrScanner);
 
         async function startQrScanner() {
-            const video = document.getElementById('qrVideo');
+            const readerEl = document.getElementById('qrReader');
             const status = document.getElementById('qrStatus');
             const startBtn = document.getElementById('startQr');
-            if (!('BarcodeDetector' in window)) {
-                status.textContent = 'Le scan QR natif n’est pas disponible dans ce navigateur. Utilisez Chrome/Edge ou recherchez par référence.';
+
+            if (typeof Html5Qrcode !== 'function') {
+                status.textContent = 'Le module de lecture QR est en cours de chargement. Réessayez.';
                 return;
             }
+
             setButtonLoading(startBtn, true, 'Ouverture caméra…');
             try {
-                qrStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-                video.srcObject = qrStream;
-                video.classList.remove('hidden');
+                readerEl.classList.remove('hidden');
                 document.getElementById('startQr').classList.add('hidden');
                 document.getElementById('stopQr').classList.remove('hidden');
-                await video.play();
-                qrLoopActive = true;
-                status.textContent = 'Scan en cours...';
-                scanLoop(video, new BarcodeDetector({ formats: ['qr_code'] }));
+
+                html5QrCode = new Html5Qrcode('qrReader');
+                await html5QrCode.start(
+                    { facingMode: 'environment' },
+                    { fps: 10, qrbox: { width: 250, height: 250 } },
+                    (decodedText) => {
+                        status.textContent = 'QR code détecté, recherche…';
+                        stopQrScanner();
+                        runSearch(decodedText, 'qr', { openModalOnSingle: true });
+                    },
+                    () => {}
+                );
+                status.textContent = 'Cadrez le QR code dans la caméra…';
             } catch (error) {
-                status.textContent = 'Impossible d’ouvrir la caméra. Vérifiez les permissions du navigateur.';
+                status.textContent = 'Impossible d\'ouvrir la caméra. Autorisez l\'accès dans les paramètres du navigateur.';
+                readerEl.classList.add('hidden');
             } finally {
                 setButtonLoading(startBtn, false);
             }
         }
 
-        async function scanLoop(video, detector) {
-            if (!qrLoopActive) return;
-            try {
-                const codes = await detector.detect(video);
-                if (codes.length) {
-                    const value = codes[0].rawValue || '';
-                    document.getElementById('qrStatus').textContent = 'QR code détecté.';
-                    stopQrScanner();
-                    await runSearch(value, 'qr');
-                    return;
+        async function stopQrScanner() {
+            const readerEl = document.getElementById('qrReader');
+            if (html5QrCode) {
+                try {
+                    await html5QrCode.stop();
+                } catch (error) {
+                    // ignore stop errors when scanner already stopped
                 }
-            } catch (error) {
-                document.getElementById('qrStatus').textContent = 'Lecture QR interrompue.';
+                try {
+                    html5QrCode.clear();
+                } catch (error) {
+                    // ignore clear errors
+                }
+                html5QrCode = null;
             }
-            requestAnimationFrame(() => scanLoop(video, detector));
-        }
-
-        function stopQrScanner() {
-            qrLoopActive = false;
-            qrStream?.getTracks()?.forEach((track) => track.stop());
-            qrStream = null;
-            document.getElementById('qrVideo')?.classList.add('hidden');
+            readerEl?.classList.add('hidden');
             document.getElementById('startQr')?.classList.remove('hidden');
             document.getElementById('stopQr')?.classList.add('hidden');
             const startBtn = document.getElementById('startQr');
-            if (startBtn) setButtonLoading(startBtn, false);
+            if (startBtn) {
+                setButtonLoading(startBtn, false);
+            }
         }
 
         async function bootVerifier() {
             try {
-                const response = await fetch(endpoints.status, { headers: { 'Accept': 'application/json' } });
+                const response = await fetch(endpoints.status, {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    credentials: 'same-origin',
+                });
                 const payload = await response.json();
                 payload.authenticated
-                    ? setVerifierAuthenticated(payload.user, { canMarkAtelierAttendance: !!payload.can_mark_atelier_attendance })
+                    ? setVerifierAuthenticated(payload.user, {
+                        canMarkAtelierAttendance: !!payload.can_mark_atelier_attendance,
+                        canManageRegistrations: !!payload.can_manage_registrations,
+                    })
                     : setVerifierGuest();
             } catch (error) {
                 setVerifierGuest();

@@ -15,8 +15,12 @@ use App\Models\User;
 use App\Services\FlexPay\FlexPayCardService;
 use App\Services\FlexPay\FlexPayMobileService;
 use App\Services\KeccelSmsService;
+use App\Services\PublicStorageUrl;
 use App\Services\RetreatCashPaymentAdminNotifier;
+use App\Services\RetreatPlacementAssignmentService;
 use App\Services\RetreatInscriptionPaymentCompletionService;
+use App\Services\StoragePathService;
+use App\Support\StoragePath;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
@@ -717,7 +721,10 @@ class RetreatPublicRegistrationController extends Controller
             ): RetreatParticipant {
                 $photoPath = null;
                 if ($request->hasFile('photo')) {
-                    $photoPath = $request->file('photo')->store('retreat-inscription/photos', 'public');
+                    $photoPath = app(StoragePathService::class)->storeUploadedFile(
+                        $request->file('photo'),
+                        StoragePath::RETREAT_INSCRIPTION_PHOTOS
+                    );
                 }
 
                 $dob = Carbon::parse($validated['date_naissance']);
@@ -772,7 +779,8 @@ class RetreatPublicRegistrationController extends Controller
                     'observation' => $validated['observations'] ?? null,
                     'role_participant' => $this->normalizeRole($validated['role'], $validated['role_autre'] ?? null),
                     'photo' => $photoPath,
-                    'participant_type' => 'external',
+                    'participant_type' => app(RetreatPlacementAssignmentService::class)
+                        ->participantTypeFromHebergement($validated['hebergement'] ?? null),
                     'paiement_valide' => false,
                     'present' => false,
                     'billet_envoye' => false,
@@ -1009,6 +1017,16 @@ class RetreatPublicRegistrationController extends Controller
         return route('retraite.inscription.justificatif', ['token' => $participant->download_token], absolute: true);
     }
 
+    protected function participantBilletAbsoluteUrl(RetreatParticipant $participant): string
+    {
+        return route('retraite.inscription.billet', ['token' => $participant->download_token], absolute: true);
+    }
+
+    protected function participantAccessAbsoluteUrl(RetreatParticipant $participant): string
+    {
+        return route('retraite.inscription.acces', ['token' => $participant->download_token], absolute: true);
+    }
+
     public function participantStatus(RetreatParticipant $participant): JsonResponse
     {
         $participant->load(['payments.event']);
@@ -1019,7 +1037,9 @@ class RetreatPublicRegistrationController extends Controller
             'data' => [
                 'participant_id' => $participant->id,
                 'download_token' => $participant->download_token,
-                'verification_url' => $this->participantJustificatifAbsoluteUrl($participant),
+                'verification_url' => $this->participantAccessAbsoluteUrl($participant),
+                'justificatif_url' => $this->participantJustificatifAbsoluteUrl($participant),
+                'billet_url' => $this->participantBilletAbsoluteUrl($participant),
                 'paiement_valide' => $participant->paiement_valide,
                 'registration_status' => $participant->registration_status,
                 'badge_view' => $this->resolveBadgeView($participant, $payment),
@@ -1180,7 +1200,10 @@ class RetreatPublicRegistrationController extends Controller
             return $response;
         }
 
-        $path = $request->file('proof')->store('retreat-inscription/proofs', 'public');
+        $path = app(StoragePathService::class)->storeUploadedFile(
+            $request->file('proof'),
+            StoragePath::RETREAT_INSCRIPTION_PROOFS
+        );
 
         $payment = $this->firstOrCreatePayment($participant, $event, 'cash');
         $payment->update([
@@ -1624,7 +1647,7 @@ class RetreatPublicRegistrationController extends Controller
             return $legacy;
         }
 
-        return asset('storage/'.$legacy);
+        return app(PublicStorageUrl::class)->fromPath($legacy);
     }
 
     protected function participantIdentityExists(string $nom, string $prenom, ?string $postnom, ?int $eventId = null): bool
@@ -2126,6 +2149,10 @@ class RetreatPublicRegistrationController extends Controller
     {
         if (! $participant) {
             return 'unknown';
+        }
+
+        if ($participant->paiement_valide && ! $participant->badge_received) {
+            return 'badge_pending';
         }
 
         $channel = $payment?->channel;

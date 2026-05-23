@@ -19,7 +19,8 @@ class RetreatRegistrationConfirmedMail extends Mailable
     public function __construct(
         public RetreatParticipant $participant,
         public RetreatPayment $payment,
-        public ChurchEvent $event
+        public ChurchEvent $event,
+        public ?string $billetUrl = null,
     ) {}
 
     public function envelope(): Envelope
@@ -41,6 +42,9 @@ class RetreatRegistrationConfirmedMail extends Mailable
                 'participant' => $this->participant,
                 'payment' => $this->payment,
                 'event' => $this->event,
+                'billetUrl' => $this->billetUrl ?? route('retraite.inscription.billet', [
+                    'token' => $this->participant->download_token,
+                ], absolute: true),
             ],
         );
     }

@@ -26,6 +26,7 @@ class ChurchEventsTable
             ->columns([
                 MediaColumn::make('afficheMedia')
                     ->label('Affiche')
+                    ->conversion('')
                     ->square()
                     ->sticky(),
                 TextColumn::make('name')

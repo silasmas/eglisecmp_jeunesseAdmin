@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR codes de test — Retraite CMP</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+  <style>
+  body {
+    margin: 0;
+    padding: 32px 20px;
+    font-family: Inter, system-ui, sans-serif;
+    background: #f8f4f6;
+    color: #171015;
+  }
+  h1 { margin: 0 0 8px; font-size: 1.5rem; }
+  p { color: #6d5964; max-width: 720px; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 20px;
+    margin-top: 24px;
+  }
+  .card {
+    background: #fff;
+    border: 1px solid #eadce3;
+    border-radius: 14px;
+    padding: 20px;
+    box-shadow: 0 8px 24px rgba(56, 24, 41, .08);
+  }
+  .card h2 { margin: 0 0 8px; font-size: 1.05rem; color: #851c46; }
+  .card small {
+    display: block;
+    word-break: break-all;
+    color: #6d5964;
+    margin-bottom: 12px;
+    line-height: 1.4;
+  }
+  .qr-box {
+    display: flex;
+    justify-content: center;
+    min-height: 220px;
+    align-items: center;
+  }
+  .note {
+    margin-top: 24px;
+    padding: 14px 16px;
+    background: #fff7fb;
+    border: 1px solid #eadce3;
+    border-radius: 10px;
+    max-width: 720px;
+  }
+  </style>
+</head>
+<body>
+  <h1>QR codes de test — portail retraite</h1>
+  <p>
+    Ouvrez cette page sur un écran, scannez avec le portail ouvrier (html5-qrcode) ou avec l'appareil photo du téléphone.
+    Les URLs pointent vers votre environnement local <strong>http://127.0.0.1:8000</strong>.
+  </p>
+
+  <div class="grid">
+    <article class="card">
+      <h2>Accès (scan ouvrier)</h2>
+      <small id="url-acces"></small>
+      <div class="qr-box" id="qr-acces"></div>
+    </article>
+    <article class="card">
+      <h2>Billet participant</h2>
+      <small id="url-billet"></small>
+      <div class="qr-box" id="qr-billet"></div>
+    </article>
+    <article class="card">
+      <h2>Token brut (32 car.)</h2>
+      <small id="url-token"></small>
+      <div class="qr-box" id="qr-token"></div>
+    </article>
+  </div>
+
+  <div class="note">
+    <strong>Participant de test :</strong> token issu de la base locale.
+    Si le scan ne trouve personne, vérifiez que ce participant existe encore en base avec le même <code>download_token</code>.
+  </div>
+
+  <script>
+    const TOKEN = 'LCHOTCQMNJLLL9SS6MRLH9SUUBRBWEGG';
+    const BASE = 'http://127.0.0.1:8000';
+    const URLS = {
+      acces: `${BASE}/inscription-retraite/acces/${TOKEN}`,
+      billet: `${BASE}/inscription-retraite/billet/${TOKEN}`,
+      token: TOKEN,
+    };
+
+    function renderQr(elementId, text, labelId) {
+      document.getElementById(labelId).textContent = text;
+      new QRCode(document.getElementById(elementId), {
+        text,
+        width: 200,
+        height: 200,
+        correctLevel: QRCode.CorrectLevel.M,
+      });
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      if (typeof QRCode !== 'function') {
+        document.body.insertAdjacentHTML('beforeend', '<p style="color:red">Bibliothèque QRCode non chargée.</p>');
+        return;
+      }
+      renderQr('qr-acces', URLS.acces, 'url-acces');
+      renderQr('qr-billet', URLS.billet, 'url-billet');
+      renderQr('qr-token', URLS.token, 'url-token');
+    });
+  </script>
+</body>
+</html>

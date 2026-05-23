@@ -25,6 +25,11 @@ class RetreatAteliersTable
                     ->label('Numero atelier')
                     ->numeric()
                     ->sortable(),
+                TextColumn::make('age_range')
+                    ->label('Tranche d\'age')
+                    ->state(fn ($record): string => self::formatAgeRange($record))
+                    ->badge()
+                    ->color(fn ($record): string => filled($record->age_min) || filled($record->age_max) ? 'info' : 'gray'),
                 UserColumn::make('responsable')
                     ->label('Responsable')
                     ->wrapped(),
@@ -77,5 +82,26 @@ class RetreatAteliersTable
                     DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    /**
+     * @param mixed $record Atelier
+     * @return string Libelle tranche d'age
+     */
+    protected static function formatAgeRange($record): string
+    {
+        if (filled($record->age_min) && filled($record->age_max)) {
+            return "{$record->age_min}–{$record->age_max} ans";
+        }
+
+        if (filled($record->age_min)) {
+            return "≥{$record->age_min} ans";
+        }
+
+        if (filled($record->age_max)) {
+            return "≤{$record->age_max} ans";
+        }
+
+        return '—';
     }
 }

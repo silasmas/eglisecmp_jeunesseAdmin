@@ -47,6 +47,15 @@ class RetreatParticipantInfolist
                         TextEntry::make('billet_pdf')->placeholder('-'),
                         IconEntry::make('billet_envoye_email')->boolean(),
                         IconEntry::make('billet_envoye_whatsapp')->boolean(),
+                        IconEntry::make('badge_received')
+                            ->label('Badge remis')
+                            ->boolean()
+                            ->visible(fn ($record): bool => (bool) $record->paiement_valide),
+                        TextEntry::make('badge_received_at')
+                            ->label('Badge remis le')
+                            ->dateTime()
+                            ->placeholder('En attente de remise')
+                            ->visible(fn ($record): bool => (bool) $record->paiement_valide),
                     ])
                     ->columns(2),
                 Section::make('Presence et inscription')

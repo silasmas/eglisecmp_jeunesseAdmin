@@ -9,6 +9,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use App\Support\StoragePath;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Zvizvi\UserFields\Components\UserSelect;
@@ -24,7 +25,7 @@ class UserForm
                         FileUpload::make('profile_photo_path')
                             ->label('Photo profil')
                             ->image()
-                            ->directory('profiles')
+                            ->directory(StoragePath::PROFILES)
                             ->columnSpanFull(),
                         TextInput::make('name')
                             ->label('Nom')

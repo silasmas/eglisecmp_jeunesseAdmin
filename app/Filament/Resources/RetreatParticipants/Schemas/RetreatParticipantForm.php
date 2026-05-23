@@ -66,6 +66,18 @@ class RetreatParticipantForm
                         TextInput::make('billet_pdf')->label('Billet PDF'),
                         Toggle::make('billet_envoye_email')->label('Billet envoye par email')->required(),
                         Toggle::make('billet_envoye_whatsapp')->label('Billet envoye par WhatsApp')->required(),
+                        Toggle::make('badge_received')
+                            ->label('Badge physique remis')
+                            ->helperText('Cochez lorsque le badge imprime a ete remis au participant.')
+                            ->live()
+                            ->afterStateUpdated(function (bool $state, callable $set): void {
+                                if ($state) {
+                                    $set('badge_received_at', now());
+                                }
+                            }),
+                        DateTimePicker::make('badge_received_at')
+                            ->label('Badge remis le')
+                            ->visible(fn ($get): bool => (bool) $get('badge_received')),
                     ])
                     ->columns(2),
                 Section::make('Presence et regles')

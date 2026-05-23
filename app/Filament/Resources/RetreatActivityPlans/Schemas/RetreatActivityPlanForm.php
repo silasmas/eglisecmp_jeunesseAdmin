@@ -65,6 +65,14 @@ class RetreatActivityPlanForm
                         Toggle::make('is_mandatory')
                             ->label('Presence obligatoire')
                             ->required(),
+                        TextInput::make('attendance_window_minutes')
+                            ->label('Delai pointage (minutes)')
+                            ->helperText('Duree apres le debut prevu pour marquer les presences. Rappel e-mail 5 min avant la fin ; alerte admin si depasse.')
+                            ->numeric()
+                            ->minValue(5)
+                            ->maxValue(480)
+                            ->default(30)
+                            ->required(),
                         Toggle::make('is_active')
                             ->label('Active')
                             ->required(),

@@ -32,14 +32,16 @@ async function fetchParticipantVerificationUrlIfNeeded() {
       headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
     });
     const json = res.ok ? await res.json().catch(() => ({})) : {};
-    const u = json.data && json.data.verification_url;
+    const d = json.data || {};
+    const u = d.verification_url || d.access_url;
     if (u) {
       App.retreatVerificationUrl = u;
-      if (json.data.download_token) App.retreatDownloadToken = json.data.download_token;
+      if (d.download_token) App.retreatDownloadToken = d.download_token;
+      if (d.billet_url) App.retreatBilletUrl = d.billet_url;
       return u;
     }
   } catch (e) {
-    console.warn('Justificatif URL', e);
+    console.warn('URL accès inscription', e);
   }
   return null;
 }
@@ -99,6 +101,12 @@ function renderBadgeRecapMirrored() {
 async function ensureBadgeQrRendered() {
   const url = await fetchParticipantVerificationUrlIfNeeded();
   renderBadgeQrCode(url);
+  const billetWrap = document.getElementById('badgeBilletLinkWrap');
+  const billetLink = document.getElementById('badgeBilletLink');
+  if (billetWrap && billetLink && App.retreatBilletUrl) {
+    billetLink.href = App.retreatBilletUrl;
+    billetWrap.style.display = '';
+  }
 }
 
 function fillBadgeFromForm() {

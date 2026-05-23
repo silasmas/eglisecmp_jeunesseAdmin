@@ -16,6 +16,7 @@ class RetreatAtelierAttendancePanelService
 {
     public function __construct(
         protected RetreatAtelierAuthorizationService $auth,
+        protected RetreatActivityPlanScheduleService $scheduleService,
     ) {}
 
     /**
@@ -159,6 +160,15 @@ class RetreatAtelierAttendancePanelService
             ];
         }
 
+        $activityPlan = RetreatActivityPlan::query()->findOrFail($activityPlanId);
+
+        if (! $this->auth->isSuperAdmin($user) && ! $this->scheduleService->isAttendanceWindowOpen($activityPlan)) {
+            return [
+                'success' => false,
+                'message' => __('retraite.attendance_window_closed'),
+            ];
+        }
+
         $allowed = ['present', 'absent', 'late', 'excused'];
         if (! in_array($status, $allowed, true)) {
             return [
@@ -217,6 +227,15 @@ class RetreatAtelierAttendancePanelService
             return [
                 'success' => false,
                 'message' => 'Action non autorisée.',
+            ];
+        }
+
+        $activityPlan = RetreatActivityPlan::query()->findOrFail($activityPlanId);
+
+        if (! $this->auth->isSuperAdmin($user) && ! $this->scheduleService->isAttendanceWindowOpen($activityPlan)) {
+            return [
+                'success' => false,
+                'message' => __('retraite.attendance_window_closed'),
             ];
         }
 
