@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Models\User;
+use App\Services\DatabaseDeployService;
 use App\Services\ProductionBaseDataSyncService;
 use App\Services\StorageLinkService;
 use BackedEnum;
@@ -81,6 +82,45 @@ class SyncProductionBaseData extends Page
                         ->body('Données de base et rôles Shield mis à jour.')
                         ->success()
                         ->send();
+                }),
+            Action::make('migrateAndSync')
+                ->label('Migrations + sync')
+                ->icon('heroicon-o-server-stack')
+                ->color('primary')
+                ->requiresConfirmation()
+                ->modalHeading('Exécuter les migrations et synchroniser ?')
+                ->modalDescription(
+                    'Exécute php artisan migrate --force puis la synchronisation des données de base '
+                    .'(permissions Shield, rôles, admin, SMS, retraite). À utiliser après un déploiement '
+                    .'pour appliquer les nouvelles colonnes et tables (badge, fenêtre pointage, etc.).'
+                )
+                ->modalSubmitActionLabel('Exécuter')
+                ->action(function (): void {
+                    try {
+                        $result = app(DatabaseDeployService::class)->runMigrationsAndSyncBase();
+                    } catch (Throwable $e) {
+                        report($e);
+
+                        Notification::make()
+                            ->title('Échec migrations + sync')
+                            ->body($e->getMessage())
+                            ->danger()
+                            ->send();
+
+                        return;
+                    }
+
+                    $notification = Notification::make()
+                        ->title($result['success'] ? 'Migrations et sync terminées' : 'Échec')
+                        ->body($result['message']);
+
+                    if ($result['success']) {
+                        $notification->success()->send();
+
+                        return;
+                    }
+
+                    $notification->danger()->send();
                 }),
             Action::make('storageLink')
                 ->label('Lien storage')

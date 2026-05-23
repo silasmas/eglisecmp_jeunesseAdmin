@@ -4,9 +4,9 @@ namespace App\Filament\Resources\RetreatParticipants\Pages;
 
 use App\Filament\Resources\RetreatParticipants\RetreatParticipantResource;
 use App\Filament\Resources\RetreatParticipants\Widgets\RetreatParticipantsStats;
+use App\Models\RetreatParticipant;
 use App\Models\RetreatAtelier;
 use App\Models\RetreatChambre;
-use App\Models\RetreatParticipant;
 use App\Models\User;
 use App\Notifications\ParticipantAssignmentMailNotification;
 use App\Services\PanelNotificationDispatcher;
@@ -18,11 +18,13 @@ use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification as FilamentNotification;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Support\Enums\Alignment;
 use Filament\Support\Enums\Width;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Notification as NotificationFacade;
 use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Builder;
 use Zvizvi\UserFields\Components\UserSelect;
 
 class ListRetreatParticipants extends ListRecords
@@ -132,6 +134,49 @@ class ListRetreatParticipants extends ListRecords
     {
         return [
             RetreatParticipantsStats::class,
+        ];
+    }
+
+    /**
+     * Onglets de filtrage rapide des participants.
+     *
+     * @return array<string, Tab>
+     */
+    public function getTabs(): array
+    {
+        return [
+            'all' => Tab::make('Tous')
+                ->badge(fn (): int => RetreatParticipant::query()->count()),
+            'paid' => Tab::make('Payés')
+                ->badge(fn (): int => RetreatParticipant::query()->where('paiement_valide', true)->count())
+                ->badgeColor('success')
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('paiement_valide', true)),
+            'access_granted' => Tab::make('Accès accordé')
+                ->badge(fn (): int => RetreatParticipant::query()->where('present', true)->count())
+                ->badgeColor('success')
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('present', true)),
+            'access_pending' => Tab::make('Accès en attente')
+                ->badge(fn (): int => RetreatParticipant::query()
+                    ->where('paiement_valide', true)
+                    ->where('present', false)
+                    ->count())
+                ->badgeColor('warning')
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query
+                    ->where('paiement_valide', true)
+                    ->where('present', false)),
+            'badge_received' => Tab::make('Badge remis')
+                ->badge(fn (): int => RetreatParticipant::query()->where('badge_received', true)->count())
+                ->badgeColor('success')
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('badge_received', true)),
+            'badge_pending' => Tab::make('Badge en attente')
+                ->badge(fn (): int => RetreatParticipant::query()
+                    ->where('paiement_valide', true)
+                    ->where('badge_received', false)
+                    ->count())
+                ->badgeColor('warning')
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query
+                    ->where('paiement_valide', true)
+                    ->where('badge_received', false)),
         ];
     }
 

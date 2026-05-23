@@ -41,6 +41,21 @@
 
     <x-filament::section class="mt-6">
         <x-slot name="heading">
+            Migrations + synchronisation
+        </x-slot>
+
+        <p class="text-sm text-gray-600 dark:text-gray-300">
+            Le bouton <strong>Migrations + sync</strong> exécute d’abord
+            <code class="text-xs">php artisan migrate --force</code> (nouvelles tables/colonnes),
+            puis la synchronisation des données de base (Shield, rôles, admin, SMS, retraite).
+        </p>
+        <div class="mt-2 rounded-lg bg-gray-100 p-3 font-mono text-xs dark:bg-gray-800">
+            php artisan cmp:migrate-and-sync
+        </div>
+    </x-filament::section>
+
+    <x-filament::section class="mt-6">
+        <x-slot name="heading">
             Lien symbolique storage
         </x-slot>
 
