@@ -45,6 +45,24 @@
       <section class="headline">
         <h1>Grande Retraite <span>de la Jeunesse</span></h1>
         <p class="hero-sub">
+          <strong data-fallback="Centre Missionnaire Philadelphie">Centre Missionnaire Philadelphie</strong>
+          · Département de la Jeunesse
+        </p>
+        <div id="portailHeroThemeLine" class="hero-meta-line hidden"></div>
+        <div
+          id="portailHeroSoldOutBar"
+          class="info-box warning hero-sold-out hidden"
+          style="max-width: 520px; margin: 1rem auto 0;"
+        >
+          <i class="bi bi-slash-circle" aria-hidden="true"></i>
+          <span>Les inscriptions en ligne sont closes : nombre de places maximal atteint.</span>
+        </div>
+        <p
+          id="portailHeroPlacesLine"
+          class="hero-places-muted hidden"
+          style="max-width: 520px; margin: 1rem auto 0; font-weight: 500;"
+        ></p>
+        <p class="hero-portail-tagline">
           Choisissez l'action à effectuer pour avancer dans votre inscription, vérifier un dossier ou obtenir une réponse utile.
         </p>
         <div class="hero-divider"></div>

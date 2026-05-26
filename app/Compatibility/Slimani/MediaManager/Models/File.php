@@ -94,17 +94,18 @@ class File extends Model implements HasMedia
      */
     public function registerMediaConversions(?Media $media = null): void
     {
-        if (config('cmp.media_generate_conversions', false)) {
-            $this->addMediaConversion('thumb')
-                ->width(300)
-                ->height(300)
-                ->sharpen(10)
-                ->queued();
+        $thumb = $this->addMediaConversion('thumb')
+            ->width(300)
+            ->height(300)
+            ->sharpen(10);
 
-            $this->addMediaConversion('preview')
-                ->width(800)
-                ->height(800)
-                ->queued();
+        $preview = $this->addMediaConversion('preview')
+            ->width(800)
+            ->height(800);
+
+        if (config('cmp.media_generate_conversions', false)) {
+            $thumb->queued();
+            $preview->queued();
         }
 
         if (static::$registerMediaConversionsUsing) {

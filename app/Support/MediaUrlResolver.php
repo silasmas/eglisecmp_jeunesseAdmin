@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\MediaCollections\Exceptions\InvalidConversion;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
@@ -24,9 +25,7 @@ class MediaUrlResolver
             return null;
         }
 
-        if ($conversion !== '' && ! $media->hasGeneratedConversion($conversion)) {
-            $conversion = '';
-        }
+        $conversion = self::resolveAvailableConversion($media, $conversion);
 
         if (self::shouldUseTemporaryUrl($media)) {
             $minutes = (int) config('cmp.media_preview_signed_url_ttl_minutes', 360);
@@ -38,7 +37,12 @@ class MediaUrlResolver
             }
         }
 
-        $url = $media->getUrl($conversion);
+        try {
+            $url = $media->getUrl($conversion);
+        } catch (InvalidConversion $exception) {
+            report($exception);
+            $url = $media->getUrl();
+        }
 
         if (is_string($url) && $url !== '' && ! str_starts_with($url, 'http')) {
             $base = config('filesystems.disks.'.$media->disk.'.url');
@@ -49,6 +53,32 @@ class MediaUrlResolver
         }
 
         return $url;
+    }
+
+    /**
+     * Retourne une conversion utilisable ou une chaîne vide (fichier original).
+     *
+     * @param Media $media Enregistrement média Spatie
+     * @param string $conversion Conversion demandée
+     * @return string
+     */
+    private static function resolveAvailableConversion(Media $media, string $conversion): string
+    {
+        if ($conversion === '') {
+            return '';
+        }
+
+        $registered = $media->getMediaConversionNames();
+
+        if (! in_array($conversion, $registered, true)) {
+            return '';
+        }
+
+        if (! $media->hasGeneratedConversion($conversion)) {
+            return '';
+        }
+
+        return $conversion;
     }
 
     /**

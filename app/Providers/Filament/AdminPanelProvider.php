@@ -118,6 +118,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->assets([
                 Css::make('filament-cmp-theme', asset('css/filament-cmp-theme.css')),
+                Css::make('filament-retreat-groups', asset('css/filament-retreat-groups.css')),
                 Css::make('media-manager-plain-compiled', asset('css/media-manager-plain.css')),
                 Css::make('filament-rich-select-badges', asset('css/filament-rich-select-badges.css')),
             ], 'app')
