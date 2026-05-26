@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\EventAccessAuthMode;
 use App\Enums\EventAccessOtpChannel;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -34,7 +35,7 @@ class ChurchEvent extends Model
             /*
              * Ne pas forcer is_active à false quand start_at est passé : cela désactivait
              * l’événement à chaque enregistrement (modif. prix, affiche, etc.).
-             * Les inscriptions publiques restent fermées via isOpenForPublicRetreatRegistration().
+             * Les inscriptions publiques se ferment via la date de fin (isOpenForPublicRetreatRegistration()).
              */
             if (! $event->is_active) {
                 return;
@@ -54,15 +55,41 @@ class ChurchEvent extends Model
     }
 
     /**
+     * Inscriptions publiques closes : date de fin dépassée (pas la date de début).
+     */
+    public function isPublicRegistrationClosedBySchedule(): bool
+    {
+        if ($this->end_at === null) {
+            return false;
+        }
+
+        return $this->end_at->isPast();
+    }
+
+    /**
      * Vrai si l’événement peut ouvrir le formulaire d’inscription publique (API / portail).
-     * Indépendant du seul booléen is_active (gestion admin).
      */
     public function isOpenForPublicRetreatRegistration(): bool
     {
         return $this->type === 'retraite'
             && $this->is_active
-            && $this->start_at !== null
-            && $this->start_at->isFuture();
+            && ! $this->isPublicRegistrationClosedBySchedule();
+    }
+
+    /**
+     * Événements retraite actifs dont les inscriptions en ligne sont encore ouvertes.
+     *
+     * @param Builder<ChurchEvent> $query
+     * @return Builder<ChurchEvent>
+     */
+    public function scopeOpenForPublicRegistration(Builder $query): Builder
+    {
+        return $query
+            ->where('type', 'retraite')
+            ->where('is_active', true)
+            ->where(function (Builder $q): void {
+                $q->whereNull('end_at')->orWhere('end_at', '>', now());
+            });
     }
 
     protected $table = 'events_event';

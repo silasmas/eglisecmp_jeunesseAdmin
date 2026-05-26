@@ -128,7 +128,9 @@ class RetreatPublicRegistrationController extends Controller
         $event = $this->resolveEvent($request);
 
         if (! $event) {
-            return response()->json(['message' => 'Aucun événement retraite actif et à venir trouvé.'], 404);
+            return response()->json([
+                'message' => 'Aucun événement retraite actif avec inscriptions ouvertes (vérifiez : type « retraite », actif, date de fin non dépassée).',
+            ], 404);
         }
 
         return response()->json([
@@ -1618,10 +1620,7 @@ class RetreatPublicRegistrationController extends Controller
     protected function resolveEvent(Request $request): ?ChurchEvent
     {
         $query = ChurchEvent::query()
-            ->where('type', 'retraite')
-            ->where('is_active', true)
-            ->whereNotNull('start_at')
-            ->where('start_at', '>', now())
+            ->openForPublicRegistration()
             ->with(['afficheMedia', 'retreatDetail']);
 
         if ($request->filled('event_id')) {
@@ -1630,7 +1629,7 @@ class RetreatPublicRegistrationController extends Controller
                 ->first();
         }
 
-        return $query->orderBy('start_at')->first();
+        return $query->orderByDesc('start_at')->orderByDesc('id')->first();
     }
 
     protected function publicEventPayload(ChurchEvent $event): array
@@ -1658,6 +1657,8 @@ class RetreatPublicRegistrationController extends Controller
             'worker_registered_count' => $registeredWorkers,
             'places_remaining' => $remaining,
             'is_sold_out' => $remaining !== null && $remaining === 0,
+            'registration_open' => $event->isOpenForPublicRetreatRegistration(),
+            'registration_closes_at' => $event->end_at?->toISOString(),
             'places_message' => $remaining === null
                 ? null
                 : ($remaining === 0

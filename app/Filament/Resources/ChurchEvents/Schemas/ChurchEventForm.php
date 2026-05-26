@@ -41,7 +41,7 @@ class ChurchEventForm
                         Toggle::make('is_active')
                             ->label('Actif (événement courant)')
                             ->helperText(
-                                'Un seul événement actif à la fois. Ce réglage n’est plus coupé automatiquement quand la date de début est passée : les inscriptions en ligne se ferment seules si le début est dépassé (contrôle API), sans désactiver la fiche ici.'
+                                'Un seul événement actif à la fois. Les inscriptions en ligne restent ouvertes jusqu’à la date de fin (pas la date de début). Sans date de fin, elles restent ouvertes tant que l’événement est actif.'
                             )
                             ->required(),
                     ])
@@ -51,7 +51,10 @@ class ChurchEventForm
                         DateTimePicker::make('start_at')
                             ->label('Debut'),
                         DateTimePicker::make('end_at')
-                            ->label('Fin'),
+                            ->label('Fin')
+                            ->helperText(
+                                'Les inscriptions publiques se ferment automatiquement après cette date. Obligatoire pour clôturer le formulaire en ligne.'
+                            ),
                         TextInput::make('capacity')
                             ->label('Capacite')
                             ->numeric(),
