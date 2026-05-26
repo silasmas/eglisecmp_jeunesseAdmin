@@ -7,27 +7,20 @@
 
     <title>CMP Jeunesse - Portail retraite</title>
 
-    <style>
-        :root {
-            --brand: #7b1d3e;
-            --brand-dark: #4e1026;
-            --ink: #19151a;
-            --muted: #6d6470;
-            --line: #e9e0e5;
-            --surface: #fffaf7;
-            --white: #ffffff;
-            --success: #147d48;
-            --warning: #9b5a09;
-        }
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ asset('retraite-inscription/css/tokens.css') }}">
+    <link rel="stylesheet" href="{{ asset('retraite-inscription/css/splash.css') }}">
+    <link rel="stylesheet" href="{{ asset('cmp-portail/css/hero-shared.css') }}">
+    <link rel="stylesheet" href="{{ asset('cmp-portail/css/cmp-layout.css') }}">
+    <link rel="stylesheet" href="{{ asset('cmp-portail/css/cmp-footer.css') }}">
+    <link rel="stylesheet" href="{{ asset('cmp-portail/css/welcome.css') }}">
 
+    <style>
         * { box-sizing: border-box; }
 
         body {
             margin: 0;
             min-height: 100vh;
-            color: var(--ink);
-            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            background: var(--surface);
         }
 
         a { color: inherit; text-decoration: none; }
@@ -36,18 +29,9 @@
         .page {
             min-height: 100vh;
             display: grid;
-            grid-template-rows: auto 1fr;
-        }
-
-        .hero {
-            position: relative;
-            min-height: 36vh;
-            padding: 28px clamp(18px, 4vw, 56px) 42px;
-            color: var(--white);
-            background:
-                linear-gradient(90deg, rgba(30, 10, 20, .88), rgba(74, 16, 38, .62), rgba(74, 16, 38, .22)),
-                url("{{ asset('assets/slider-bg-01@2x.jpg') }}") center / cover;
-            overflow: hidden;
+            grid-template-rows: auto 1fr auto;
+            width: 100%;
+            max-width: 100%;
         }
 
         .topbar,
@@ -109,28 +93,9 @@
             backdrop-filter: blur(8px);
         }
 
-        .headline {
-            margin-top: 62px;
-        }
-
-        .headline h1 {
-            max-width: 720px;
-            margin: 0;
-            font-size: clamp(2.1rem, 7vw, 4.8rem);
-            line-height: .96;
-            letter-spacing: 0;
-        }
-
-        .headline p {
-            max-width: 640px;
-            margin: 18px 0 0;
-            color: rgba(255, 255, 255, .86);
-            font-size: clamp(1rem, 2vw, 1.18rem);
-            line-height: 1.65;
-        }
-
         .content {
             width: min(1180px, calc(100% - 36px));
+            margin-inline: auto;
             margin-top: -30px;
             margin-bottom: 44px;
             position: relative;
@@ -813,18 +778,11 @@
         }
 
         @media (max-width: 680px) {
-            .hero {
-                min-height: 42vh;
-                padding: 18px 18px 40px;
-            }
-
             .topbar,
             .panel-header,
             .participant-top {
                 align-items: flex-start;
             }
-
-            .headline { margin-top: 46px; }
 
             .content {
                 width: calc(100% - 24px);
@@ -845,25 +803,10 @@
     @include('filament.partials.cmp-atelier-ui-styles')
 </head>
 <body>
-    <div class="page">
-        <header class="hero">
-            <nav class="topbar" aria-label="Navigation principale">
-                <a class="brand" href="{{ url('/') }}" aria-label="Accueil CMP Jeunesse">
-                    <img src="{{ asset('assets/Logo-CMP-2023-red.png') }}" alt="Logo CMP">
-                    <span>
-                        <strong>CMP Jeunesse</strong>
-                        <span>Portail retraite</span>
-                    </span>
-                </a>
+    @include('retraite-inscription.partials.splash-loader')
 
-                <a class="admin-link" href="{{ url('/admin') }}">Administration</a>
-            </nav>
-
-            <section class="headline">
-                <h1>Grande Retraite des Jeunes</h1>
-                <p>Choisissez l'action à effectuer pour avancer rapidement dans votre inscription, vérifier un dossier ou obtenir une réponse utile.</p>
-            </section>
-        </header>
+    <div class="page portail-page portail-page--booting cmp-page-shell">
+        @include('partials.cmp-portail.hero-welcome')
 
         <main class="content">
             <div class="portal-options-toolbar hidden" id="portalOptionsToolbar">
@@ -1032,6 +975,8 @@
                 </form>
             </section>
         </main>
+
+        @include('partials.cmp-portail.footer')
     </div>
 
     <div id="otpModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="otpModalTitle">
@@ -1095,6 +1040,7 @@
         </div>
     </div>
 
+    <script src="{{ asset('cmp-portail/js/portail-splash.js') }}"></script>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script>
         const csrf = document.querySelector('meta[name="csrf-token"]')?.content;

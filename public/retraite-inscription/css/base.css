@@ -19,47 +19,83 @@ input, select, textarea { font-family: inherit; }
    HERO HEADER
 ═══════════════════════════════════════════ */
 .hero {
-  background: linear-gradient(135deg, #1A1018 0%, #2D1F17 40%, #1A1018 100%);
-  padding: 2.8rem 2rem 2.2rem;
+  background: linear-gradient(160deg, #2D1F17 0%, #1A1018 45%, #1A1018 75%, rgba(26,16,24,0.0) 100%);
+  padding: 2.8rem 2rem 5rem;
   text-align: center;
   position: relative;
   overflow: hidden;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 .hero::before {
   content: '';
   position: absolute;
-  top: -60%;
-  left: -25%;
-  width: 65%;
-  height: 220%;
+  top: -40%;
+  left: 0;
+  width: 55%;
+  height: 180%;
   background: radial-gradient(ellipse, rgba(212,119,44,0.12) 0%, transparent 70%);
   pointer-events: none;
+  z-index: 0;
 }
 .hero::after {
   content: '';
   position: absolute;
-  bottom: -60%;
-  right: -25%;
-  width: 65%;
-  height: 220%;
+  bottom: -40%;
+  right: 0;
+  width: 55%;
+  height: 180%;
   background: radial-gradient(ellipse, rgba(201,151,62,0.08) 0%, transparent 70%);
   pointer-events: none;
+  z-index: 0;
+}
+.hero-wave {
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  overflow: hidden;
+  line-height: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.hero-wave svg {
+  display: block;
+  width: 100%;
+  height: 70px;
+}
+.hero-fade {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 120px;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(26,16,24,0.35) 40%,
+    rgba(26,16,24,0.0) 100%
+  );
+  pointer-events: none;
+  z-index: 1;
 }
 .hero-content { position: relative; z-index: 1; max-width: 700px; margin: 0 auto; }
-.hero-badge {
-  display: inline-flex;
+.hero-logo-container {
+  margin-bottom: 2rem;
+  display: flex;
+  justify-content: center;
   align-items: center;
-  gap: 6px;
-  background: rgba(212,119,44,0.15);
-  color: var(--gold-light);
-  font-size: 0.75rem;
-  font-weight: 500;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  padding: 6px 16px;
-  border-radius: 50px;
-  border: 1px solid rgba(201,151,62,0.2);
-  margin-bottom: 1rem;
+}
+.hero-logo {
+  height: 130px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 15px rgba(0,0,0,0.4));
+  transition: transform 0.3s ease;
+}
+.hero-logo:hover {
+  transform: scale(1.05);
 }
 .hero h1 {
   color: #FFFFFF;

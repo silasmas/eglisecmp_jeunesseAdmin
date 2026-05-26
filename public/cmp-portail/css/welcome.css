@@ -1,0 +1,208 @@
+/* Portail d'accueil — aligné sur les tokens inscription retraite */
+:root {
+  --brand: var(--primary);
+  --brand-dark: var(--primary-dark);
+  --ink: var(--text);
+  --muted: var(--text-secondary);
+  --line: var(--border);
+  --surface: var(--cream);
+  --white: var(--surface);
+}
+
+body {
+  font-family: var(--font);
+  background: var(--cream);
+  color: var(--text);
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+/* Splash plein écran au-dessus du portail */
+#retraiteGateSplash {
+  z-index: 10030;
+}
+
+.portail-page--booting {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.portail-page--booting .hero,
+.portail-page--booting .content {
+  visibility: hidden;
+}
+
+/* Héro portail : topbar + contenu */
+.hero--portail {
+  min-height: auto;
+  padding: 1.75rem clamp(18px, 4vw, 56px) 5rem;
+  text-align: left;
+}
+
+.hero--portail-inner {
+  position: relative;
+  z-index: 3;
+  max-width: 1180px;
+  margin-inline: auto;
+}
+
+.hero--portail .topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 2rem;
+}
+
+.hero--portail .brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  color: #fff;
+}
+
+.hero--portail .brand-logo {
+  width: 54px;
+  height: 54px;
+  object-fit: contain;
+  border-radius: 12px;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.35));
+}
+
+.hero--portail .brand strong,
+.hero--portail .brand span {
+  display: block;
+}
+
+.hero--portail .brand strong {
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.hero--portail .brand span span {
+  margin-top: 3px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.86rem;
+}
+
+.hero--portail .admin-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  border-radius: var(--radius);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(8px);
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.hero--portail .admin-link:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.55);
+}
+
+.hero--portail-content {
+  max-width: 820px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.hero--portail .hero-logo-container {
+  display: none;
+}
+
+.hero--portail .headline {
+  margin-top: 0;
+}
+
+.hero--portail .headline h1 {
+  max-width: 720px;
+  margin: 0 auto;
+  font-size: clamp(2rem, 6vw, 3.5rem);
+  line-height: 1.05;
+  letter-spacing: 0;
+  color: #fff;
+}
+
+.hero--portail .headline p.hero-sub {
+  max-width: 640px;
+  margin: 18px auto 0;
+  font-size: clamp(1rem, 2vw, 1.12rem);
+  line-height: 1.65;
+}
+
+.hero--portail .content {
+  margin-top: -24px;
+}
+
+/* Cartes options & composants */
+.option:hover {
+  border-color: rgba(212, 119, 44, 0.36);
+  box-shadow: var(--shadow-md);
+}
+
+.option-index {
+  color: var(--primary);
+  background: var(--primary-glow);
+}
+
+.option-action {
+  color: var(--primary);
+}
+
+.button {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.button:hover {
+  background: var(--primary-dark);
+}
+
+.button.secondary {
+  background: var(--dark-warm);
+  border-color: var(--dark-warm);
+}
+
+/* Pointage atelier (ouvrier) — palette orange */
+.cmp-atelier-loader {
+  border-color: rgba(212, 119, 44, 0.18) !important;
+  background: var(--primary-glow) !important;
+}
+
+.cmp-atelier-spinner {
+  border-color: rgba(212, 119, 44, 0.25) !important;
+  border-top-color: var(--primary) !important;
+}
+
+.cmp-pointage-num {
+  background: var(--primary) !important;
+}
+
+.cmp-pointage-btn.is-active {
+  background: var(--primary) !important;
+  border-color: var(--primary-dark) !important;
+}
+
+@media (max-width: 680px) {
+  .hero--portail {
+    padding: 1.1rem 18px 3.5rem;
+  }
+
+  .hero--portail .topbar {
+    flex-wrap: wrap;
+    margin-bottom: 1.25rem;
+  }
+
+  .hero--portail .headline h1 {
+    font-size: 1.75rem;
+  }
+
+  .hero--portail .content {
+    margin-top: -16px;
+  }
+}

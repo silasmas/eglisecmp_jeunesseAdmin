@@ -27,6 +27,9 @@
     };
   @endphp
   <link rel="stylesheet" href="{{ $r }}/css/tokens.css">
+  <link rel="stylesheet" href="{{ asset('cmp-portail/css/cmp-layout.css') }}">
+  <link rel="stylesheet" href="{{ asset('cmp-portail/css/cmp-footer.css') }}">
+  <link rel="stylesheet" href="{{ $rv('css/splash.css') }}">
   <link rel="stylesheet" href="{{ $r }}/css/base.css">
   <link rel="stylesheet" href="{{ $r }}/css/stepper.css">
   <link rel="stylesheet" href="{{ $rv('css/form.css') }}">
@@ -40,7 +43,10 @@
   @stack('styles')
 </head>
 <body>
-  @yield('content')
+  <div class="cmp-page-shell">
+    @yield('content')
+    @include('partials.cmp-portail.footer')
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="{{ $rv('js/notifications.js') }}"></script>

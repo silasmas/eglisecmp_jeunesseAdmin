@@ -1,0 +1,36 @@
+/**
+ * Contraintes de mise en page communes (portail + inscription).
+ * Évite le scroll horizontal et les éléments décoratifs hors écran.
+ */
+html {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+.cmp-page-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+}
+
+.cmp-page-shell > .hero,
+.cmp-page-shell > header.hero {
+  width: 100%;
+  max-width: 100%;
+  flex-shrink: 0;
+}
+
+.cmp-page-shell > main,
+.cmp-page-shell > .content {
+  flex: 1;
+  width: min(1180px, calc(100% - 36px));
+  max-width: 100%;
+  margin-inline: auto;
+}

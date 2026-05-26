@@ -2,11 +2,36 @@
    APP BOOTSTRAP
 ═══════════════════════════════════════════ */
 
+/**
+ * Masque le splash avec animation de sortie puis exécute un callback.
+ *
+ * @param {Function|null} onDone Callback après la transition
+ * @return {void}
+ */
+function dismissRetraiteGateSplash(onDone) {
+  const splash = document.getElementById('retraiteGateSplash');
+  if (!splash) {
+    if (typeof onDone === 'function') {
+      onDone();
+    }
+    return;
+  }
+
+  splash.classList.remove('hold');
+  splash.classList.add('exit');
+  window.setTimeout(() => {
+    splash.classList.add('hidden');
+    if (typeof onDone === 'function') {
+      onDone();
+    }
+  }, 650);
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   wireMandatoryPoliciesModal();
 
   const gateOverlay = document.getElementById('retraiteGateOverlay');
-  const gateLoading = document.getElementById('retraiteGateLoading');
+  const gateSplash = document.getElementById('retraiteGateSplash');
   const gateClosed = document.getElementById('retraiteGateClosed');
   const mainShell = document.getElementById('retraiteMainShell');
 
@@ -19,16 +44,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.warn('Événement retraite non chargé', e);
   }
 
-  if (gateLoading) gateLoading.classList.add('hidden');
-
   if (!ev) {
-    if (gateClosed) gateClosed.classList.remove('hidden');
+    if (gateSplash) {
+      gateSplash.classList.add('hidden');
+    }
+    if (gateClosed) {
+      gateClosed.classList.remove('hidden');
+    }
     App.registrationOpen = false;
     return;
   }
 
-  if (gateOverlay) gateOverlay.classList.add('hidden');
-  if (mainShell) mainShell.classList.remove('hidden');
+  dismissRetraiteGateSplash(() => {
+    if (gateOverlay) {
+      gateOverlay.classList.add('hidden');
+    }
+    if (mainShell) {
+      mainShell.classList.remove('hidden');
+    }
+  });
   App.registrationOpen = true;
 
   applyHeroFromEvent(ev);

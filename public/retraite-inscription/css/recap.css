@@ -283,11 +283,22 @@
   margin-bottom: 0;
 }
 
-/* ═══ Accès fermé / chargement ───────────────────────── */
+/* ═══ Accès fermé / splash chargement ───────────────────────── */
 .retraite-gate-overlay {
   position: fixed;
   inset: 0;
   z-index: 10020;
+}
+.retraite-gate-overlay.hidden {
+  display: none !important;
+}
+.retraite-gate-overlay .splash {
+  z-index: 1;
+}
+.retraite-gate-closed {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -295,7 +306,7 @@
   background: rgba(248, 245, 240, 0.98);
   backdrop-filter: blur(4px);
 }
-.retraite-gate-overlay.hidden {
+.retraite-gate-closed.hidden {
   display: none !important;
 }
 .retraite-gate-card {
@@ -307,19 +318,6 @@
   border: 1px solid var(--border-light);
   box-shadow: var(--shadow-md);
   text-align: center;
-}
-.retraite-gate-panel.hidden { display: none !important; }
-.retraite-gate-spinner {
-  width: 40px;
-  height: 40px;
-  margin: 0 auto 1rem;
-  border: 3px solid var(--border);
-  border-top-color: var(--primary);
-  border-radius: 50%;
-  animation: retraite-gate-spin 0.85s linear infinite;
-}
-@keyframes retraite-gate-spin {
-  to { transform: rotate(360deg); }
 }
 .retraite-gate-heading {
   font-size: 1.25rem;

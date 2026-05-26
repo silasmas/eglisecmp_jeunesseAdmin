@@ -1,7 +1,7 @@
 <div
     id="cmp-page-loader"
     class="pointer-events-auto fixed inset-0 z-[99999] flex items-center justify-center transition-opacity duration-300"
-    style="background: #0a0a0a"
+    style="background: linear-gradient(160deg, #2D1F17 0%, #1A1018 100%)"
     aria-hidden="true"
 >
     <img

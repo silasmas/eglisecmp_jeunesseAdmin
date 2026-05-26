@@ -12,6 +12,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Contrôle d'accès — {{ $participant->full_name }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ asset('retraite-inscription/css/tokens.css') }}">
+  <link rel="stylesheet" href="{{ asset('cmp-portail/css/cmp-layout.css') }}">
+  <link rel="stylesheet" href="{{ asset('cmp-portail/css/cmp-footer.css') }}">
   <style>
     :root {
       --ink: #171015;
@@ -26,10 +30,10 @@
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      padding: 24px 16px;
+      padding: 24px 16px 0;
       color: var(--ink);
       background: #f5f1f3;
-      font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+      font-family: Poppins, var(--font, Inter), ui-sans-serif, system-ui, sans-serif;
     }
     .sheet {
       width: min(640px, 100%);
@@ -92,6 +96,7 @@
   </style>
 </head>
 <body>
+  <div class="cmp-page-shell">
   <main class="sheet">
     <div class="banner {{ $accessClass }}">{{ $accessLabel }}</div>
     <section class="content">
@@ -143,5 +148,7 @@
       </p>
     </section>
   </main>
+  @include('partials.cmp-portail.footer', ['compact' => true])
+  </div>
 </body>
 </html>

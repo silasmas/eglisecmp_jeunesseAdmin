@@ -1,0 +1,106 @@
+/* Bannière héro partagée (inscription + portail d'accueil) */
+.hero {
+  background: linear-gradient(160deg, #2D1F17 0%, #1A1018 45%, #1A1018 75%, rgba(26,16,24,0.0) 100%);
+  padding: 2.8rem 2rem 5rem;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -40%;
+  left: 0;
+  width: 55%;
+  height: 180%;
+  background: radial-gradient(ellipse, rgba(212,119,44,0.12) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+.hero::after {
+  content: '';
+  position: absolute;
+  bottom: -40%;
+  right: 0;
+  width: 55%;
+  height: 180%;
+  background: radial-gradient(ellipse, rgba(201,151,62,0.08) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+.hero-wave {
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  overflow: hidden;
+  line-height: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.hero-wave svg {
+  display: block;
+  width: 100%;
+  height: 70px;
+}
+.hero-fade {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 120px;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(26,16,24,0.35) 40%,
+    rgba(26,16,24,0.0) 100%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+.hero-content { position: relative; z-index: 3; max-width: 700px; margin: 0 auto; }
+.hero-logo-container {
+  margin-bottom: 2rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.hero-logo {
+  height: 130px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 15px rgba(0,0,0,0.4));
+  transition: transform 0.3s ease;
+}
+.hero-logo:hover {
+  transform: scale(1.05);
+}
+.hero h1 {
+  color: #FFFFFF;
+  font-size: clamp(1.4rem, 3.5vw, 2rem);
+  font-weight: 700;
+  line-height: 1.25;
+  margin-bottom: 0.5rem;
+}
+.hero h1 span {
+  background: linear-gradient(135deg, var(--primary-light), var(--gold-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero-sub {
+  color: rgba(255,255,255,0.6);
+  font-size: 0.92rem;
+  font-weight: 300;
+}
+.hero-sub strong { color: rgba(255,255,255,0.85); font-weight: 500; }
+.hero-divider {
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(90deg, var(--primary), var(--gold));
+  border-radius: 3px;
+  margin: 1rem auto 0;
+}

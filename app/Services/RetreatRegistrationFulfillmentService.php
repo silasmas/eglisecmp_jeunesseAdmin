@@ -38,12 +38,17 @@ class RetreatRegistrationFulfillmentService
             $participant = $payment->participant;
             $event = $payment->event;
 
-            if (! $participant || ! $event || blank($participant->download_token)) {
+            if (! $participant || ! $event) {
                 return;
             }
 
             $this->placementAssignment->assignBalancedPlacements($participant);
             $participant->refresh();
+
+            if (blank($participant->download_token)) {
+                return;
+            }
+
             $participant->load(['chambre', 'atelier']);
 
             $this->sendBilletNotification($participant, $payment, false);

@@ -7,6 +7,7 @@ use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use Caresome\FilamentAuthDesigner\AuthDesignerPlugin;
 use Caresome\FilamentAuthDesigner\Data\AuthPageConfig;
 use Caresome\FilamentAuthDesigner\Enums\MediaPosition;
+use Caresome\FilamentAuthDesigner\View\AuthDesignerRenderHook;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -41,15 +42,16 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->darkMode(true)
             ->defaultThemeMode(ThemeMode::Light)
-            ->brandName('CMP - Jeunesse Administration')
-            ->brandLogo(asset('assets/Logo-CMP-2023-red.png'))
-            ->brandLogoHeight('4rem')
-            ->favicon(asset('assets/Logo-CMP-2023-red.png'))
+            ->brandName('CMP Jeunesse — Administration')
+            ->brandLogo(asset('retraite-inscription/img/logo.jpg'))
+            ->brandLogoHeight('3rem')
+            ->favicon(asset('retraite-inscription/img/logo.jpg'))
             ->sidebarCollapsibleOnDesktop()
             ->databaseNotifications()
             ->databaseNotificationsPolling('30s')
             ->colors([
-                'primary' => Color::hex('#7b1d3e'),
+                'primary' => Color::hex('#D4772C'),
+                'gray' => Color::hex('#2D1F17'),
             ])
             ->defaultAvatarProvider(SilhouetteAvatarProvider::class)
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
@@ -74,16 +76,20 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->plugins([
                 AuthDesignerPlugin::make()
-                    ->login(function (AuthPageConfig $config): void {
+                    ->defaults(function (AuthPageConfig $config): void {
+                        $darkPixel = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect fill='%231A1018' width='4' height='4'/%3E%3C/svg%3E";
                         $config
-                            ->media(
-                                asset('assets/slider-bg-01@2x.jpg'),
-                                alt: __('Bienvenue au Centre Missionnaire Philadelphie'),
-                            )
+                            ->media($darkPixel, alt: '')
                             ->mediaPosition(MediaPosition::Left)
-                            ->mediaSize('40%')
-                            ->blur(0);
+                            ->mediaSize('44%')
+                            ->blur(0)
+                            ->renderHook(
+                                AuthDesignerRenderHook::MediaOverlay,
+                                fn (): string => view('filament.cmp.auth-media-overlay')->render(),
+                            );
                     })
+                    ->login()
+                    ->passwordReset()
                     ->themeToggle(top: '1rem', right: '1rem'),
                 DraggableModalPlugin::make(),
                 FilamentApiDocsBuilderPlugin::make(),
@@ -111,6 +117,7 @@ class AdminPanelProvider extends PanelProvider
                 Authenticate::class,
             ])
             ->assets([
+                Css::make('filament-cmp-theme', asset('css/filament-cmp-theme.css')),
                 Css::make('media-manager-plain-compiled', asset('css/media-manager-plain.css')),
                 Css::make('filament-rich-select-badges', asset('css/filament-rich-select-badges.css')),
             ], 'app')

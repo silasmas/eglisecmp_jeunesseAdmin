@@ -21,29 +21,92 @@ class RetreatPlacementAssignmentService
      */
     public function assignBalancedPlacements(RetreatParticipant $participant): void
     {
-        $updates = [];
-
         if ($this->isExternalParticipant($participant)) {
             if ($participant->chambre_id !== null) {
-                $updates['chambre_id'] = null;
+                $participant->update(['chambre_id' => null]);
             }
         } elseif (! $participant->chambre_id) {
-            $chambre = $this->chooseChambreFor($participant);
-            if ($chambre) {
-                $updates['chambre_id'] = $chambre->id;
-            }
+            $this->assignChambreAutomatically($participant);
         }
 
         if (! $participant->atelier_id) {
-            $atelier = $this->chooseAtelierFor($participant);
-            if ($atelier) {
-                $updates['atelier_id'] = $atelier->id;
-            }
+            $this->assignAtelierAutomatically($participant);
+        }
+    }
+
+    /**
+     * Affecte automatiquement une chambre au participant (équilibrage capacité / sexe).
+     *
+     * @param RetreatParticipant $participant Participant
+     * @return array{success: bool, message: string}
+     */
+    public function assignChambreAutomatically(RetreatParticipant $participant): array
+    {
+        $participant->refresh();
+
+        if ($this->isExternalParticipant($participant)) {
+            return [
+                'success' => false,
+                'message' => 'Les participants externes ne sont pas hébergés sur le site.',
+            ];
         }
 
-        if ($updates !== []) {
-            $participant->update($updates);
+        if ($participant->chambre_id) {
+            return [
+                'success' => false,
+                'message' => 'Une chambre est déjà affectée à ce participant.',
+            ];
         }
+
+        $chambre = $this->chooseChambreFor($participant);
+
+        if (! $chambre) {
+            return [
+                'success' => false,
+                'message' => 'Aucune chambre disponible (capacité pleine ou incompatible avec le sexe du participant).',
+            ];
+        }
+
+        $participant->update(['chambre_id' => $chambre->id]);
+
+        return [
+            'success' => true,
+            'message' => sprintf('Chambre « %s » affectée automatiquement.', $chambre->nom),
+        ];
+    }
+
+    /**
+     * Affecte automatiquement un atelier au participant (équilibrage sexe / tranche d'âge).
+     *
+     * @param RetreatParticipant $participant Participant
+     * @return array{success: bool, message: string}
+     */
+    public function assignAtelierAutomatically(RetreatParticipant $participant): array
+    {
+        $participant->refresh();
+
+        if ($participant->atelier_id) {
+            return [
+                'success' => false,
+                'message' => 'Un atelier est déjà assigné à ce participant.',
+            ];
+        }
+
+        $atelier = $this->chooseAtelierFor($participant);
+
+        if (! $atelier) {
+            return [
+                'success' => false,
+                'message' => 'Aucun atelier disponible pour l\'âge ou la configuration actuelle.',
+            ];
+        }
+
+        $participant->update(['atelier_id' => $atelier->id]);
+
+        return [
+            'success' => true,
+            'message' => sprintf('Atelier n°%s affecté automatiquement.', $atelier->numero),
+        ];
     }
 
     /**

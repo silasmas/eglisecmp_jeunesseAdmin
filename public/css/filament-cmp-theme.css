@@ -1,0 +1,313 @@
+/**
+ * Thème Filament CMP — aligné sur le portail public (tokens retraite-inscription).
+ */
+html.fi.fi-panel-admin {
+  --cmp-primary: #d4772c;
+  --cmp-primary-dark: #b85d1a;
+  --cmp-primary-light: #f0a050;
+  --cmp-cream: #fffaf5;
+  --cmp-dark: #1a1018;
+  --cmp-dark-warm: #2d1f17;
+  --cmp-border: #e8ddd4;
+  --cmp-radius: 12px;
+  font-family: 'Poppins', var(--font-family), system-ui, sans-serif;
+}
+
+/* ——— Connexion (Auth Designer) ——— */
+html.fi.fi-panel-admin .fi-simple-page,
+html.fi.fi-panel-admin .fi-auth-layout .fi-auth-content-section {
+  background: var(--cmp-cream);
+}
+
+html.fi.fi-panel-admin .fi-auth-layout.has-media .fi-auth-media-section {
+  overflow: hidden;
+  background: linear-gradient(160deg, var(--cmp-dark-warm) 0%, var(--cmp-dark) 55%, #231a24 100%) !important;
+}
+
+html.fi.fi-panel-admin .fi-auth-layout.media-left .fi-auth-media-section,
+html.fi.fi-panel-admin .fi-auth-layout.media-right .fi-auth-media-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+html.fi.fi-panel-admin .fi-auth-layout .fi-auth-media-wrapper {
+  background: linear-gradient(160deg, var(--cmp-dark-warm) 0%, var(--cmp-dark) 55%, #231a24 100%);
+}
+
+html.fi.fi-panel-admin .fi-auth-layout .fi-auth-media {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+html.fi.fi-panel-admin .fi-auth-layout .fi-auth-media-overlay {
+  background: radial-gradient(ellipse 70% 50% at 30% 20%, rgba(212, 119, 44, 0.14) 0%, transparent 65%),
+    radial-gradient(ellipse 50% 40% at 80% 90%, rgba(201, 151, 62, 0.1) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+html.fi.fi-panel-admin .fi-auth-media-content {
+  position: absolute;
+  inset: 0;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(1.25rem, 4vw, 2.5rem);
+  z-index: 20;
+  overflow: hidden;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+html.fi.fi-panel-admin .fi-auth-media-content .cmp-auth-hero {
+  pointer-events: auto;
+}
+
+.cmp-auth-hero {
+  width: 100%;
+  max-width: min(380px, 100%);
+  margin: 0 auto;
+  padding: 0 1rem;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.cmp-auth-hero__logo-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 120px;
+  margin: 0 auto 1.25rem;
+}
+
+.cmp-auth-hero__logo {
+  display: block;
+  width: auto;
+  max-width: min(300px, 90%);
+  height: auto;
+  max-height: min(160px, 32vh);
+  margin: 0 auto;
+  object-fit: contain;
+  object-position: center center;
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.45));
+}
+
+.cmp-auth-hero__title {
+  margin: 0 0 0.5rem;
+  font-size: clamp(1.35rem, 2.5vw, 1.85rem);
+  font-weight: 700;
+  line-height: 1.25;
+  color: #fff;
+}
+
+.cmp-auth-hero__title span {
+  background: linear-gradient(135deg, var(--cmp-primary-light), #e8c876);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.cmp-auth-hero__subtitle {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.cmp-auth-hero__divider {
+  width: 56px;
+  height: 3px;
+  margin: 1rem auto;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--cmp-primary), #c9973e);
+}
+
+.cmp-auth-hero__tagline {
+  margin: 0;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.cmp-login-brand {
+  margin: 0 auto 1.5rem;
+  max-width: 28rem;
+  text-align: center;
+}
+
+.cmp-login-brand__eyebrow {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary, #5c5c5c);
+}
+
+.cmp-login-brand__title {
+  margin: 0.35rem 0 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--cmp-primary);
+}
+
+.cmp-login-brand__text {
+  margin: 0.75rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: var(--text-muted, #9a9a9a);
+}
+
+html.fi.fi-panel-admin .fi-auth-layout .fi-simple-header {
+  align-items: center;
+}
+
+html.fi.fi-panel-admin .fi-auth-layout .fi-simple-header-heading {
+  text-align: center;
+  width: 100%;
+  color: var(--cmp-dark);
+}
+
+html.fi.fi-panel-admin .fi-auth-layout .fi-auth-form-container {
+  margin-inline: auto;
+  max-width: 26rem;
+}
+
+html.fi.fi-panel-admin .fi-auth-layout .fi-input-wrp,
+html.fi.fi-panel-admin .fi-simple-page .fi-input-wrp {
+  border-radius: var(--cmp-radius);
+  border-color: var(--cmp-border);
+}
+
+html.fi.fi-panel-admin .fi-auth-layout form [type='submit'],
+html.fi.fi-panel-admin .fi-auth-layout .fi-btn.fi-btn-color-primary,
+html.fi.fi-panel-admin .fi-simple-page .fi-btn.fi-btn-color-primary {
+  border-radius: var(--cmp-radius);
+  background-color: var(--cmp-primary) !important;
+  border-color: var(--cmp-primary) !important;
+  color: #fff !important;
+}
+
+html.fi.fi-panel-admin .fi-auth-layout form [type='submit']:hover,
+html.fi.fi-panel-admin .fi-auth-layout .fi-btn.fi-btn-color-primary:hover,
+html.fi.fi-panel-admin .fi-simple-page .fi-btn.fi-btn-color-primary:hover {
+  background-color: var(--cmp-primary-dark) !important;
+  border-color: var(--cmp-primary-dark) !important;
+}
+
+/* ——— Panneau connecté ——— */
+html.fi.fi-panel-admin .fi-body {
+  background: var(--cmp-cream);
+}
+
+html.fi.fi-panel-admin .fi-sidebar {
+  background: linear-gradient(180deg, var(--cmp-dark-warm) 0%, var(--cmp-dark) 100%);
+  border-inline-end: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+html.fi.fi-panel-admin .fi-sidebar-header {
+  background: transparent;
+}
+
+html.fi.fi-panel-admin .fi-sidebar .fi-logo {
+  color: #fff;
+}
+
+html.fi.fi-panel-admin .fi-sidebar-group-label {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+html.fi.fi-panel-admin .fi-sidebar-item-btn {
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+html.fi.fi-panel-admin .fi-sidebar-item-btn:hover {
+  background: rgba(212, 119, 44, 0.14);
+  color: #fff;
+}
+
+html.fi.fi-panel-admin .fi-sidebar-item.fi-active .fi-sidebar-item-btn,
+html.fi.fi-panel-admin .fi-sidebar-item.fi-sidebar-item-active .fi-sidebar-item-btn {
+  background: rgba(212, 119, 44, 0.22);
+  color: var(--cmp-primary-light);
+}
+
+html.fi.fi-panel-admin .fi-sidebar-item-icon {
+  color: inherit;
+}
+
+html.fi.fi-panel-admin .fi-topbar {
+  background: #fff;
+  border-bottom: 1px solid var(--cmp-border);
+  box-shadow: 0 2px 12px rgba(26, 16, 24, 0.04);
+}
+
+html.fi.fi-panel-admin .fi-main {
+  background: var(--cmp-cream);
+}
+
+html.fi.fi-panel-admin .fi-section,
+html.fi.fi-panel-admin .fi-ta-ctn,
+html.fi.fi-panel-admin .fi-wi-stats-overview-stat,
+html.fi.fi-panel-admin .fi-modal-window {
+  border-radius: var(--cmp-radius);
+  border-color: var(--cmp-border);
+  box-shadow: 0 4px 20px rgba(26, 16, 24, 0.06);
+}
+
+html.fi.fi-panel-admin .fi-btn.fi-btn-color-primary:not(.fi-btn-outlined) {
+  background-color: var(--cmp-primary);
+  border-color: var(--cmp-primary);
+}
+
+html.fi.fi-panel-admin .fi-btn.fi-btn-color-primary:not(.fi-btn-outlined):hover {
+  background-color: var(--cmp-primary-dark);
+  border-color: var(--cmp-primary-dark);
+}
+
+html.fi.fi-panel-admin .fi-badge.fi-color-primary {
+  background: rgba(212, 119, 44, 0.14);
+  color: var(--cmp-primary-dark);
+}
+
+html.fi.fi-panel-admin .fi-tabs-item.fi-active {
+  color: var(--cmp-primary);
+}
+
+html.fi.fi-panel-admin .fi-fo-field-wrp label {
+  font-weight: 500;
+}
+
+html.fi.fi-panel-admin.dark .fi-body,
+html.fi.fi-panel-admin.dark .fi-main {
+  background: #141014;
+}
+
+html.fi.fi-panel-admin.dark .fi-auth-layout .fi-auth-content-section,
+html.fi.fi-panel-admin.dark .fi-simple-page {
+  background: #1a1018;
+}
+
+html.fi.fi-panel-admin.dark .cmp-login-brand__title {
+  color: var(--cmp-primary-light);
+}
+
+@media (min-width: 1024px) {
+  html.fi.fi-panel-admin .fi-auth-layout.media-left .fi-auth-media-section,
+  html.fi.fi-panel-admin .fi-auth-layout.media-right .fi-auth-media-section {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 1023px) {
+  .cmp-auth-hero__logo {
+    max-height: 120px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .cmp-auth-hero__title {
+    font-size: 1.25rem;
+  }
+}

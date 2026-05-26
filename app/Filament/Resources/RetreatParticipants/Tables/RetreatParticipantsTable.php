@@ -3,8 +3,6 @@
 namespace App\Filament\Resources\RetreatParticipants\Tables;
 
 use App\Filament\Resources\RetreatParticipants\RetreatParticipantResource;
-use App\Models\RetreatAtelier;
-use App\Models\RetreatChambre;
 use App\Models\RetreatParticipant;
 use App\Models\User;
 use App\Services\RetreatParticipantRegistrationService;
@@ -17,7 +15,6 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Support\Enums\Alignment;
@@ -29,7 +26,6 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
 use TinusG\FilamentHoverImageColumn\HoverImageColumn;
 use Wezlo\FilamentRecordWatcher\Actions\UnwatchAction;
 use Wezlo\FilamentRecordWatcher\Actions\WatchAction;
@@ -403,15 +399,13 @@ class RetreatParticipantsTable
                         ->icon('heroicon-o-home-modern')
                         ->visible(fn (RetreatParticipant $record): bool => blank($record->chambre_id)
                             && app(RetreatPlacementAssignmentService::class)->requiresChambrePlacement($record))
-                        ->form([
-                            Select::make('chambre_id')
-                                ->label('Chambre')
-                                ->options(fn (?RetreatParticipant $record = null): array => self::getChambreOptions($record))
-                                ->allowHtml()
-                                ->searchable()
-                                ->required(),
-                        ])
-                        ->action(fn ($record, array $data) => $record->update(['chambre_id' => $data['chambre_id']])),
+                        ->requiresConfirmation()
+                        ->modalHeading('Affectation automatique de chambre')
+                        ->modalDescription('Le systeme choisit la chambre la moins remplie compatible (sexe, capacite).')
+                        ->action(function (RetreatParticipant $record): void {
+                            $result = app(RetreatPlacementAssignmentService::class)->assignChambreAutomatically($record);
+                            self::notifyPlacementResult('Affectation chambre', $result);
+                        }),
                     Action::make('retirer_chambre')
                         ->label('Retirer chambre')
                         ->icon('heroicon-o-home-modern')
@@ -423,15 +417,13 @@ class RetreatParticipantsTable
                         ->label('Integrer atelier')
                         ->icon('heroicon-o-wrench-screwdriver')
                         ->visible(fn ($record): bool => blank($record->atelier_id))
-                        ->form([
-                            Select::make('atelier_id')
-                                ->label('Atelier')
-                                ->options(fn (?RetreatParticipant $record = null): array => self::getAtelierOptions($record))
-                                ->allowHtml()
-                                ->searchable()
-                                ->required(),
-                        ])
-                        ->action(fn ($record, array $data) => $record->update(['atelier_id' => $data['atelier_id']])),
+                        ->requiresConfirmation()
+                        ->modalHeading('Affectation automatique d\'atelier')
+                        ->modalDescription('Le systeme choisit l\'atelier le plus equilibre selon l\'age et le sexe du participant.')
+                        ->action(function (RetreatParticipant $record): void {
+                            $result = app(RetreatPlacementAssignmentService::class)->assignAtelierAutomatically($record);
+                            self::notifyPlacementResult('Affectation atelier', $result);
+                        }),
                     Action::make('desintegrer_atelier')
                         ->label('Desintegrer atelier')
                         ->icon('heroicon-o-arrow-right-circle')
@@ -518,35 +510,63 @@ class RetreatParticipantsTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     BulkAction::make('affecter_chambre')
-                        ->label('Affecter chambre (selection)')
+                        ->label('Affecter chambre (auto)')
                         ->icon('heroicon-o-home-modern')
-                        ->form([
-                            Select::make('chambre_id')
-                                ->label('Chambre')
-                                ->options(fn (): array => self::getChambreOptions())
-                                ->allowHtml()
-                                ->searchable()
-                                ->required(),
-                        ])
-                        ->action(function ($records, array $data): void {
+                        ->requiresConfirmation()
+                        ->modalHeading('Affectation automatique de chambre')
+                        ->modalDescription('Chaque participant interne sans chambre recevra une chambre selon les regles d\'equilibrage.')
+                        ->action(function ($records): void {
                             $placement = app(RetreatPlacementAssignmentService::class);
+                            $success = 0;
+                            $failures = [];
 
-                            $records
-                                ->filter(fn (RetreatParticipant $record): bool => $placement->requiresChambrePlacement($record))
-                                ->each(fn (RetreatParticipant $record) => $record->update(['chambre_id' => $data['chambre_id']]));
+                            foreach ($records as $record) {
+                                if (! $record instanceof RetreatParticipant) {
+                                    continue;
+                                }
+
+                                $result = $placement->assignChambreAutomatically($record);
+
+                                if ($result['success']) {
+                                    $success++;
+
+                                    continue;
+                                }
+
+                                $failures[] = $record->full_name.': '.$result['message'];
+                            }
+
+                            self::notifyBulkPlacementResult('Affectation chambre', $success, $failures);
                         }),
                     BulkAction::make('integrer_atelier')
-                        ->label('Integrer atelier (selection)')
+                        ->label('Integrer atelier (auto)')
                         ->icon('heroicon-o-wrench-screwdriver')
-                        ->form([
-                            Select::make('atelier_id')
-                                ->label('Atelier')
-                                ->options(fn (): array => self::getAtelierOptions())
-                                ->allowHtml()
-                                ->searchable()
-                                ->required(),
-                        ])
-                        ->action(fn ($records, array $data) => $records->each(fn ($record) => $record->update(['atelier_id' => $data['atelier_id']]))),
+                        ->requiresConfirmation()
+                        ->modalHeading('Affectation automatique d\'atelier')
+                        ->modalDescription('Chaque participant sans atelier recevra un atelier selon les regles d\'equilibrage.')
+                        ->action(function ($records): void {
+                            $placement = app(RetreatPlacementAssignmentService::class);
+                            $success = 0;
+                            $failures = [];
+
+                            foreach ($records as $record) {
+                                if (! $record instanceof RetreatParticipant) {
+                                    continue;
+                                }
+
+                                $result = $placement->assignAtelierAutomatically($record);
+
+                                if ($result['success']) {
+                                    $success++;
+
+                                    continue;
+                                }
+
+                                $failures[] = $record->full_name.': '.$result['message'];
+                            }
+
+                            self::notifyBulkPlacementResult('Affectation atelier', $success, $failures);
+                        }),
                     BulkAction::make('desintegrer_atelier')
                         ->label('Desintegrer atelier (selection)')
                         ->color('danger')
@@ -557,89 +577,79 @@ class RetreatParticipantsTable
             ]);
     }
 
-    protected static function getChambreOptions(?RetreatParticipant $participant = null): array
-    {
-        $query = RetreatChambre::query()
-            ->with('responsable')
-            ->withCount('participants')
-            ->orderBy('nom');
 
-        if ($participant) {
-            $sexe = app(RetreatPlacementAssignmentService::class)->normalizeSexe($participant->sexe);
-            $query->where(function ($query) use ($sexe): void {
-                $query->whereNull('sexe')
-                    ->orWhere('sexe', '')
-                    ->orWhere('sexe', 'mixte')
-                    ->orWhere('sexe', $sexe);
-            });
+    /**
+     * Affiche le resultat d'une affectation automatique (succes ou impossibilite).
+     *
+     * @param string $title Titre de la notification
+     * @param array{success: bool, message: string} $result Resultat du service
+     * @return void
+     */
+    protected static function notifyPlacementResult(string $title, array $result): void
+    {
+        $notification = Notification::make()
+            ->title($title)
+            ->body($result['message']);
+
+        if ($result['success']) {
+            $notification->success()->send();
+
+            return;
         }
 
-        return $query->get()
-            ->filter(fn (RetreatChambre $chambre): bool => ($chambre->participants_count ?? 0) < (int) $chambre->capacite)
-            ->mapWithKeys(fn (RetreatChambre $chambre): array => [
-                $chambre->id => self::assignmentOptionLabel(
-                    $chambre->nom.' · '.($chambre->sexe ?: 'mixte').' · '.($chambre->participants_count ?? 0).'/'.$chambre->capacite,
-                    $chambre->responsable
-                ),
-            ])
-            ->all();
+        $notification->warning()->send();
     }
 
-    protected static function getAtelierOptions(?RetreatParticipant $participant = null): array
+    /**
+     * Resume d'une affectation automatique en masse.
+     *
+     * @param string $title Titre de la notification
+     * @param int $success Nombre de reussites
+     * @param list<string> $failures Messages d'echec par participant
+     * @return void
+     */
+    protected static function notifyBulkPlacementResult(string $title, int $success, array $failures): void
     {
-        $query = RetreatAtelier::query()
-            ->with('responsable')
-            ->withCount('participants')
-            ->orderBy('numero');
+        if ($success === 0 && $failures === []) {
+            Notification::make()
+                ->title($title)
+                ->body('Aucun participant eligible dans la selection.')
+                ->warning()
+                ->send();
 
-        if ($participant) {
-            $placement = app(RetreatPlacementAssignmentService::class);
-            $age = (int) $participant->age;
+            return;
+        }
 
-            $ateliers = $query->get()->filter(
-                fn (RetreatAtelier $atelier): bool => $placement->matchesAtelierAgeRange($atelier, $age)
-            );
+        $body = $success > 0
+            ? sprintf('%d participant(s) affecte(s).', $success)
+            : 'Aucune affectation realisee.';
 
-            if ($ateliers->isEmpty()) {
-                $numbers = $placement->atelierNumbersForAge($age);
-                $ateliers = RetreatAtelier::query()
-                    ->with('responsable')
-                    ->withCount('participants')
-                    ->whereIn('numero', $numbers)
-                    ->orderBy('numero')
-                    ->get();
+        if ($failures !== []) {
+            $preview = array_slice($failures, 0, 5);
+            $body .= "\n\n".implode("\n", $preview);
+
+            if (count($failures) > 5) {
+                $body .= sprintf("\n... et %d autre(s).", count($failures) - 5);
             }
-
-            return $ateliers
-                ->mapWithKeys(fn (RetreatAtelier $atelier): array => [
-                    $atelier->id => self::assignmentOptionLabel(
-                        self::atelierOptionTitle($atelier),
-                        $atelier->responsable
-                    ),
-                ])
-                ->all();
         }
 
-        return $query->get()
-            ->mapWithKeys(fn (RetreatAtelier $atelier): array => [
-                $atelier->id => self::assignmentOptionLabel(
-                    "Atelier {$atelier->numero} · ".($atelier->participants_count ?? 0).' inscrit(s)',
-                    $atelier->responsable
-                ),
-            ])
-            ->all();
-    }
+        $notification = Notification::make()
+            ->title($title)
+            ->body($body);
 
-    protected static function atelierOptionTitle(RetreatAtelier $atelier): string
-    {
-        $ageLabel = '';
-        if (filled($atelier->age_min) || filled($atelier->age_max)) {
-            $min = $atelier->age_min ?? '…';
-            $max = $atelier->age_max ?? '…';
-            $ageLabel = " · {$min}–{$max} ans";
+        if ($success > 0 && $failures === []) {
+            $notification->success()->send();
+
+            return;
         }
 
-        return "Atelier {$atelier->numero}{$ageLabel} · ".($atelier->participants_count ?? 0).' inscrit(s)';
+        if ($success > 0) {
+            $notification->warning()->send();
+
+            return;
+        }
+
+        $notification->danger()->send();
     }
 
     /**
@@ -653,38 +663,5 @@ class RetreatParticipantsTable
         }
 
         return $record->badge_received ? 'received' : 'pending';
-    }
-
-    protected static function assignmentOptionLabel(string $title, ?User $responsable): string
-    {
-        $responsableName = $responsable?->name ?? 'Non defini';
-
-        return sprintf(
-            '<div class="flex items-center gap-2"><span class="font-medium">%s</span><div class="ml-auto flex items-center gap-2 text-xs text-gray-500"><span>Responsable:</span>%s<span>%s</span></div></div>',
-            e($title),
-            self::avatarHtml($responsableName, $responsable?->profile_photo_path),
-            e($responsableName)
-        );
-    }
-
-    protected static function avatarHtml(string $name, ?string $path): string
-    {
-        return sprintf(
-            '<img src="%s" alt="%s" class="h-5 w-5 shrink-0 rounded-full object-cover" onerror="%s" />',
-            e(self::imageUrl($path)),
-            e($name),
-            htmlspecialchars(AvatarFallback::imgOnErrorAttribute(), ENT_COMPAT | ENT_HTML401, 'UTF-8'),
-        );
-    }
-
-    protected static function imageUrl(?string $path): string
-    {
-        if (filled($path)) {
-            return Str::startsWith($path, ['http://', 'https://', '/'])
-                ? $path
-                : (app(\App\Services\PublicStorageUrl::class)->fromPath($path) ?? AvatarFallback::url());
-        }
-
-        return AvatarFallback::url();
     }
 }
