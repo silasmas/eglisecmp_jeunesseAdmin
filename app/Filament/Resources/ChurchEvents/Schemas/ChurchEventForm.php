@@ -39,7 +39,10 @@ class ChurchEventForm
                             ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
                             ->maxSize(8192),
                         Toggle::make('is_active')
-                            ->label('Actif')
+                            ->label('Actif (événement courant)')
+                            ->helperText(
+                                'Un seul événement actif à la fois. Ce réglage n’est plus coupé automatiquement quand la date de début est passée : les inscriptions en ligne se ferment seules si le début est dépassé (contrôle API), sans désactiver la fiche ici.'
+                            )
                             ->required(),
                     ])
                     ->columns(2),

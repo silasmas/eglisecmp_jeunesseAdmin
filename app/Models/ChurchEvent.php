@@ -31,10 +31,11 @@ class ChurchEvent extends Model
                 $event->access_otp_channel = EventAccessOtpChannel::Email;
             }
 
-            if ($event->start_at?->isPast()) {
-                $event->is_active = false;
-            }
-
+            /*
+             * Ne pas forcer is_active à false quand start_at est passé : cela désactivait
+             * l’événement à chaque enregistrement (modif. prix, affiche, etc.).
+             * Les inscriptions publiques restent fermées via isOpenForPublicRetreatRegistration().
+             */
             if (! $event->is_active) {
                 return;
             }
@@ -50,6 +51,18 @@ class ChurchEvent extends Model
                 ]);
             }
         });
+    }
+
+    /**
+     * Vrai si l’événement peut ouvrir le formulaire d’inscription publique (API / portail).
+     * Indépendant du seul booléen is_active (gestion admin).
+     */
+    public function isOpenForPublicRetreatRegistration(): bool
+    {
+        return $this->type === 'retraite'
+            && $this->is_active
+            && $this->start_at !== null
+            && $this->start_at->isFuture();
     }
 
     protected $table = 'events_event';
