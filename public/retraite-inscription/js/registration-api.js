@@ -446,14 +446,19 @@ function onEnterPaymentStep() {
   }
   labelEl.textContent = `${formatRetraiteMoney(ev.price_to_pay, ev.currency)} · frais d’inscription`;
   mountFlexpayProviders(ev.flexpay_mobile_providers || []);
-  hidePaymentProgressPanel();
-  const phoneIn = document.getElementById('flexpayPhoneInput');
-  if (phoneIn) phoneIn.value = '';
 
-  document.querySelectorAll('input[name="paymentMode"]').forEach(r => {
-    r.checked = false;
-  });
-  togglePaymentSections(null);
+  const preservePollUi = App.paymentPollActive === true && !!App.paymentReference;
+  if (!preservePollUi) {
+    hidePaymentProgressPanel();
+    const phoneIn = document.getElementById('flexpayPhoneInput');
+    if (phoneIn && !phoneIn.value.trim()) {
+      phoneIn.value = '';
+    }
+    document.querySelectorAll('input[name="paymentMode"]').forEach(r => {
+      r.checked = false;
+    });
+    togglePaymentSections(null);
+  }
 }
 
 function wirePaymentModes() {
@@ -698,6 +703,10 @@ async function triggerMobilePayment() {
   }
 
   App.paymentReference = (json.data && json.data.reference) || App.paymentReference;
+  App.paymentPollActive = true;
+  if (typeof persistRetraitePaymentPollState === 'function') {
+    persistRetraitePaymentPollState(true);
+  }
   setPaymentProgressStep(
     2,
     'Une alerte a été envoyée sur votre téléphone — validez avec votre code secret ou selon les instructions de votre opérateur.'
@@ -715,6 +724,7 @@ function retraitePaymentPollIndicatesSuccess(d) {
   if (!d || typeof d !== 'object') return false;
   const code = d.statut_code;
   if (code === 0 || code === '0') return true;
+  if (d.payee === true || d.payment_etat === 'payee') return true;
   if (d.paiement_valide === true && (d.payee === true || d.payment_etat === 'payee')) return true;
   return false;
 }
@@ -817,6 +827,13 @@ async function submitCashFlow() {
     return;
   }
   App.paymentModeCompleted = 'cash';
+  if (typeof trackRetraiteFunnel === 'function' && window.RETRAITE_FUNNEL_STAGES) {
+    trackRetraiteFunnel(
+      RETRAITE_FUNNEL_STAGES.payment_cash_proof_submitted,
+      'Preuve espèces envoyée.',
+      { channel: 'cash' }
+    );
+  }
   retraiteNotifyToast(
     'Preuve reçue. Vous recevrez un e-mail après validation par l’équipe.',
     'success'
@@ -844,11 +861,21 @@ const MOBILE_PAY_MANUAL_SESSIONS_MAX = 3;
 let pollTimer = null;
 /** Restant après premier timeout auto ; décrémenté à chaque timeout d’une série lancée via « Relancer ». */
 let mobilePayManualSessionsLeft = null;
+let mobilePayPollInFlight = false;
+let mobilePayPollErrorStreak = 0;
 
 function stopMobilePaymentPollTimer() {
   if (pollTimer) {
     clearInterval(pollTimer);
     pollTimer = null;
+  }
+  mobilePayPollInFlight = false;
+}
+
+function endMobilePaymentPollSession() {
+  App.paymentPollActive = false;
+  if (typeof persistRetraitePaymentPollState === 'function') {
+    persistRetraitePaymentPollState(false);
   }
 }
 
@@ -868,6 +895,14 @@ function showPaymentPollRelaunchUi(sessionsLeft) {
 
 function showMobilePaymentPollFullyExhausted() {
   hidePaymentPollRelaunchUi();
+  endMobilePaymentPollSession();
+  if (typeof trackRetraiteFunnel === 'function' && window.RETRAITE_FUNNEL_STAGES) {
+    trackRetraiteFunnel(
+      RETRAITE_FUNNEL_STAGES.payment_mobile_poll_exhausted,
+      'Toutes les relances de vérification sont épuisées.',
+      { channel: 'mobile_money' }
+    );
+  }
   const hint = document.getElementById('mobilePayHint');
   setPaymentProgressStep(2, 'Plusieurs vérifications sans confirmation automatique.');
   showPaymentBanner(
@@ -921,7 +956,19 @@ function startMobilePaymentStatusPolling(reference, mode, originalBtnHtml, pollO
     }
   };
 
+  if (typeof trackRetraiteFunnel === 'function' && window.RETRAITE_FUNNEL_STAGES) {
+    trackRetraiteFunnel(
+      RETRAITE_FUNNEL_STAGES.payment_mobile_polling,
+      'Surveillance opérateur en cours sur la page.',
+      { channel: 'mobile_money', payment_reference: reference }
+    );
+  }
+
   const runPollTick = async () => {
+    if (mobilePayPollInFlight) {
+      return;
+    }
+    mobilePayPollInFlight = true;
     tries += 1;
     const pct = Math.round((Math.min(tries, maxTicks) / maxTicks) * 100);
     setPaymentProgressStep(
@@ -936,9 +983,17 @@ function startMobilePaymentStatusPolling(reference, mode, originalBtnHtml, pollO
     if (tries > maxTicks) {
       finishPollStopped();
       setPaymentProgressStep(2, 'Temps d’attente dépassé.');
+      mobilePayPollInFlight = false;
 
       if (!decrementCreditOnTimeout) {
         mobilePayManualSessionsLeft = MOBILE_PAY_MANUAL_SESSIONS_MAX;
+        if (typeof trackRetraiteFunnel === 'function' && window.RETRAITE_FUNNEL_STAGES) {
+          trackRetraiteFunnel(
+            RETRAITE_FUNNEL_STAGES.payment_mobile_poll_timeout,
+            'Première série de vérification terminée sans confirmation.',
+            { channel: 'mobile_money' }
+          );
+        }
         showPaymentBanner(
           'Première surveillance terminée sans confirmation. Validez le paiement sur le téléphone si ce n’est pas fait, puis utilisez «&nbsp;Relancer la vérification du statut&nbsp;» jusqu’à 3 fois.',
           'warning'
@@ -967,19 +1022,46 @@ function startMobilePaymentStatusPolling(reference, mode, originalBtnHtml, pollO
         headers: { Accept: 'application/json' },
       });
       json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        mobilePayPollErrorStreak += 1;
+        const errMsg = json.message || 'Impossible de joindre le service de vérification.';
+        setPaymentProgressStep(
+          2,
+          `${errMsg} (tentative ${tries}/${maxTicks}) — nous réessayons automatiquement…`
+        );
+        if (mobilePayPollErrorStreak >= 3) {
+          showPaymentBanner(
+            `<strong>Problème technique</strong> lors de la vérification : ${errMsg}. Gardez la page ouverte ou utilisez « Relancer la vérification ».`,
+            'warning'
+          );
+        }
+        mobilePayPollInFlight = false;
+        return;
+      }
+      mobilePayPollErrorStreak = 0;
     } catch (e) {
+      mobilePayPollErrorStreak += 1;
+      setPaymentProgressStep(
+        2,
+        `Connexion interrompue (tentative ${tries}/${maxTicks}). Nouvelle tentative…`
+      );
+      mobilePayPollInFlight = false;
       return;
     }
 
     const d = json.data || {};
     if (retraitePaymentPollIndicatesSuccess(d)) {
       finishPollStopped();
+      endMobilePaymentPollSession();
       mobilePayManualSessionsLeft = null;
       setPaymentProgressStep(3, 'Le paiement est confirmé. Vous pouvez passer à votre billet.');
       showPaymentBanner('Paiement confirmé par votre opérateur. Ouverture de votre billet…', 'success');
       App.paymentModeCompleted = mode;
       if (hint) hint.textContent = 'Paiement confirmé.';
-      if (typeof finalizeBadgeUi === 'function') finalizeBadgeUi('electronic_success');
+      if (typeof finalizeBadgeUi === 'function') {
+        await finalizeBadgeUi('electronic_success');
+      }
+      mobilePayPollInFlight = false;
       return;
     }
 
@@ -987,14 +1069,23 @@ function startMobilePaymentStatusPolling(reference, mode, originalBtnHtml, pollO
     const cancelled = code === 1 || code === '1';
     if (cancelled) {
       finishPollStopped();
+      endMobilePaymentPollSession();
       mobilePayManualSessionsLeft = null;
-      hidePaymentProgressPanel();
+      if (typeof trackRetraiteFunnel === 'function' && window.RETRAITE_FUNNEL_STAGES) {
+        trackRetraiteFunnel(
+          RETRAITE_FUNNEL_STAGES.payment_mobile_cancelled,
+          'Paiement annulé côté opérateur.',
+          { channel: 'mobile_money' }
+        );
+      }
+      setPaymentProgressStep(2, 'Paiement annulé par l’opérateur.');
       showPaymentBanner(
         'Ce paiement a été annulé côté opérateur. Vous pouvez relancer, ou changer immédiatement de moyen de paiement (carte / espèces).',
         'warning'
       );
       if (hint) hint.textContent = 'Paiement annulé.';
     }
+    mobilePayPollInFlight = false;
   };
 
   void runPollTick();
@@ -1044,6 +1135,14 @@ function wireRelaunchPaymentPoll() {
 async function handleCardReturnFlash() {
   const ret = window.__RETRAITE_CARD_RETURN__;
   if (!ret || !ret.ref) return;
+
+  if (typeof trackRetraiteFunnel === 'function' && window.RETRAITE_FUNNEL_STAGES && App.participantId) {
+    trackRetraiteFunnel(
+      RETRAITE_FUNNEL_STAGES.payment_card_return_unpaid,
+      ret.status === 'missing' ? 'Retour carte sans référence.' : 'Retour carte sans encaissement.',
+      { channel: 'card', payment_reference: ret.ref }
+    );
+  }
 
   showPaymentBanner(
     ret.status === 'missing'
@@ -1103,7 +1202,45 @@ async function resumeAfterCardPayment(reference) {
   if (typeof goToStep === 'function') goToStep(4);
 }
 
+/**
+ * Reprend le suivi Mobile Money après rechargement de la page.
+ */
+async function resumeInscriptionPaymentPollIfNeeded() {
+  let ref = null;
+  let polling = false;
+  try {
+    ref = sessionStorage.getItem('retraite_payment_ref');
+    polling = sessionStorage.getItem('retraite_payment_poll') === '1';
+  } catch (e) {
+    return;
+  }
+  if (!polling || !ref || !App.participantId) {
+    return;
+  }
+  App.paymentReference = ref;
+  App.paymentPollActive = true;
+  if (typeof goToStep === 'function') {
+    goToStep(4);
+  }
+  const mmRadio = document.getElementById('payModeMm');
+  if (mmRadio) {
+    mmRadio.checked = true;
+    togglePaymentSections('mobile_money');
+  }
+  setPaymentProgressStep(2, 'Reprise du suivi après rechargement de la page…');
+  showPaymentBanner(
+    'Nous reprenons la vérification de votre paiement Mobile Money. Laissez cette page ouverte.',
+    'info'
+  );
+  const btn = document.getElementById('btnTriggerMobilePay');
+  const orig = btn ? btn.innerHTML : '';
+  startMobilePaymentStatusPolling(ref, 'mobile_money', orig, {
+    decrementManualCreditOnTimeout: false,
+  });
+}
+
 window.onEnterPaymentStep = onEnterPaymentStep;
 window.wirePaymentModes = wirePaymentModes;
 window.confirmRecapAndProceed = confirmRecapAndProceed;
 window.resumeAfterCardPayment = resumeAfterCardPayment;
+window.resumeInscriptionPaymentPollIfNeeded = resumeInscriptionPaymentPollIfNeeded;

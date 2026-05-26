@@ -52,6 +52,7 @@
   <script src="{{ $rv('js/notifications.js') }}"></script>
   <script src="{{ $r }}/js/registration-api.js"></script>
   <script src="{{ $r }}/js/state.js"></script>
+  <script src="{{ $rv('js/funnel-tracking.js') }}"></script>
   <script src="{{ $r }}/js/stepper.js"></script>
   <script src="{{ $r }}/js/validation.js"></script>
   <script src="{{ $r }}/js/phone-live-validation.js"></script>

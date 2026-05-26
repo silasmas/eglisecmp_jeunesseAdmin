@@ -18,6 +18,7 @@ use App\Services\KeccelSmsService;
 use App\Services\PublicStorageUrl;
 use App\Services\RetreatCashPaymentAdminNotifier;
 use App\Services\RetreatPlacementAssignmentService;
+use App\Services\RetreatInscriptionFunnelService;
 use App\Services\RetreatInscriptionPaymentCompletionService;
 use App\Services\StoragePathService;
 use App\Support\StoragePath;
@@ -44,6 +45,7 @@ class RetreatPublicRegistrationController extends Controller
         protected RetreatInscriptionPaymentCompletionService $paymentCompletion,
         protected KeccelSmsService $keccelSms,
         protected RetreatCashPaymentAdminNotifier $cashPaymentAdminNotifier,
+        protected RetreatInscriptionFunnelService $inscriptionFunnel,
     ) {}
 
     /**
@@ -836,6 +838,12 @@ class RetreatPublicRegistrationController extends Controller
             ], 500);
         }
 
+        $this->inscriptionFunnel->record(
+            $participant,
+            RetreatInscriptionFunnelService::STAGE_REGISTERED,
+            'Formulaire validé — passage au paiement attendu.'
+        );
+
         return response()->json([
             'message' => 'Inscription enregistrée. Vous pouvez procéder au paiement.',
             'data' => [
@@ -1027,6 +1035,36 @@ class RetreatPublicRegistrationController extends Controller
         return route('retraite.inscription.acces', ['token' => $participant->download_token], absolute: true);
     }
 
+    /**
+     * Enregistre l’étape du parcours côté navigateur (formulaire / feedback paiement).
+     */
+    public function recordFunnel(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'participant_id' => ['required', 'integer', 'exists:retreat_participant,id'],
+            'stage' => ['required', 'string', 'max:64'],
+            'detail' => ['nullable', 'string', 'max:500'],
+            'payment_reference' => ['nullable', 'string', 'max:64'],
+            'channel' => ['nullable', 'string', 'max:20'],
+        ]);
+
+        $participant = RetreatParticipant::query()->findOrFail((int) $validated['participant_id']);
+
+        $meta = array_filter([
+            'payment_reference' => $validated['payment_reference'] ?? null,
+            'channel' => $validated['channel'] ?? null,
+        ]);
+
+        $this->inscriptionFunnel->record(
+            $participant,
+            $validated['stage'],
+            $validated['detail'] ?? null,
+            $meta
+        );
+
+        return response()->json(['ok' => true]);
+    }
+
     public function participantStatus(RetreatParticipant $participant): JsonResponse
     {
         $participant->load(['payments.event']);
@@ -1112,6 +1150,13 @@ class RetreatPublicRegistrationController extends Controller
             'channel' => 'mobile_money',
         ]);
 
+        $this->inscriptionFunnel->record(
+            $participant,
+            RetreatInscriptionFunnelService::STAGE_PAYMENT_MOBILE_INITIATED,
+            'Demande Mobile Money transmise — en attente sur le téléphone.',
+            ['payment_reference' => $payment->reference, 'channel' => 'mobile_money']
+        );
+
         return response()->json([
             'message' => $result['message'] ?? 'Validez le paiement sur votre téléphone.',
             'data' => [
@@ -1135,6 +1180,13 @@ class RetreatPublicRegistrationController extends Controller
         $external = config('retraite.card_external_form_url');
         if (filled($external)) {
             $payment = $this->firstOrCreatePayment($participant, $event, 'card');
+
+            $this->inscriptionFunnel->record(
+                $participant,
+                RetreatInscriptionFunnelService::STAGE_PAYMENT_CARD_INITIATED,
+                'Redirection vers le formulaire carte externe.',
+                ['payment_reference' => $payment->reference, 'channel' => 'card']
+            );
 
             return response()->json([
                 'data' => [
@@ -1175,6 +1227,13 @@ class RetreatPublicRegistrationController extends Controller
             'etat' => 'en_cours',
             'channel' => 'card',
         ]);
+
+        $this->inscriptionFunnel->record(
+            $participant,
+            RetreatInscriptionFunnelService::STAGE_PAYMENT_CARD_INITIATED,
+            'Redirection FlexPay carte.',
+            ['payment_reference' => $payment->reference, 'channel' => 'card']
+        );
 
         return response()->json([
             'data' => [
@@ -1226,6 +1285,13 @@ class RetreatPublicRegistrationController extends Controller
             report($e);
         }
 
+        $this->inscriptionFunnel->record(
+            $participant->fresh(),
+            RetreatInscriptionFunnelService::STAGE_PAYMENT_CASH_PROOF,
+            'Preuve espèces téléversée — validation admin requise.',
+            ['payment_reference' => $payment->reference, 'channel' => 'cash']
+        );
+
         return response()->json([
             'message' => 'Preuve enregistrée. Après validation par l’équipe, vous recevrez un e-mail avec la confirmation et les prochaines étapes.',
             'data' => [
@@ -1247,6 +1313,14 @@ class RetreatPublicRegistrationController extends Controller
 
         if ($payment->etat === 'payee' || (bool) $payment->participant?->paiement_valide) {
             $payment->participant?->refresh();
+            if ($payment->participant) {
+                $this->inscriptionFunnel->record(
+                    $payment->participant,
+                    RetreatInscriptionFunnelService::STAGE_PAYMENT_MOBILE_CONFIRMED,
+                    'Paiement déjà confirmé (consultation statut).',
+                    ['payment_reference' => $payment->reference, 'channel' => $payment->channel]
+                );
+            }
 
             return response()->json([
                 'data' => [
@@ -1304,14 +1378,38 @@ class RetreatPublicRegistrationController extends Controller
             case 0:
                 $this->paymentCompletion->markElectronicPaid($payment, 'FlexPay confirmé via polling.');
                 $message = 'Paiement confirmé.';
+                if ($payment->participant) {
+                    $this->inscriptionFunnel->record(
+                        $payment->participant,
+                        RetreatInscriptionFunnelService::STAGE_PAYMENT_MOBILE_CONFIRMED,
+                        'Encaissement confirmé par l’opérateur.',
+                        ['payment_reference' => $payment->reference, 'channel' => $payment->channel]
+                    );
+                }
                 break;
             case 1:
                 $payment->update(['etat' => 'annulee']);
                 $message = 'Paiement annulé.';
+                if ($payment->participant) {
+                    $this->inscriptionFunnel->record(
+                        $payment->participant,
+                        RetreatInscriptionFunnelService::STAGE_PAYMENT_MOBILE_CANCELLED,
+                        'Transaction annulée côté opérateur.',
+                        ['payment_reference' => $payment->reference, 'channel' => $payment->channel]
+                    );
+                }
                 break;
             case 2:
                 $payment->update(['etat' => 'en_cours']);
                 $message = 'En attente de paiement.';
+                if ($payment->participant) {
+                    $this->inscriptionFunnel->record(
+                        $payment->participant,
+                        RetreatInscriptionFunnelService::STAGE_PAYMENT_MOBILE_POLLING,
+                        'Paiement toujours en attente chez l’opérateur.',
+                        ['payment_reference' => $payment->reference, 'channel' => $payment->channel]
+                    );
+                }
                 break;
             default:
                 return response()->json([

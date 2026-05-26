@@ -20,6 +20,7 @@ window.App = {
   participantId: null,
   paymentReference: null,
   paymentModeCompleted: null,
+  paymentPollActive: false,
   activeEvent: null,
   selectedFlexpayType: null,
   badgeView: null,

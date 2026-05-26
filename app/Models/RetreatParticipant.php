@@ -40,6 +40,7 @@ class RetreatParticipant extends Model implements HasAvatar, HasName
             'registration_otp_sent_at' => 'datetime',
             'registration_otp_expires_at' => 'datetime',
             'registration_otp_verified_at' => 'datetime',
+            'inscription_funnel_at' => 'datetime',
         ];
     }
 
@@ -82,6 +83,14 @@ class RetreatParticipant extends Model implements HasAvatar, HasName
     public function payments(): HasMany
     {
         return $this->hasMany(RetreatPayment::class, 'participant_id');
+    }
+
+    /**
+     * Dernier enregistrement de paiement (tous canaux).
+     */
+    public function latestPayment(): HasOne
+    {
+        return $this->hasOne(RetreatPayment::class, 'participant_id')->latestOfMany('id');
     }
 
     /**

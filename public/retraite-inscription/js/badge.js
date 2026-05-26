@@ -186,11 +186,20 @@ async function finalizeBadgeUi(view) {
     if (view === 'electronic_success') {
       const ok = await assertParticipantElectronicPaymentVerified();
       if (!ok) {
+        if (typeof trackRetraiteFunnel === 'function' && window.RETRAITE_FUNNEL_STAGES) {
+          trackRetraiteFunnel(
+            RETRAITE_FUNNEL_STAGES.payment_server_verify_failed,
+            'Le serveur n’a pas confirmé le paiement avant l’affichage du billet.',
+            { channel: App.paymentModeCompleted || 'mobile_money' }
+          );
+        }
         retraiteNotifyToast(
-          'Le paiement n’est pas confirmé côté serveur. Restez sur l’étape paiement ou réessayez.',
+          'Le paiement n’est pas confirmé côté serveur. Le suivi reste visible — réessayez ou contactez l’organisation.',
           'warning'
         );
-        if (typeof goToStep === 'function') goToStep(4);
+        if (typeof goToStep === 'function') {
+          goToStep(4);
+        }
         return;
       }
     }
@@ -227,6 +236,9 @@ async function finalizeBadgeUi(view) {
       }
     }
 
+    if (typeof trackRetraiteFunnel === 'function' && window.RETRAITE_FUNNEL_STAGES) {
+      trackRetraiteFunnel(RETRAITE_FUNNEL_STAGES.badge_reached, 'Billet affiché.', null);
+    }
     goToStep(5);
     saveState();
     if (typeof resetRetraiteUrlParams === 'function') resetRetraiteUrlParams();

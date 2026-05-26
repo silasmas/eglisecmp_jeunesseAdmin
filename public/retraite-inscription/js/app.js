@@ -135,6 +135,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   restoreState();
   updateStepper();
 
+  if (typeof resumeInscriptionPaymentPollIfNeeded === 'function') {
+    await resumeInscriptionPaymentPollIfNeeded();
+  }
+
   if (typeof handleCardReturnFlash === 'function') {
     handleCardReturnFlash();
   }

@@ -35,6 +35,9 @@ Route::prefix('v1/retreat/inscription')
         Route::post('register', [RetreatPublicRegistrationController::class, 'register'])
             ->middleware('throttle:12,1')
             ->name('register');
+        Route::post('funnel', [RetreatPublicRegistrationController::class, 'recordFunnel'])
+            ->middleware('throttle:60,1')
+            ->name('funnel');
         Route::get('participants/{participant}/status', [RetreatPublicRegistrationController::class, 'participantStatus'])->name('participants.status');
         Route::post('participants/{participant}/payments/mobile', [RetreatPublicRegistrationController::class, 'initMobilePayment'])->name('participants.payments.mobile');
         Route::post('participants/{participant}/payments/card', [RetreatPublicRegistrationController::class, 'initCardPayment'])->name('participants.payments.card');

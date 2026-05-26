@@ -5,6 +5,7 @@ namespace App\Filament\Resources\RetreatParticipants\Schemas;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
+use App\Services\RetreatInscriptionFunnelService;
 use Filament\Schemas\Schema;
 
 class RetreatParticipantInfolist
@@ -73,6 +74,20 @@ class RetreatParticipantInfolist
                         TextEntry::make('curfew_time')->time()->placeholder('-'),
                         TextEntry::make('guardian_name')->placeholder('-'),
                         TextEntry::make('guardian_phone')->placeholder('-'),
+                        TextEntry::make('inscription_funnel_stage')
+                            ->label('Étape parcours inscription')
+                            ->formatStateUsing(
+                                fn (?string $state): string => app(RetreatInscriptionFunnelService::class)->labelFor($state)
+                            )
+                            ->placeholder('—'),
+                        TextEntry::make('inscription_funnel_detail')
+                            ->label('Détail parcours')
+                            ->columnSpanFull()
+                            ->placeholder('—'),
+                        TextEntry::make('inscription_funnel_at')
+                            ->label('Dernière activité parcours')
+                            ->dateTime()
+                            ->placeholder('—'),
                         TextEntry::make('registration_status'),
                         TextEntry::make('registration_otp_code')->placeholder('-'),
                         TextEntry::make('registration_otp_sent_at')->dateTime()->placeholder('-'),

@@ -32,6 +32,8 @@ function resetRetraiteInscriptionFully() {
   try {
     sessionStorage.removeItem('retraite_inscription');
     sessionStorage.removeItem('retraite_participant_id');
+    sessionStorage.removeItem('retraite_payment_ref');
+    sessionStorage.removeItem('retraite_payment_poll');
   } catch (e) {
     /* ignore */
   }
@@ -43,6 +45,10 @@ function resetRetraiteInscriptionFully() {
   App.participantId = null;
   App.paymentReference = null;
   App.paymentModeCompleted = null;
+  App.paymentPollActive = false;
+  if (typeof persistRetraitePaymentPollState === 'function') {
+    persistRetraitePaymentPollState(false);
+  }
   App.selectedFlexpayType = null;
   App.badgeView = null;
   App.acceptedPolicyIds = [];

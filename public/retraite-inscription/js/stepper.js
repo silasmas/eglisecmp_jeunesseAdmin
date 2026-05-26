@@ -33,6 +33,10 @@ function goToStep(n) {
       window.onEnterPaymentStep();
     }
 
+    if (typeof trackRetraiteFunnelForFormStep === 'function') {
+      trackRetraiteFunnelForFormStep(n);
+    }
+
     /* Scroll to top of content on mobile */
     const target = window.innerWidth <= 900
       ? document.getElementById('stepperMobile')
