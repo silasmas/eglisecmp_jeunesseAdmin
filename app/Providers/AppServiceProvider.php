@@ -2,8 +2,12 @@
 
 namespace App\Providers;
 
+use App\Models\RetreatAtelier;
+use App\Models\RetreatChambre;
 use App\Models\RetreatParticipant;
 use App\Models\RetreatPayment;
+use App\Observers\RetreatAtelierObserver;
+use App\Observers\RetreatChambreObserver;
 use App\Observers\RetreatParticipantObserver;
 use App\Observers\RetreatPaymentObserver;
 use App\Services\StoragePathService;
@@ -45,6 +49,8 @@ class AppServiceProvider extends ServiceProvider
 
         RetreatParticipant::observe(RetreatParticipantObserver::class);
         RetreatPayment::observe(RetreatPaymentObserver::class);
+        RetreatAtelier::observe(RetreatAtelierObserver::class);
+        RetreatChambre::observe(RetreatChambreObserver::class);
 
         FilamentView::registerRenderHook(
             PanelsRenderHook::AUTH_LOGIN_FORM_BEFORE,

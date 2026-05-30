@@ -108,7 +108,7 @@
         <div class="step-header">
           <div class="step-icon"><i class="bi bi-telephone"></i></div>
           <h2 class="step-title">Vos coordonnées</h2>
-          <p class="step-description">Comment pouvons-nous vous joindre ?</p>
+          <p class="step-description">Vos coordonnées nous serviront à la communication quant au suivi de votre inscription ainsi qu'à l'envoi des confirmations.</p>
         </div>
 
         <div class="field full">

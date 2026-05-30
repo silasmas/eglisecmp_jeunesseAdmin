@@ -1675,7 +1675,7 @@ class RetreatPublicRegistrationController extends Controller
                     : 'Votre identité servira à votre badge et à votre accueil lors de la grande retraite des jeunes CMP.',
                 'contact' => $detail && filled($detail->notes)
                     ? "Nous vous contacterons aux coordonnées ci-dessous pour les confirmations. Rappel organisation : {$detail->notes}"
-                    : 'Nous utiliserons votre téléphone et votre e-mail pour le suivi de l’inscription et l’envoi des confirmations.',
+                    : 'Vos coordonnées nous serviront à la communication quant au suivi de votre inscription ainsi qu\'à l\'envoi des confirmations.',
                 'participation' => 'Indiquez vos préférences (église locale, hébergement) ; l’équipe d’organisation finalisera selon les disponibilités.',
                 'recap' => 'Contrôlez vos réponses. Vous pourrez encore revenir en arrière pour corriger avant la phase de paiement.',
                 'payment' => ($remaining !== null && $remaining <= 5 && $remaining > 0)

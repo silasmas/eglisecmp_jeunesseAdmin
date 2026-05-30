@@ -38,4 +38,14 @@ return [
     'mail_attendance_overdue_action' => 'Vérifiez les présences enregistrées et contactez les responsables d’atelier si nécessaire.',
 
     'attendance_window_closed' => 'La fenêtre de pointage pour cette activité est terminée. Seul un administrateur peut encore modifier les présences.',
+
+    'mail_staff_assignment_subject' => 'Affectation retraite — :role :target',
+    'mail_staff_assignment_heading' => 'Nouvelle affectation encadrement',
+    'mail_staff_assignment_intro' => 'Vous avez été désigné **:role** de **:type :label** pour la retraite des jeunes.',
+    'mail_staff_assignment_body' => 'Connectez-vous à l’espace d’administration pour consulter les participants, les présences et les consignes liées à votre mission.',
+    'mail_staff_assignment_button' => 'Ouvrir l’administration',
+    'mail_staff_assignment_type_atelier' => 'l’atelier',
+    'mail_staff_assignment_type_chambre' => 'la chambre',
+    'mail_staff_assignment_atelier' => 'Atelier n° :numero',
+    'mail_staff_assignment_chambre' => 'Chambre :nom',
 ];

@@ -22,7 +22,7 @@ return new class extends Migration
 <li>Le paiement des frais d’inscription, lorsqu’il est requis, valide officiellement la participation selon les modalités indiquées par l’organisation.</li>
 <li>Le respect du règlement intérieur, des horaires, des consignes de sécurité et des instructions des responsables est obligatoire pendant toute la durée de la retraite.</li>
 <li>Les mineurs sont sous la responsabilité des adultes désignés (tuteur ou accompagnateur) communiqués lors de l’inscription.</li>
-<li>Les données collectées sont utilisées pour la gestion de l’événement, l’édition du badge et les communications officielles (e-mail ou messagerie) liées à votre inscription.</li>
+<li>Les données collectées sont uniquement pour la gestion de l’événement, l’édition du badge et les communications officielles (E-mail ou message) liées à votre inscription.</li>
 </ol>
 <p>En poursuivant, vous reconnaissez avoir pris connaissance de ce cadre général ; des politiques additionnelles peuvent vous être présentées par l’équipe d’organisation.</p>
 HTML;
