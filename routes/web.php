@@ -1,12 +1,15 @@
 <?php
 
 use App\Http\Controllers\ProductionBaseSyncController;
+use App\Http\Controllers\RetreatBadgeStudioApiController;
+use App\Http\Controllers\RetreatBadgeStudioController;
 use App\Http\Controllers\RetreatInscriptionAccessController;
 use App\Http\Controllers\RetreatInscriptionBilletController;
 use App\Http\Controllers\RetreatInscriptionCardReturnController;
 use App\Http\Controllers\RetreatInscriptionJustificatifController;
 use App\Http\Controllers\RetreatVerificationPortalController;
 use App\Models\ChurchEvent;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 /** Synchronisation données de base + Shield (token PRODUCTION_BASE_SYNC_TOKEN) */
@@ -54,6 +57,23 @@ Route::get('/inscription-retraite/paiement-carte/{reference}/{amount}/{currency}
     ->where('amount', '[0-9]+(?:\.[0-9]{1,2})?')
     ->whereIn('status', ['success', 'cancel', 'decline', 'failure', 'failed', 'error'])
     ->name('retraite.inscription.card-return');
+
+/** Studio badges participants (React + Vite, super_admin uniquement) */
+Route::prefix('studio-badge')
+    ->name('studio-badge.')
+    ->middleware(['auth', 'super_admin'])
+    ->group(function (): void {
+        Route::get('/', RetreatBadgeStudioController::class)->name('index');
+        Route::get('api/participants', [RetreatBadgeStudioApiController::class, 'participants'])
+            ->name('api.participants');
+        Route::post('logout', function () {
+            Auth::guard('web')->logout();
+            request()->session()->invalidate();
+            request()->session()->regenerateToken();
+
+            return redirect('/');
+        })->name('logout');
+    });
 
 Route::prefix('verification-retraite')
     ->name('retraite.verification.')

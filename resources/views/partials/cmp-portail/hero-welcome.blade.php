@@ -38,6 +38,11 @@
           <span>Portail retraite</span>
         </span>
       </a>
+      @auth
+        @if(auth()->user()->hasRole(config('filament-shield.super_admin.name', 'super_admin')))
+          <a class="admin-link" href="{{ route('studio-badge.index') }}">Studio badges</a>
+        @endif
+      @endauth
       <a class="admin-link" href="{{ url('/admin') }}">Administration</a>
     </nav>
 

@@ -2,10 +2,14 @@
 
 namespace App\Filament\Resources\RetreatParticipants\Schemas;
 
+use App\Models\RetreatParticipant;
+use App\Services\PublicStorageUrl;
+use App\Services\RetreatInscriptionFunnelService;
+use App\Support\AvatarFallback;
 use Filament\Infolists\Components\IconEntry;
+use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
-use App\Services\RetreatInscriptionFunnelService;
 use Filament\Schemas\Schema;
 
 class RetreatParticipantInfolist
@@ -14,6 +18,18 @@ class RetreatParticipantInfolist
     {
         return $schema
             ->components([
+                Section::make('Photo du participant')
+                    ->schema([
+                        ImageEntry::make('photo')
+                            ->label('Photo')
+                            ->height(220)
+                            ->columnSpanFull()
+                            ->defaultImageUrl(fn (): string => AvatarFallback::url())
+                            ->getStateUsing(
+                                fn (RetreatParticipant $record): ?string => app(PublicStorageUrl::class)->fromPath($record->photo),
+                            )
+                            ->placeholder('Aucune photo enregistree'),
+                    ]),
                 Section::make('Identite')
                     ->schema([
                         TextEntry::make('nom'),
@@ -24,7 +40,6 @@ class RetreatParticipantInfolist
                         TextEntry::make('telephone')->placeholder('-'),
                         TextEntry::make('adresse')->placeholder('-'),
                         TextEntry::make('telephone_urgence')->label('Tel urgence')->placeholder('-'),
-                        TextEntry::make('photo')->placeholder('-'),
                         TextEntry::make('observation')->placeholder('-')->columnSpanFull(),
                     ])
                     ->columns(2),

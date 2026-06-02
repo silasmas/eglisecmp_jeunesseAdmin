@@ -2,7 +2,9 @@
 
 namespace App\Filament\Resources\RetreatParticipants\Schemas;
 
+use App\Support\StoragePath;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -18,6 +20,24 @@ class RetreatParticipantForm
     {
         return $schema
             ->components([
+                Section::make('Photo du participant')
+                    ->description('Photo affichee dans l\'administration, le studio badges et les documents.')
+                    ->schema([
+                        FileUpload::make('photo')
+                            ->label('Photo')
+                            ->image()
+                            ->directory(StoragePath::RETREAT_INSCRIPTION_PHOTOS)
+                            ->imageEditor()
+                            ->imageEditorAspectRatios([
+                                '1:1',
+                                '3:4',
+                                null,
+                            ])
+                            ->maxSize(6144)
+                            ->downloadable()
+                            ->openable()
+                            ->columnSpanFull(),
+                    ]),
                 Section::make('Identite et contact')
                     ->schema([
                         TextInput::make('nom')->required(),
@@ -28,7 +48,6 @@ class RetreatParticipantForm
                         TextInput::make('telephone')->tel(),
                         TextInput::make('adresse'),
                         TextInput::make('telephone_urgence')->tel(),
-                        TextInput::make('photo'),
                         Textarea::make('observation')->columnSpanFull(),
                     ])
                     ->columns(2),
