@@ -517,7 +517,10 @@ async function registerParticipantOnServer() {
   if (noDept && noDept.checked) fd.append('no_departement', '1');
   const h = getHebergementValue();
   if (h) fd.append('hebergement', h);
-  fd.append('observations', val('observations'));
+  const observationsChoice = document.querySelector('input[name="hasObservations"]:checked')?.value;
+  if (observationsChoice === 'yes') {
+    fd.append('observations', val('observations'));
+  }
   if (App.activeEvent && App.activeEvent.id) fd.append('event_id', String(App.activeEvent.id));
 
   if (App.photoDataURL) {

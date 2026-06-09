@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\RetreatParticipant;
+use App\Support\RetreatVerifierSession;
 use Illuminate\Contracts\View\View;
 
 /**
@@ -30,22 +31,7 @@ class RetreatInscriptionAccessController extends Controller
             'participant' => $participant,
             'payment' => $payment,
             'accessGranted' => $accessGranted,
-            'showPlacements' => $this->shouldShowPlacements($participant),
+            'showPlacements' => RetreatVerifierSession::currentUser() !== null,
         ]);
-    }
-
-    /**
-     * @param RetreatParticipant $participant Participant
-     * @return bool Afficher chambre et atelier
-     */
-    private function shouldShowPlacements(RetreatParticipant $participant): bool
-    {
-        $startAt = $participant->event?->start_at;
-
-        if (! $startAt) {
-            return false;
-        }
-
-        return now()->gte($startAt->copy()->startOfDay());
     }
 }

@@ -82,7 +82,11 @@ class RetreatPaymentObserver
             return;
         }
 
-        $users = $this->uniqueUsers($this->dispatcher->participantStakeholders($participant));
+        $users = User::query()
+            ->role('super_admin')
+            ->where('is_active', true)
+            ->get()
+            ->all();
 
         $this->dispatcher->notify(
             $users,
@@ -96,23 +100,5 @@ class RetreatPaymentObserver
             'payment',
             $payment,
         );
-    }
-
-    /**
-     * @param  array<int, User|null>  $users
-     * @return list<User>
-     */
-    protected function uniqueUsers(array $users): array
-    {
-        $out = [];
-        $seen = [];
-        foreach ($users as $u) {
-            if ($u instanceof User && ! isset($seen[$u->id])) {
-                $seen[$u->id] = true;
-                $out[] = $u;
-            }
-        }
-
-        return $out;
     }
 }

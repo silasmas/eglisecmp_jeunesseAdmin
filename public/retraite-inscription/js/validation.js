@@ -67,8 +67,12 @@ function validateStep(step) {
       }
     }
 
+    const photoRequired = typeof isRegistrationFieldRequired === 'function'
+      ? isRegistrationFieldRequired('photo')
+      : true;
+
     const photoErr = document.getElementById('photoRequiredError');
-    if (!App.photoDataURL) {
+    if (photoRequired && !App.photoDataURL) {
       if (photoErr) photoErr.classList.add('visible');
       const zone = document.getElementById('photoZone');
       if (zone) zone.classList.add('is-error');

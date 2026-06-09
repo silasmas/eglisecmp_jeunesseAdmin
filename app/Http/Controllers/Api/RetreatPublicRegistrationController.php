@@ -16,6 +16,7 @@ use App\Services\FlexPay\FlexPayCardService;
 use App\Services\FlexPay\FlexPayMobileService;
 use App\Services\KeccelSmsService;
 use App\Services\PublicStorageUrl;
+use App\Services\RegistrationFormConfigService;
 use App\Services\RetreatCashPaymentAdminNotifier;
 use App\Services\RetreatPlacementAssignmentService;
 use App\Services\RetreatInscriptionFunnelService;
@@ -46,6 +47,7 @@ class RetreatPublicRegistrationController extends Controller
         protected KeccelSmsService $keccelSms,
         protected RetreatCashPaymentAdminNotifier $cashPaymentAdminNotifier,
         protected RetreatInscriptionFunnelService $inscriptionFunnel,
+        protected RegistrationFormConfigService $formConfigService,
     ) {}
 
     /**
@@ -1455,46 +1457,12 @@ class RetreatPublicRegistrationController extends Controller
 
     protected function validateRegistration(Request $request): array
     {
-        return $request->validate([
-            'nom' => ['required', 'string', 'max:100'],
-            'postnom' => ['nullable', 'string', 'max:100'],
-            'prenom' => ['required', 'string', 'max:100'],
-            'sexe' => ['required', 'string', 'max:10'],
-            'date_naissance' => ['required', 'date', 'before_or_equal:'.now()->subYears(15)->toDateString()],
-            'role' => ['required', 'string', 'max:80'],
-            'role_autre' => ['nullable', 'string', 'max:255'],
-            'indicatif' => ['required', 'string', 'max:10'],
-            'telephone' => ['required', 'string', 'max:30'],
-            'tel_urgence' => ['nullable', 'string', 'max:30'],
-            'guardian_name' => ['nullable', 'string', 'max:150'],
-            'guardian_phone' => ['nullable', 'string', 'max:30'],
-            'same_family_emergency_confirm' => ['sometimes', 'boolean'],
-            'email' => ['required', 'email', 'max:254'],
-            'adresse' => ['required', 'string', 'max:255'],
-            'commune' => ['required', 'string', 'max:120'],
-            'ville' => ['required', 'string', 'max:120'],
-            'eglise' => ['required', 'string', 'max:200'],
-            'departement' => ['nullable', 'string', 'max:150'],
-            'no_departement' => ['nullable', 'boolean'],
-            'hebergement' => ['nullable', 'string', 'in:interne,externe'],
-            'observations' => ['nullable', 'string', 'max:5000'],
-            'photo' => ['required', 'image', 'max:6144'],
-            'event_id' => ['nullable', 'exists:events_event,id'],
-            'accepted_policy_ids' => ['nullable', 'array'],
-            'accepted_policy_ids.*' => ['integer', 'exists:retreat_policies,id'],
-            'parent_group_mode' => ['nullable', 'boolean'],
-            'parent_contact_email' => ['nullable', 'email', 'max:254'],
-            'parent_contact_phone' => ['nullable', 'string', 'max:30'],
-            'parent_full_name' => ['nullable', 'string', 'max:150'],
-            'parent_verified_token' => ['nullable', 'string', 'max:120'],
-        ], [
-            'date_naissance.before_or_equal' => 'Âge minimum requis : 15 ans.',
-            'commune.required' => 'Le champ commune est obligatoire.',
-            'adresse.required' => 'Le champ adresse est obligatoire.',
-            'photo.required' => 'La photo est obligatoire pour poursuivre.',
-            'photo.image' => 'Le fichier photo doit être une image valide.',
-            'parent_contact_email.email' => 'Adresse e-mail parent/tuteur invalide.',
-        ]);
+        $event = $this->resolveEvent($request);
+
+        return $request->validate(
+            $this->formConfigService->buildValidationRules($event),
+            $this->formConfigService->validationMessages(),
+        );
     }
 
     protected function parentOtpCacheKey(string $verificationId): string
@@ -1672,7 +1640,7 @@ class RetreatPublicRegistrationController extends Controller
             'step_context' => [
                 'identity' => $detail && filled($detail->theme)
                     ? "Cette inscription concerne la retraite « {$detail->theme} » (intervenant principal : {$detail->speaker}). Merci de renseigner votre identité comme sur une pièce officielle."
-                    : 'Votre identité servira à votre badge et à votre accueil lors de la grande retraite des jeunes CMP.',
+                    : 'Votre identité servira à votre badge et à votre accueil lors de la Grande Retraite de la jeunesse CMP.',
                 'contact' => $detail && filled($detail->notes)
                     ? "Nous vous contacterons aux coordonnées ci-dessous pour les confirmations. Rappel organisation : {$detail->notes}"
                     : 'Vos coordonnées nous serviront à la communication quant au suivi de votre inscription ainsi qu\'à l\'envoi des confirmations.',
@@ -1688,6 +1656,7 @@ class RetreatPublicRegistrationController extends Controller
                 'external_form_url' => config('retraite.card_external_form_url'),
             ],
             'participant_notifications' => $this->participantNotificationPayload($event),
+            'form_fields' => $this->formConfigService->toPublicPayload($event),
         ];
     }
 

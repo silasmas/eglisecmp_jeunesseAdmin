@@ -37,7 +37,7 @@ return [
 
     /*
     | Numéros SMS supplémentaires pour alerter les admins (séparés par des virgules).
-    | Les téléphones des comptes super_admin / panel_user actifs sont aussi utilisés.
+    | Les téléphones des comptes super_admin actifs sont aussi utilisés.
     */
     'admin_notify_phones' => array_values(array_filter(array_map(
         static fn (string $phone): string => trim($phone),

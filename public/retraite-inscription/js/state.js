@@ -36,6 +36,7 @@ window.App = {
   parentOtpVerificationId: null,
   parentVerifiedToken: null,
   parentContactVerified: false,
+  formFields: {},
 };
 
 /* ─── HELPER: Get field value ─── */

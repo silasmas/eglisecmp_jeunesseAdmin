@@ -25,17 +25,17 @@
         <input type="hidden" id="role" value="Participant">
 
         <div class="fields-grid">
-          <div class="field">
+          <div class="field" data-reg-field="nom">
             <label class="field-label" for="nom">Nom <span class="required">*</span></label>
             <input type="text" id="nom" class="field-input" placeholder="Ex: Kabongo" data-required>
             <span class="field-error"><i class="bi bi-exclamation-circle"></i> Ce champ est requis</span>
           </div>
-          <div class="field">
+          <div class="field" data-reg-field="prenom">
             <label class="field-label" for="prenom">Prénom <span class="required">*</span></label>
             <input type="text" id="prenom" class="field-input" placeholder="Ex: Jean-Marc" data-required>
             <span class="field-error"><i class="bi bi-exclamation-circle"></i> Ce champ est requis</span>
           </div>
-          <div class="field">
+          <div class="field" data-reg-field="sexe">
             <label class="field-label" for="sexe">Sexe <span class="required">*</span></label>
             <select id="sexe" class="field-input" data-required>
               <option value="">Sélectionnez...</option>
@@ -44,13 +44,13 @@
             </select>
             <span class="field-error"><i class="bi bi-exclamation-circle"></i> Veuillez sélectionner</span>
           </div>
-          <div class="field">
+          <div class="field" data-reg-field="date_naissance">
             <label class="field-label" for="dateNaissance">Date de naissance <span class="required">*</span></label>
             <input type="text" id="dateNaissance" class="field-input" data-required placeholder="Sélectionnez votre date" readonly>
             <span class="field-error"><i class="bi bi-exclamation-circle"></i> Ce champ est requis</span>
             <span class="field-hint" id="ageDisplay"></span>
           </div>
-          <div class="field">
+          <div class="field" data-reg-field="telephone">
             <label class="field-label" for="telephone">Téléphone principal (WhatsApp) <span class="required">*</span></label>
             <div class="phone-row">
               <select id="indicatif" class="field-input">
@@ -67,13 +67,13 @@
             <span class="field-hint"><i class="bi bi-whatsapp"></i> Votre billet sera envoyé via WhatsApp</span>
             <p id="telephoneLiveFeedback" class="phone-live-feedback field-hint hidden" aria-live="polite"></p>
           </div>
-          <div class="field">
+          <div class="field" data-reg-field="email">
             <label class="field-label" for="email">Email <span class="required">*</span></label>
             <input type="email" id="email" class="field-input" placeholder="exemple@domaine.com" data-required>
             <span class="field-error"><i class="bi bi-exclamation-circle"></i> Adresse email invalide</span>
             <p id="emailLiveFeedback" class="phone-live-feedback field-hint hidden" aria-live="polite"></p>
           </div>
-          <div class="field full">
+          <div class="field full" data-reg-field="photo">
             <label class="field-label">Photo de profil <span class="required">*</span></label>
             <div class="photo-upload-zone" id="photoZone">
               <div class="photo-preview-circle" id="photoCircle">
@@ -111,7 +111,7 @@
           <p class="step-description">Vos coordonnées nous serviront à la communication quant au suivi de votre inscription ainsi qu'à l'envoi des confirmations.</p>
         </div>
 
-        <div class="field full">
+        <div class="field full" id="parentMultiChildBlock">
           <div class="info-box warning mb-2">
             <i class="bi bi-people"></i>
             <span><strong>Vous êtes parent/tuteur et vous inscrivez plusieurs enfants ?</strong> Cochez la case ci-dessous pour activer la vérification OTP, puis réutiliser les mêmes contacts pour les prochains enfants.</span>
@@ -162,17 +162,17 @@
         </div>
 
         <div class="fields-grid">
-          <div class="field full">
+          <div class="field full" data-reg-field="tel_urgence">
             <label class="field-label" for="telUrgence">Téléphone d'urgence <span class="optional">(facultatif)</span></label>
             <input type="tel" id="telUrgence" class="field-input" placeholder="Numéro alternatif (+243… ou sans indicatif comme le champ principal)">
             <p id="telUrgenceLiveFeedback" class="phone-live-feedback field-hint hidden" aria-live="polite"></p>
           </div>
-          <div class="field" id="guardianNameField">
+          <div class="field" id="guardianNameField" data-reg-field="guardian_name">
             <label class="field-label" for="guardianName">Nom du parent ou tuteur <span class="optional">(facultatif)</span></label>
             <input type="text" id="guardianName" class="field-input" placeholder="Ex.: Marie Kabongo">
             <p id="guardianNameLiveFeedback" class="phone-live-feedback field-hint hidden" aria-live="polite"></p>
           </div>
-          <div class="field" id="guardianPhoneField">
+          <div class="field" id="guardianPhoneField" data-reg-field="guardian_phone">
             <label class="field-label" for="guardianPhone">Téléphone du parent ou tuteur <span class="optional">(facultatif)</span></label>
             <input type="tel" id="guardianPhone" class="field-input" placeholder="Même convention que téléphone d’urgence (+ ou indicatif commun)">
             <p id="guardianPhoneLiveFeedback" class="phone-live-feedback field-hint hidden" aria-live="polite"></p>
@@ -187,17 +187,17 @@
               </label>
             </div>
           </div>
-          <div class="field full">
+          <div class="field full" data-reg-field="adresse">
             <label class="field-label" for="adresse">Adresse <span class="required">*</span></label>
             <input type="text" id="adresse" class="field-input" placeholder="Numéro et rue" data-required>
             <span class="field-error"><i class="bi bi-exclamation-circle"></i> Ce champ est requis</span>
           </div>
-          <div class="field">
+          <div class="field" data-reg-field="commune">
             <label class="field-label" for="commune">Commune <span class="required">*</span></label>
             <input type="text" id="commune" class="field-input" placeholder="Ex: Gombe" data-required>
             <span class="field-error"><i class="bi bi-exclamation-circle"></i> Ce champ est requis</span>
           </div>
-          <div class="field">
+          <div class="field" data-reg-field="ville">
             <label class="field-label" for="ville">Ville <span class="required">*</span></label>
             <input type="text" id="ville" class="field-input" placeholder="Ex: Kinshasa" data-required>
             <span class="field-error"><i class="bi bi-exclamation-circle"></i> Ce champ est requis</span>
@@ -223,20 +223,20 @@
         </div>
 
         <div class="fields-grid participation-grid">
-          <div class="field">
+          <div class="field" data-reg-field="eglise">
             <label class="field-label" for="eglise">Église / Assemblée <span class="required">*</span></label>
             <input type="text" id="eglise" class="field-input" placeholder="Ex: CMP Gombe" data-required>
             <span class="field-error"><i class="bi bi-exclamation-circle"></i> Ce champ est requis</span>
           </div>
-          <div class="field">
+          <div class="field" data-reg-field="departement">
             <label class="field-label" for="departement">Département<span class="optional">(facultatif)</span></label>
             <input type="text" id="departement" class="field-input" placeholder="Ex: Cellule Amour">
-            <label class="field-checkbox-label participation-checkbox-label" for="noDepartement">
+            <label class="field-checkbox-label participation-checkbox-label" for="noDepartement" id="noDepartementWrap">
               <input type="checkbox" id="noDepartement" class="field-checkbox">
               <span>Je ne fais partie d'aucun département</span>
             </label>
           </div>
-          <div class="field participation-hebergement-field">
+          <div class="field participation-hebergement-field" data-reg-field="hebergement">
             <label class="field-label">Type d’hébergement <span class="optional">(facultatif)</span></label>
             <div class="participation-inline-options" role="radiogroup" aria-label="Type d’hébergement">
               <label class="participation-inline-option" for="hebergementInterne">
@@ -248,11 +248,24 @@
                 <span>Externe</span>
               </label>
             </div>
-            <span class="field-hint">Interne = vous dormez sur le site de retraite ; Externe = vous rentrez/logez hors site. Cette information aide à organiser chambres, sécurité et restauration.</span>
+            <span class="field-hint">Interne = vous dormez sur le site de retraite ; Externe = vous rentrez/logez hors site.</span>
           </div>
-          <div class="field full">
-            <label class="field-label" for="observations">Observations / Besoins particuliers <span class="optional">(facultatif)</span></label>
-            <textarea id="observations" class="field-input participation-observations" rows="3" placeholder="Allergies alimentaires, besoins médicaux, ou toute information utile..."></textarea>
+          <div class="field full" data-reg-field="observations">
+            <label class="field-label" data-reg-label>Observations / Besoins particuliers <span class="optional">(facultatif)</span></label>
+            <div class="participation-inline-options mt-2" data-reg-yesno role="radiogroup" aria-label="Observations ou besoins particuliers">
+              <label class="participation-inline-option" for="hasObservationsYes">
+                <input type="radio" id="hasObservationsYes" name="hasObservations" value="yes">
+                <span>Oui</span>
+              </label>
+              <label class="participation-inline-option" for="hasObservationsNo">
+                <input type="radio" id="hasObservationsNo" name="hasObservations" value="no">
+                <span>Non</span>
+              </label>
+            </div>
+            <div id="observationsDetailWrap" class="hidden mt-2">
+              <label class="field-label" for="observations">Précisez vos observations</label>
+              <textarea id="observations" class="field-input participation-observations" rows="3" placeholder="Allergies alimentaires, besoins médicaux, ou toute information utile..."></textarea>
+            </div>
           </div>
         </div>
 
@@ -329,16 +342,16 @@
 
         <div class="field full">
           <div class="field-label">Mode de paiement <span class="required">*</span></div>
-          <div class="participation-inline-options mt-2" role="radiogroup" aria-label="Mode de paiement">
-            <label class="participation-inline-option" for="payModeMm">
+          <div class="participation-inline-options mt-2" id="paymentModesGroup" role="radiogroup" aria-label="Mode de paiement">
+            <label class="participation-inline-option" for="payModeMm" data-payment-mode="mobile_money">
               <input type="radio" id="payModeMm" name="paymentMode" value="mobile_money">
               <span>Mobile money</span>
             </label>
-            <label class="participation-inline-option" for="payModeCard">
+            <label class="participation-inline-option" for="payModeCard" data-payment-mode="card">
               <input type="radio" id="payModeCard" name="paymentMode" value="card">
               <span>Carte bancaire</span>
             </label>
-            <label class="participation-inline-option" for="payModeCash">
+            <label class="participation-inline-option" for="payModeCash" data-payment-mode="cash">
               <input type="radio" id="payModeCash" name="paymentMode" value="cash">
               <span>Espèces (cash)</span>
             </label>
@@ -459,7 +472,7 @@
           <div id="badgeExportComposite" class="badge-export-sheet">
             <header class="badge-export-header">
               <div class="badge-export-org">Jeunesse CMP</div>
-              <div class="badge-export-event-title" id="badgeExportEventTitle">Grande Retraite des Jeunes</div>
+              <div class="badge-export-event-title" id="badgeExportEventTitle">Grande Retraite de la jeunesse</div>
               <div class="badge-export-meta text-muted small" id="badgeExportMeta"></div>
             </header>
 

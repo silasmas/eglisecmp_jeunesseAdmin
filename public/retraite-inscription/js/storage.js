@@ -11,6 +11,7 @@ function saveState() {
   ];
   const data = {};
   fields.forEach(id => { data[id] = val(id); });
+  data.hasObservations = document.querySelector('input[name="hasObservations"]:checked')?.value || '';
   data.role = val('role') || 'Participant';
   data.hebergement = getHebergementValue();
   const familyMultiChildCheck = document.getElementById('familyMultiChildCheck');
@@ -220,6 +221,18 @@ function restoreState() {
     });
     const roleEl = document.getElementById('role');
     if (roleEl) roleEl.value = data.role || 'Participant';
+    if (data.hasObservations) {
+      const obsRadio = document.querySelector(`input[name="hasObservations"][value="${data.hasObservations}"]`);
+      if (obsRadio) {
+        obsRadio.checked = true;
+        obsRadio.dispatchEvent(new Event('change'));
+      }
+    }
+    const workerCheck = document.getElementById('isWorkerCheck');
+    if (workerCheck && (data.role === 'Ouvrier' || workerCheck.checked)) {
+      workerCheck.checked = data.role === 'Ouvrier';
+      workerCheck.dispatchEvent(new Event('change'));
+    }
     /* Restore hébergement radio */
     if (data.hebergement) {
       const hebergementSelect = document.getElementById('hebergement');

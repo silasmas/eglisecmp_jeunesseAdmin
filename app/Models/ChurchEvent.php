@@ -152,4 +152,12 @@ class ChurchEvent extends Model
     {
         return $this->hasOne(RetreatRetreatDetail::class, 'event_id');
     }
+
+    /**
+     * Jeu de configuration du formulaire d'inscription lié à cet événement.
+     */
+    public function registrationFormConfigSet(): HasOne
+    {
+        return $this->hasOne(RegistrationFormConfigSet::class, 'church_event_id');
+    }
 }

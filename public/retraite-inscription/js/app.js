@@ -67,6 +67,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   applyHeroFromEvent(ev);
 
+  if (typeof applyRegistrationFormConfig === 'function') {
+    applyRegistrationFormConfig(ev);
+  }
+
   try {
     const params = new URLSearchParams(window.location.search);
     const resumeRef = params.get('resume_payment_ref');
@@ -127,6 +131,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   wireParentMultiChildVerification();
   wireWorkerPrefill();
+  wireObservationsToggle();
 
   initFlatpickr();
   initDateFallback();
@@ -456,8 +461,26 @@ async function wireWorkerPrefill() {
     feedback.classList.add(`worker-prefill-feedback-${type}`);
   };
 
+  const syncNoDepartementForWorker = (isWorker) => {
+    const noDeptWrap = document.getElementById('noDepartementWrap');
+    const noDeptCheck = document.getElementById('noDepartement');
+    const deptInput = document.getElementById('departement');
+    if (!noDeptWrap || !noDeptCheck) {
+      return;
+    }
+    noDeptWrap.classList.toggle('hidden', isWorker);
+    if (isWorker) {
+      noDeptCheck.checked = false;
+      if (deptInput) {
+        deptInput.disabled = false;
+        deptInput.placeholder = 'Ex: Cellule Amour';
+      }
+    }
+  };
+
   check.addEventListener('change', () => {
     lookup.classList.toggle('hidden', !check.checked);
+    syncNoDepartementForWorker(check.checked);
     if (check.checked) {
       document.getElementById('role').value = 'Ouvrier';
       document.getElementById('role').dispatchEvent(new Event('change', { bubbles: true }));
@@ -564,3 +587,38 @@ function applyWorkerPrefill(data) {
     }
   }
 }
+
+/**
+ * Affiche le champ texte des observations uniquement si « Oui » est coché.
+ *
+ * @return {void}
+ */
+function wireObservationsToggle() {
+  const yesRadio = document.getElementById('hasObservationsYes');
+  const noRadio = document.getElementById('hasObservationsNo');
+  const detailWrap = document.getElementById('observationsDetailWrap');
+  const observationsInput = document.getElementById('observations');
+
+  if (!yesRadio || !noRadio || !detailWrap) {
+    return;
+  }
+
+  const sync = () => {
+    const observationsField = App.formFields && App.formFields.observations;
+    const fieldVisible = !observationsField || observationsField.is_visible === true;
+    const showDetail = fieldVisible && yesRadio.checked;
+    detailWrap.classList.toggle('hidden', !showDetail);
+    if (!showDetail && observationsInput) {
+      observationsInput.value = '';
+      observationsInput.removeAttribute('data-required');
+    } else if (showDetail && observationsInput && observationsField?.is_required) {
+      observationsInput.setAttribute('data-required', '');
+    }
+  };
+
+  yesRadio.addEventListener('change', sync);
+  noRadio.addEventListener('change', sync);
+  sync();
+}
+
+window.wireObservationsToggle = wireObservationsToggle;

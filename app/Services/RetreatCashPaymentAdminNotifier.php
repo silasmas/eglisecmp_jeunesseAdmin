@@ -69,7 +69,7 @@ class RetreatCashPaymentAdminNotifier
     protected function resolveAdminRecipients()
     {
         return User::query()
-            ->role(['super_admin', 'panel_user'])
+            ->role('super_admin')
             ->where('is_active', true)
             ->get();
     }
