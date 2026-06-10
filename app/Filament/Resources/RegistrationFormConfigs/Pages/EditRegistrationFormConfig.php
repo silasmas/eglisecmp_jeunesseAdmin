@@ -204,6 +204,16 @@ class EditRegistrationFormConfig extends EditRecord
         );
         $uiSettings = RegistrationFormUiSettings::merge($uiPayload);
 
+        if (! RegistrationFormUiSettings::hasVisiblePaymentMode($uiSettings)) {
+            Notification::make()
+                ->title('Moyen de paiement requis')
+                ->body('Au moins un moyen de paiement doit rester visible sur le formulaire public.')
+                ->danger()
+                ->send();
+
+            $this->halt();
+        }
+
         $record->update([
             'name' => $data['name'] ?? $record->name,
             'ui_settings' => $uiSettings,

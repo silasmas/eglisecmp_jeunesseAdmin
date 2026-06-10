@@ -437,6 +437,32 @@ function togglePaymentSections(mode) {
   }
 }
 
+/**
+ * Présélectionne le mode de paiement s'il n'en reste qu'un de visible.
+ *
+ * @return {void}
+ */
+function autoSelectSinglePaymentMode() {
+  const ui = App.uiSettings || {};
+  const paymentModes = ui.payment_modes || {};
+  const order = ui.payment_modes_order || ['mobile_money', 'card', 'cash'];
+  const visibleModes = order.filter((mode) => paymentModes[mode]?.is_visible !== false);
+
+  if (visibleModes.length !== 1) {
+    return;
+  }
+
+  const radio = document.querySelector(`input[name="paymentMode"][value="${visibleModes[0]}"]`);
+  if (!radio || radio.checked) {
+    return;
+  }
+
+  radio.checked = true;
+  if (typeof togglePaymentSections === 'function') {
+    togglePaymentSections(visibleModes[0]);
+  }
+}
+
 function onEnterPaymentStep() {
   const ev = App.activeEvent;
   const labelEl = document.getElementById('paymentAmountLabel');
@@ -458,6 +484,7 @@ function onEnterPaymentStep() {
       r.checked = false;
     });
     togglePaymentSections(null);
+    autoSelectSinglePaymentMode();
   }
 }
 

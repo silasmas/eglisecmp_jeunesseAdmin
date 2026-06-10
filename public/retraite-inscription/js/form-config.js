@@ -366,9 +366,14 @@ function applyRegistrationUiSettings(payload) {
     }
   });
 
-  reorderPaymentModesDom(ui.payment_modes_order || ['mobile_money', 'card', 'cash']);
+  const order = ui.payment_modes_order || ['mobile_money', 'card', 'cash'];
+  reorderPaymentModesDom(order);
 
   App.uiSettings = ui;
+
+  if (typeof autoSelectSinglePaymentMode === 'function') {
+    autoSelectSinglePaymentMode();
+  }
 }
 
 window.applyRegistrationFormConfig = applyRegistrationFormConfig;

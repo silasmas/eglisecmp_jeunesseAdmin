@@ -171,4 +171,49 @@ class RegistrationFormUiSettings
             ? self::POSITION_AFTER_FIELDS
             : self::POSITION_BEFORE_FIELDS;
     }
+
+    /**
+     * Indique si un moyen de paiement est affiché sur le formulaire public.
+     *
+     * @param  array<string, mixed>|null  $uiSettings Paramètres fusionnés
+     * @param  string  $mode Clé du mode (mobile_money, card, cash)
+     * @return bool Vrai si le mode est visible
+     */
+    public static function isPaymentModeVisible(?array $uiSettings, string $mode): bool
+    {
+        if (! in_array($mode, self::PAYMENT_MODE_KEYS, true)) {
+            return false;
+        }
+
+        $ui = self::merge($uiSettings);
+
+        return (bool) ($ui['payment_modes'][$mode]['is_visible'] ?? true);
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $uiSettings Paramètres fusionnés
+     * @return list<string> Modes visibles dans l'ordre configuré
+     */
+    public static function visiblePaymentModes(?array $uiSettings): array
+    {
+        $ui = self::merge($uiSettings);
+        $visible = [];
+
+        foreach ($ui['payment_modes_order'] as $mode) {
+            if (self::isPaymentModeVisible($ui, $mode)) {
+                $visible[] = $mode;
+            }
+        }
+
+        return $visible;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $uiSettings Paramètres fusionnés
+     * @return bool Au moins un moyen de paiement reste visible
+     */
+    public static function hasVisiblePaymentMode(?array $uiSettings): bool
+    {
+        return self::visiblePaymentModes($uiSettings) !== [];
+    }
 }

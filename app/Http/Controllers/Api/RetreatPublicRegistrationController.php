@@ -23,6 +23,7 @@ use App\Services\RetreatPlacementAssignmentService;
 use App\Services\RetreatInscriptionFunnelService;
 use App\Services\RetreatInscriptionPaymentCompletionService;
 use App\Services\StoragePathService;
+use App\Support\RegistrationFormUiSettings;
 use App\Support\StoragePath;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -1116,6 +1117,10 @@ class RetreatPublicRegistrationController extends Controller
             return $response;
         }
 
+        if ($response = $this->assertPaymentChannelAllowed($event, 'mobile_money')) {
+            return $response;
+        }
+
         $payment = $this->firstOrCreatePayment($participant, $event, 'mobile_money');
         $normalized = $this->normalizeCdMobileMoneyMsisdn($validated['phone']);
 
@@ -1195,6 +1200,10 @@ class RetreatPublicRegistrationController extends Controller
         }
 
         if ($response = $this->assertParticipantMatchesEvent($participant, $event)) {
+            return $response;
+        }
+
+        if ($response = $this->assertPaymentChannelAllowed($event, 'card')) {
             return $response;
         }
 
@@ -1292,6 +1301,10 @@ class RetreatPublicRegistrationController extends Controller
         }
 
         if ($response = $this->assertParticipantMatchesEvent($participant, $event)) {
+            return $response;
+        }
+
+        if ($response = $this->assertPaymentChannelAllowed($event, 'cash')) {
             return $response;
         }
 
@@ -2217,6 +2230,26 @@ class RetreatPublicRegistrationController extends Controller
         RetreatParticipant::query()->whereKey($ref->id)->update(['family_group_id' => $uid]);
 
         return $uid;
+    }
+
+    /**
+     * Refuse un canal de paiement masqué dans la configuration publiée du formulaire.
+     *
+     * @param ChurchEvent $event Événement cible
+     * @param string $channel Canal demandé (mobile_money, card, cash)
+     * @return JsonResponse|null Réponse 422 si le canal est masqué
+     */
+    protected function assertPaymentChannelAllowed(ChurchEvent $event, string $channel): ?JsonResponse
+    {
+        $uiSettings = $this->formConfigService->resolvedUiSettingsForEvent($event);
+
+        if (RegistrationFormUiSettings::isPaymentModeVisible($uiSettings, $channel)) {
+            return null;
+        }
+
+        return response()->json([
+            'message' => 'Ce moyen de paiement n’est pas proposé pour cette inscription. Choisissez une autre option.',
+        ], 422);
     }
 
     protected function firstOrCreatePayment(RetreatParticipant $participant, ChurchEvent $event, string $channel): RetreatPayment

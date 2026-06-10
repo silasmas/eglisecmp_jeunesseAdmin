@@ -121,31 +121,43 @@ class RegistrationFormConfigForm
                             ->live(),
                     ]),
                 Section::make('Moyens de paiement')
-                    ->description('Visibilité et ordre d’affichage à l’étape paiement (aperçu et formulaire public).')
+                    ->description('Décochez un moyen pour le masquer sur le formulaire public. L’ordre ci-dessous ne concerne que les moyens affichés.')
                     ->schema([
                         Grid::make(3)
                             ->schema([
                                 Toggle::make('ui_settings.payment_modes.mobile_money.is_visible')
-                                    ->label('Mobile money')
+                                    ->label('Afficher Mobile money')
+                                    ->helperText('Visible à l’étape paiement du formulaire.')
                                     ->default(true)
                                     ->live(),
                                 Toggle::make('ui_settings.payment_modes.card.is_visible')
-                                    ->label('Carte bancaire')
+                                    ->label('Afficher carte bancaire')
+                                    ->helperText('Visible à l’étape paiement du formulaire.')
                                     ->default(true)
                                     ->live(),
                                 Toggle::make('ui_settings.payment_modes.cash.is_visible')
-                                    ->label('Espèces (cash)')
+                                    ->label('Afficher espèces (cash)')
+                                    ->helperText('Visible à l’étape paiement du formulaire.')
                                     ->default(true)
                                     ->live(),
                             ]),
                         Repeater::make('payment_modes_order')
-                            ->label('Ordre des moyens de paiement')
+                            ->label('Ordre des moyens affichés')
                             ->schema([
                                 Hidden::make('mode'),
                             ])
-                            ->itemLabel(fn (?array $state): ?string => isset($state['mode'])
-                                ? (RegistrationFormUiSettings::PAYMENT_MODE_LABELS[$state['mode']] ?? $state['mode'])
-                                : null)
+                            ->itemLabel(function (?array $state, $get): ?string {
+                                $mode = $state['mode'] ?? null;
+
+                                if (! is_string($mode)) {
+                                    return null;
+                                }
+
+                                $label = RegistrationFormUiSettings::PAYMENT_MODE_LABELS[$mode] ?? $mode;
+                                $visible = (bool) data_get($get('ui_settings'), "payment_modes.{$mode}.is_visible", true);
+
+                                return $visible ? $label : $label.' (masqué — non affiché)';
+                            })
                             ->reorderableWithDragAndDrop()
                             ->addable(false)
                             ->deletable(false)
