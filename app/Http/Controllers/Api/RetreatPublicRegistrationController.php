@@ -1121,6 +1121,10 @@ class RetreatPublicRegistrationController extends Controller
             return $response;
         }
 
+        if ($response = $this->assertMobileProviderAllowed($event, $validated['flexpay_type'])) {
+            return $response;
+        }
+
         $payment = $this->firstOrCreatePayment($participant, $event, 'mobile_money');
         $normalized = $this->normalizeCdMobileMoneyMsisdn($validated['phone']);
 
@@ -1130,7 +1134,7 @@ class RetreatPublicRegistrationController extends Controller
             ], 422);
         }
 
-        if (! $this->msisdnMatchesFlexpayMobileType($validated['flexpay_type'], $normalized)) {
+        if (! $this->msisdnMatchesFlexpayMobileType($event, $validated['flexpay_type'], $normalized)) {
             return response()->json([
                 'message' => 'Ce numéro ne correspond pas au format habituel du réseau sélectionné. Vérifiez l’opérateur choisi puis le numéro saisi.',
             ], 422);
@@ -1731,7 +1735,7 @@ class RetreatPublicRegistrationController extends Controller
                     ? 'Places limitées : finalisez le paiement dès confirmation pour garantir votre participation.'
                     : 'Le montant défini ci-dessous valide officiellement votre inscription une fois encaissé.',
             ],
-            'flexpay_mobile_providers' => config('retraite.flexpay_mobile_providers', []),
+            'flexpay_mobile_providers' => $this->formConfigService->resolvedMobileProvidersForEvent($event),
             'card_payment' => [
                 'mode' => filled(config('retraite.card_external_form_url')) ? 'external' : 'flexpay_redirect',
                 'external_form_url' => config('retraite.card_external_form_url'),
@@ -1848,9 +1852,9 @@ class RetreatPublicRegistrationController extends Controller
         return $digits;
     }
 
-    protected function msisdnMatchesFlexpayMobileType(string $flexpayType, string $normalizedMsisdn): bool
+    protected function msisdnMatchesFlexpayMobileType(ChurchEvent $event, string $flexpayType, string $normalizedMsisdn): bool
     {
-        $providers = config('retraite.flexpay_mobile_providers', []);
+        $providers = $this->formConfigService->resolvedMobileProvidersForEvent($event);
         foreach ($providers as $provider) {
             if (! is_array($provider)) {
                 continue;
@@ -2249,6 +2253,29 @@ class RetreatPublicRegistrationController extends Controller
 
         return response()->json([
             'message' => 'Ce moyen de paiement n’est pas proposé pour cette inscription. Choisissez une autre option.',
+        ], 422);
+    }
+
+    /**
+     * Refuse un opérateur Mobile Money masqué dans la configuration publiée.
+     *
+     * @param ChurchEvent $event Événement cible
+     * @param string $flexpayType Code type FlexPay (1, 2, 3, 4…)
+     * @return JsonResponse|null Réponse 422 si l'opérateur est masqué
+     */
+    protected function assertMobileProviderAllowed(ChurchEvent $event, string $flexpayType): ?JsonResponse
+    {
+        $allowedTypes = array_map(
+            static fn (array $provider): string => (string) ($provider['type'] ?? ''),
+            $this->formConfigService->resolvedMobileProvidersForEvent($event)
+        );
+
+        if (in_array((string) $flexpayType, $allowedTypes, true)) {
+            return null;
+        }
+
+        return response()->json([
+            'message' => 'Cet opérateur Mobile Money n’est pas proposé pour cette inscription. Choisissez un autre réseau.',
         ], 422);
     }
 

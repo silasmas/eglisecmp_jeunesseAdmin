@@ -243,6 +243,19 @@ class RegistrationFormConfigService
     }
 
     /**
+     * Opérateurs Mobile Money visibles pour l'événement (M-Pesa, Orange, Airtel, Afri…).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function resolvedMobileProvidersForEvent(?ChurchEvent $event): array
+    {
+        return RegistrationFormUiSettings::filterMobileProviders(
+            config('retraite.flexpay_mobile_providers', []),
+            $this->resolvedUiSettingsForEvent($event)
+        );
+    }
+
+    /**
      * Construit les règles de validation Laravel pour l'inscription publique.
      *
      * @return array<string, array<int, mixed>>

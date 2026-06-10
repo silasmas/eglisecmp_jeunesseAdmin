@@ -94,8 +94,20 @@ class RegistrationFormPreviewBuilder
                 ];
             }
 
+            $mobileProviders = [];
+
+            foreach ($ui['mobile_money_providers_order'] as $code) {
+                $mobileProviders[] = [
+                    'code' => $code,
+                    'label' => RegistrationFormUiSettings::mobileProviderLabels()[$code] ?? $code,
+                    'is_visible' => RegistrationFormUiSettings::isMobileProviderVisible($ui, $code),
+                ];
+            }
+
             return [
                 'payment_modes' => $modes,
+                'mobile_providers' => $mobileProviders,
+                'mobile_money_visible' => RegistrationFormUiSettings::isPaymentModeVisible($ui, 'mobile_money'),
             ];
         }
 

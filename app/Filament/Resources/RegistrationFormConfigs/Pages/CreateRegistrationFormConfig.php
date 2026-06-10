@@ -28,6 +28,7 @@ class CreateRegistrationFormConfig extends CreateRecord
         $this->form->fill(array_merge($this->form->getState(), [
             'ui_settings' => RegistrationFormUiSettings::merge(null),
             'payment_modes_order' => RegistrationFormUiSettings::paymentModesOrderState(null),
+            'mobile_money_providers_order' => RegistrationFormUiSettings::mobileProvidersOrderState(null),
         ]));
     }
 

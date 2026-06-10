@@ -10,17 +10,20 @@
     $worker = $uiBlocks['worker'] ?? null;
     $parent = $uiBlocks['parent'] ?? null;
     $paymentModes = $uiBlocks['payment_modes'] ?? [];
+    $mobileProviders = $uiBlocks['mobile_providers'] ?? [];
+    $mobileMoneyVisible = (bool) ($uiBlocks['mobile_money_visible'] ?? false);
 
     $workerVisible = $worker && ($worker['is_visible'] ?? false);
     $parentVisible = $parent && ($parent['is_visible'] ?? false);
     $workerBefore = ($worker['position'] ?? RegistrationFormUiSettings::POSITION_BEFORE_FIELDS) === RegistrationFormUiSettings::POSITION_BEFORE_FIELDS;
     $parentBefore = ($parent['position'] ?? RegistrationFormUiSettings::POSITION_BEFORE_FIELDS) === RegistrationFormUiSettings::POSITION_BEFORE_FIELDS;
     $visiblePaymentCount = collect($paymentModes)->where('is_visible', true)->count();
+    $visibleMobileProviderCount = collect($mobileProviders)->where('is_visible', true)->count();
 
     $visibleCount = match ($step) {
         0 => $visibleFieldCount + ($workerVisible ? 1 : 0),
         1 => $visibleFieldCount + ($parentVisible ? 1 : 0),
-        4 => $visiblePaymentCount,
+        4 => $visiblePaymentCount + ($mobileMoneyVisible ? max(1, $visibleMobileProviderCount) : 0),
         default => $visibleFieldCount,
     };
 @endphp
@@ -225,6 +228,20 @@
                     </div>
                     <div class="reg-form-preview__hint">L'ordre et la visibilité reflètent la section « Blocs et paiement ».</div>
                 </div>
+                @if ($mobileMoneyVisible)
+                    <div class="reg-form-preview__field reg-form-preview__field--full">
+                        <div class="reg-form-preview__label">Opérateur Mobile Money</div>
+                        <div class="reg-form-preview__inline-options">
+                            @forelse ($mobileProviders as $provider)
+                                @continue(! ($provider['is_visible'] ?? false))
+                                <span class="reg-form-preview__inline-option">{{ $provider['label'] }}</span>
+                            @empty
+                                <span class="reg-form-preview__hint">Aucun opérateur configuré dans le .env.</span>
+                            @endforelse
+                        </div>
+                        <div class="reg-form-preview__hint">Visibilité et ordre : section « Opérateurs Mobile Money ».</div>
+                    </div>
+                @endif
             @else
                 @if ($step === 0 && $workerVisible && $workerBefore)
                     @include('filament.registration-form-configs.preview-worker-block')

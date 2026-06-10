@@ -26,6 +26,7 @@ return [
             ['type' => '1', 'code' => 'mpesa', 'label' => 'M-Pesa', 'msisdn_regex' => '^2438[123][0-9]{7}$'],
             ['type' => '2', 'code' => 'airtel', 'label' => 'Airtel Money', 'msisdn_regex' => '^2439[0-9]{8}$'],
             ['type' => '3', 'code' => 'orange', 'label' => 'Orange Money', 'msisdn_regex' => '^2438[459][0-9]{7}$'],
+            ['type' => '4', 'code' => 'afri', 'label' => 'Afri Money', 'msisdn_regex' => '^2439[0-9]{8}$'],
         ];
     })(),
 

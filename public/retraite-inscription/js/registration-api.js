@@ -394,9 +394,10 @@ function mountFlexpayProviders(providers) {
     card.type = 'button';
     card.className = 'payment-card' + (i === 0 ? ' flexpay-prov-active' : '');
     card.dataset.flexpayType = String(p.type);
-    const iconKind = (p.code || '').toLowerCase().includes('airtel')
+    const code = (p.code || '').toLowerCase();
+    const iconKind = code.includes('airtel') || code.includes('afri')
       ? 'airtel'
-      : (p.code || '').toLowerCase().includes('orange')
+      : code.includes('orange')
         ? 'bank'
         : 'mpesa';
     card.innerHTML = `

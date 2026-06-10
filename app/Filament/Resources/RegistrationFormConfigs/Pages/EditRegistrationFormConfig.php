@@ -57,6 +57,7 @@ class EditRegistrationFormConfig extends EditRecord
                         'field_order',
                         'ui_settings',
                         'payment_modes_order',
+                        'mobile_money_providers_order',
                     ]);
                 }),
             DeleteAction::make()
@@ -84,6 +85,7 @@ class EditRegistrationFormConfig extends EditRecord
         $mergedUi = RegistrationFormUiSettings::merge($record->ui_settings);
         $data['ui_settings'] = $mergedUi;
         $data['payment_modes_order'] = RegistrationFormUiSettings::paymentModesOrderState($mergedUi);
+        $data['mobile_money_providers_order'] = RegistrationFormUiSettings::mobileProvidersOrderState($mergedUi);
         $data['field_order'] = app(RegistrationFormConfigService::class)->buildFieldOrderState($itemsByKey);
         $data['items'] = [];
 
@@ -123,6 +125,7 @@ class EditRegistrationFormConfig extends EditRecord
             $data['preview_step'],
             $data['field_order'],
             $data['payment_modes_order'],
+            $data['mobile_money_providers_order'],
         );
 
         return $data;
@@ -202,12 +205,28 @@ class EditRegistrationFormConfig extends EditRecord
         $uiPayload['payment_modes_order'] = RegistrationFormUiSettings::paymentModesOrderFromRepeater(
             $state['payment_modes_order'] ?? []
         );
+        $uiPayload['mobile_money_providers_order'] = RegistrationFormUiSettings::mobileProvidersOrderFromRepeater(
+            $state['mobile_money_providers_order'] ?? []
+        );
         $uiSettings = RegistrationFormUiSettings::merge($uiPayload);
 
         if (! RegistrationFormUiSettings::hasVisiblePaymentMode($uiSettings)) {
             Notification::make()
                 ->title('Moyen de paiement requis')
                 ->body('Au moins un moyen de paiement doit rester visible sur le formulaire public.')
+                ->danger()
+                ->send();
+
+            $this->halt();
+        }
+
+        if (
+            RegistrationFormUiSettings::isPaymentModeVisible($uiSettings, 'mobile_money')
+            && ! RegistrationFormUiSettings::hasVisibleMobileProvider($uiSettings)
+        ) {
+            Notification::make()
+                ->title('Opérateur Mobile Money requis')
+                ->body('Le mode Mobile money est affiché : au moins un opérateur (M-Pesa, Orange, Airtel, Afri…) doit rester visible.')
                 ->danger()
                 ->send();
 

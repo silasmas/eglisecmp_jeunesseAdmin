@@ -162,11 +162,82 @@ class RegistrationFormConfigForm
                             ->addable(false)
                             ->deletable(false)
                             ->live(),
+                        Section::make('Opérateurs Mobile Money')
+                            ->description('Masquez M-Pesa, Orange Money, Airtel Money, Afri Money, etc. lorsque le mode « Mobile money » est affiché.')
+                            ->schema(array_merge(
+                                [
+                                    Grid::make(2)
+                                        ->schema(self::mobileProviderToggleFields()),
+                                ],
+                                [
+                                    Repeater::make('mobile_money_providers_order')
+                                        ->label('Ordre des opérateurs affichés')
+                                        ->schema([
+                                            Hidden::make('code'),
+                                        ])
+                                        ->itemLabel(function (?array $state, $get): ?string {
+                                            $code = $state['code'] ?? null;
+
+                                            if (! is_string($code)) {
+                                                return null;
+                                            }
+
+                                            $label = RegistrationFormUiSettings::mobileProviderLabels()[$code] ?? $code;
+                                            $visible = (bool) data_get(
+                                                $get('ui_settings'),
+                                                "mobile_money_providers.{$code}.is_visible",
+                                                true
+                                            );
+
+                                            return $visible ? $label : $label.' (masqué — non affiché)';
+                                        })
+                                        ->reorderableWithDragAndDrop()
+                                        ->addable(false)
+                                        ->deletable(false)
+                                        ->live(),
+                                ]
+                            ))
+                            ->visible(fn (callable $get): bool => (bool) data_get(
+                                $get('ui_settings'),
+                                'payment_modes.mobile_money.is_visible',
+                                true
+                            ))
+                            ->columnSpanFull(),
                     ])
                     ->columnSpanFull(),
             ])
             ->columns(1)
             ->collapsible();
+    }
+
+    /**
+     * Interrupteurs de visibilité par opérateur Mobile Money (config FlexPay).
+     *
+     * @return array<int, Toggle>
+     */
+    protected static function mobileProviderToggleFields(): array
+    {
+        $toggles = [];
+
+        foreach (RegistrationFormUiSettings::configuredMobileProviders() as $provider) {
+            $code = $provider['code'];
+
+            $toggles[] = Toggle::make("ui_settings.mobile_money_providers.{$code}.is_visible")
+                ->label('Afficher '.$provider['label'])
+                ->helperText('Visible dans le choix d’opérateur à l’étape paiement.')
+                ->default(true)
+                ->live();
+        }
+
+        if ($toggles === []) {
+            $toggles[] = Toggle::make('ui_settings.mobile_money_providers_placeholder')
+                ->label('Aucun opérateur configuré')
+                ->disabled()
+                ->dehydrated(false)
+                ->helperText('Définissez RETRAITE_FLEXPAY_MOBILE_PROVIDERS dans le .env.');
+        }
+
+        return $toggles;
     }
 
     /**
@@ -221,6 +292,10 @@ class RegistrationFormConfigForm
                         'payment_modes' => $get('ui_settings.payment_modes') ?? [],
                         'payment_modes_order' => RegistrationFormUiSettings::paymentModesOrderFromRepeater(
                             $get('payment_modes_order') ?? []
+                        ),
+                        'mobile_money_providers' => $get('ui_settings.mobile_money_providers') ?? [],
+                        'mobile_money_providers_order' => RegistrationFormUiSettings::mobileProvidersOrderFromRepeater(
+                            $get('mobile_money_providers_order') ?? []
                         ),
                     ]);
                     $fields = in_array($step, [0, 1, 2], true)

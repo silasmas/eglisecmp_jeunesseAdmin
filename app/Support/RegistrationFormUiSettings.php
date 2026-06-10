@@ -22,6 +22,77 @@ class RegistrationFormUiSettings
     ];
 
     /**
+     * Opérateurs Mobile Money déclarés dans la configuration FlexPay.
+     *
+     * @return list<array{type: string, code: string, label: string, msisdn_regex?: string}>
+     */
+    public static function configuredMobileProviders(): array
+    {
+        $providers = [];
+
+        foreach (config('retraite.flexpay_mobile_providers', []) as $provider) {
+            if (! is_array($provider)) {
+                continue;
+            }
+
+            $code = self::providerCode($provider);
+
+            if ($code === '') {
+                continue;
+            }
+
+            $providers[] = [
+                'type' => (string) ($provider['type'] ?? ''),
+                'code' => $code,
+                'label' => (string) ($provider['label'] ?? $code),
+                'msisdn_regex' => isset($provider['msisdn_regex']) ? (string) $provider['msisdn_regex'] : '',
+            ];
+        }
+
+        return $providers;
+    }
+
+    /**
+     * @param  array<string, mixed>  $provider Définition opérateur
+     * @return string Code stable (mpesa, airtel, orange, afri…)
+     */
+    public static function providerCode(array $provider): string
+    {
+        $code = trim((string) ($provider['code'] ?? ''));
+
+        if ($code !== '') {
+            return $code;
+        }
+
+        return trim((string) ($provider['type'] ?? ''));
+    }
+
+    /**
+     * @return list<string> Codes opérateurs dans l'ordre de configuration .env
+     */
+    public static function defaultMobileProviderCodes(): array
+    {
+        return array_map(
+            fn (array $provider): string => self::providerCode($provider),
+            self::configuredMobileProviders()
+        );
+    }
+
+    /**
+     * @return array<string, array{is_visible: bool}>
+     */
+    public static function defaultMobileProviderVisibility(): array
+    {
+        $visibility = [];
+
+        foreach (self::defaultMobileProviderCodes() as $code) {
+            $visibility[$code] = ['is_visible' => true];
+        }
+
+        return $visibility;
+    }
+
+    /**
      * Valeurs par défaut des blocs configurables hors registre de champs.
      *
      * @return array<string, mixed>
@@ -43,6 +114,8 @@ class RegistrationFormUiSettings
                 'cash' => ['is_visible' => true],
             ],
             'payment_modes_order' => self::PAYMENT_MODE_KEYS,
+            'mobile_money_providers' => self::defaultMobileProviderVisibility(),
+            'mobile_money_providers_order' => self::defaultMobileProviderCodes(),
         ];
     }
 
@@ -81,7 +154,27 @@ class RegistrationFormUiSettings
                 ],
             ],
             'payment_modes_order' => self::normalizePaymentModesOrder($stored['payment_modes_order'] ?? null),
+            'mobile_money_providers' => self::mergeMobileProviderVisibility($stored['mobile_money_providers'] ?? null),
+            'mobile_money_providers_order' => self::normalizeMobileProvidersOrder($stored['mobile_money_providers_order'] ?? null),
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $stored
+     * @return array<string, array{is_visible: bool}>
+     */
+    public static function mergeMobileProviderVisibility(?array $stored): array
+    {
+        $defaults = self::defaultMobileProviderVisibility();
+        $merged = [];
+
+        foreach (self::defaultMobileProviderCodes() as $code) {
+            $merged[$code] = [
+                'is_visible' => (bool) ($stored[$code]['is_visible'] ?? $defaults[$code]['is_visible'] ?? true),
+            ];
+        }
+
+        return $merged;
     }
 
     /**
@@ -215,5 +308,164 @@ class RegistrationFormUiSettings
     public static function hasVisiblePaymentMode(?array $uiSettings): bool
     {
         return self::visiblePaymentModes($uiSettings) !== [];
+    }
+
+    /**
+     * État Filament pour le repeater d'ordre des opérateurs Mobile Money.
+     *
+     * @param  array<string, mixed>|null  $stored
+     * @return array<int, array{code: string}>
+     */
+    public static function mobileProvidersOrderState(?array $uiSettings): array
+    {
+        $ui = self::merge($uiSettings);
+
+        return array_map(
+            fn (string $code): array => ['code' => $code],
+            $ui['mobile_money_providers_order']
+        );
+    }
+
+    /**
+     * @param  array<int, array{code?: string}>|null  $rows
+     * @return list<string>
+     */
+    public static function mobileProvidersOrderFromRepeater(?array $rows): array
+    {
+        if (! is_array($rows)) {
+            return self::defaultMobileProviderCodes();
+        }
+
+        $order = [];
+
+        foreach ($rows as $row) {
+            $code = $row['code'] ?? null;
+
+            if (is_string($code) && in_array($code, self::defaultMobileProviderCodes(), true)) {
+                $order[] = $code;
+            }
+        }
+
+        return self::normalizeMobileProvidersOrder($order);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function normalizeMobileProvidersOrder(mixed $order): array
+    {
+        $known = self::defaultMobileProviderCodes();
+
+        if (! is_array($order)) {
+            return $known;
+        }
+
+        $normalized = [];
+
+        foreach ($order as $code) {
+            if (is_string($code) && in_array($code, $known, true) && ! in_array($code, $normalized, true)) {
+                $normalized[] = $code;
+            }
+        }
+
+        foreach ($known as $code) {
+            if (! in_array($code, $normalized, true)) {
+                $normalized[] = $code;
+            }
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $uiSettings Paramètres fusionnés
+     * @param  string  $code Code opérateur (mpesa, airtel…)
+     * @return bool Vrai si l'opérateur est affiché
+     */
+    public static function isMobileProviderVisible(?array $uiSettings, string $code): bool
+    {
+        $ui = self::merge($uiSettings);
+
+        return (bool) ($ui['mobile_money_providers'][$code]['is_visible'] ?? true);
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $uiSettings Paramètres fusionnés
+     * @return list<string> Codes opérateurs visibles dans l'ordre configuré
+     */
+    public static function visibleMobileProviderCodes(?array $uiSettings): array
+    {
+        $ui = self::merge($uiSettings);
+        $visible = [];
+
+        foreach ($ui['mobile_money_providers_order'] as $code) {
+            if (self::isMobileProviderVisible($ui, $code)) {
+                $visible[] = $code;
+            }
+        }
+
+        return $visible;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $uiSettings Paramètres fusionnés
+     * @return bool Au moins un opérateur Mobile Money reste visible
+     */
+    public static function hasVisibleMobileProvider(?array $uiSettings): bool
+    {
+        return self::visibleMobileProviderCodes($uiSettings) !== [];
+    }
+
+    /**
+     * Filtre et ordonne les opérateurs FlexPay selon la configuration publiée.
+     *
+     * @param  list<array<string, mixed>>  $providers Opérateurs bruts (.env / config)
+     * @param  array<string, mixed>|null  $uiSettings Paramètres fusionnés
+     * @return list<array<string, mixed>>
+     */
+    public static function filterMobileProviders(array $providers, ?array $uiSettings): array
+    {
+        $ui = self::merge($uiSettings);
+        $byCode = [];
+
+        foreach ($providers as $provider) {
+            if (! is_array($provider)) {
+                continue;
+            }
+
+            $code = self::providerCode($provider);
+
+            if ($code !== '') {
+                $byCode[$code] = $provider;
+            }
+        }
+
+        $filtered = [];
+
+        foreach ($ui['mobile_money_providers_order'] as $code) {
+            if (! self::isMobileProviderVisible($ui, $code)) {
+                continue;
+            }
+
+            if (isset($byCode[$code])) {
+                $filtered[] = $byCode[$code];
+            }
+        }
+
+        return $filtered;
+    }
+
+    /**
+     * @return array<string, string> Libellés opérateurs pour l'admin
+     */
+    public static function mobileProviderLabels(): array
+    {
+        $labels = [];
+
+        foreach (self::configuredMobileProviders() as $provider) {
+            $labels[$provider['code']] = $provider['label'];
+        }
+
+        return $labels;
     }
 }
