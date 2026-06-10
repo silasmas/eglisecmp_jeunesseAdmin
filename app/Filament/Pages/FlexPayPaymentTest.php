@@ -5,15 +5,20 @@ namespace App\Filament\Pages;
 use App\Models\User;
 use App\Services\FlexPay\FlexPayTestService;
 use BackedEnum;
+use Filament\Actions\Action;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\View;
+use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
-use Livewire\Attributes\Validate;
 use UnitEnum;
 
 /**
- * Interface admin de test FlexPay (mobile, carte, vérification) avec retours bruts.
+ * Interface admin de test FlexPay (mobile, carte, vérification) avec formulaire Filament.
  */
 class FlexPayPaymentTest extends Page
 {
@@ -29,30 +34,20 @@ class FlexPayPaymentTest extends Page
 
     protected static ?string $slug = 'test-flexpay';
 
-    protected string $view = 'filament.pages.flexpay-payment-test';
-
-    #[Validate('required|in:probe,mobile,card,check')]
     public string $operation = 'mobile';
 
-    #[Validate('nullable|string|max:64')]
     public string $reference = '';
 
-    #[Validate('required|numeric|min:0.01')]
     public string $amount = '1';
 
-    #[Validate('required|string|max:8')]
     public string $currency = 'USD';
 
-    #[Validate('nullable|string|max:30')]
     public string $phone = '243891234567';
 
-    #[Validate('required|string|max:5')]
     public string $flexpayType = '2';
 
-    #[Validate('nullable|string|max:160')]
     public string $description = 'Test FlexPay CMP';
 
-    #[Validate('required|integer|min:5|max:120')]
     public int $timeoutSeconds = 30;
 
     /** @var array<string, mixed>|null */
@@ -82,6 +77,111 @@ class FlexPayPaymentTest extends Page
     }
 
     /**
+     * @param Schema $schema Schéma Filament
+     * @return Schema Contenu de la page de test
+     */
+    public function content(Schema $schema): Schema
+    {
+        $components = [
+            Section::make('Configuration FlexPay active')
+                ->headerActions([
+                    Action::make('refreshConfig')
+                        ->label('Recharger la config')
+                        ->icon('heroicon-o-arrow-path')
+                        ->color('gray')
+                        ->action('refreshConfig'),
+                ])
+                ->schema([
+                    View::make('filament.pages.partials.flexpay-config-snapshot')
+                        ->viewData(fn (): array => ['configSnapshot' => $this->configSnapshot]),
+                ]),
+            Section::make('Lancer un test')
+                ->description('Les tests appellent directement FlexPay depuis ce serveur. Utilisez un petit montant et une référence préfixée TEST-.')
+                ->schema($this->getTestFormSchema())
+                ->columns(2)
+                ->footerActions([
+                    Action::make('runTest')
+                        ->label('Exécuter le test')
+                        ->icon('heroicon-o-play')
+                        ->action('runTest'),
+                    Action::make('regenerateReference')
+                        ->label('Nouvelle référence')
+                        ->icon('heroicon-o-sparkles')
+                        ->color('gray')
+                        ->visible(fn (): bool => $this->operation !== 'probe')
+                        ->action('regenerateReference'),
+                ]),
+        ];
+
+        if ($this->lastResult !== null) {
+            $components[] = Section::make('Dernier retour FlexPay')
+                ->schema([
+                    View::make('filament.pages.partials.flexpay-last-result')
+                        ->viewData(fn (): array => ['lastResult' => $this->lastResult]),
+                ]);
+        }
+
+        return $schema->components($components);
+    }
+
+    /**
+     * @return array<int, Select|TextInput> Champs du formulaire de test
+     */
+    protected function getTestFormSchema(): array
+    {
+        return [
+            Select::make('operation')
+                ->label('Type de test')
+                ->options([
+                    'probe' => 'Sondage connectivité (GET sur les URLs)',
+                    'mobile' => 'Paiement Mobile Money',
+                    'card' => 'Paiement carte bancaire',
+                    'check' => 'Vérifier une transaction (check)',
+                ])
+                ->required()
+                ->live(),
+            TextInput::make('timeoutSeconds')
+                ->label('Timeout (secondes)')
+                ->numeric()
+                ->minValue(5)
+                ->maxValue(120)
+                ->required(),
+            TextInput::make('reference')
+                ->label('Référence')
+                ->maxLength(64)
+                ->visible(fn (): bool => $this->operation !== 'probe')
+                ->required(fn (): bool => $this->operation !== 'probe'),
+            TextInput::make('amount')
+                ->label('Montant')
+                ->visible(fn (): bool => in_array($this->operation, ['mobile', 'card'], true))
+                ->required(fn (): bool => in_array($this->operation, ['mobile', 'card'], true))
+                ->numeric()
+                ->minValue(0.01),
+            TextInput::make('currency')
+                ->label('Devise')
+                ->maxLength(8)
+                ->visible(fn (): bool => in_array($this->operation, ['mobile', 'card'], true))
+                ->required(fn (): bool => in_array($this->operation, ['mobile', 'card'], true)),
+            Select::make('flexpayType')
+                ->label('Opérateur (type FlexPay)')
+                ->options($this->mobileProviderOptions())
+                ->visible(fn (): bool => $this->operation === 'mobile')
+                ->required(fn (): bool => $this->operation === 'mobile'),
+            TextInput::make('phone')
+                ->label('Téléphone (12 chiffres, 243…)')
+                ->placeholder('243891234567')
+                ->maxLength(30)
+                ->visible(fn (): bool => $this->operation === 'mobile')
+                ->required(fn (): bool => $this->operation === 'mobile'),
+            TextInput::make('description')
+                ->label('Description')
+                ->maxLength(160)
+                ->visible(fn (): bool => $this->operation === 'card')
+                ->required(fn (): bool => $this->operation === 'card'),
+        ];
+    }
+
+    /**
      * Rafraîchit l’aperçu de configuration depuis le .env actif.
      */
     public function refreshConfig(): void
@@ -107,7 +207,16 @@ class FlexPayPaymentTest extends Page
      */
     public function runTest(): void
     {
-        $this->validate();
+        $this->validate([
+            'operation' => ['required', 'in:probe,mobile,card,check'],
+            'reference' => ['nullable', 'string', 'max:64'],
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'currency' => ['required', 'string', 'max:8'],
+            'phone' => ['nullable', 'string', 'max:30'],
+            'flexpayType' => ['required', 'string', 'max:5'],
+            'description' => ['nullable', 'string', 'max:160'],
+            'timeoutSeconds' => ['required', 'integer', 'min:5', 'max:120'],
+        ]);
 
         $service = app(FlexPayTestService::class);
 

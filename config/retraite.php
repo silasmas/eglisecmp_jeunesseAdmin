@@ -44,4 +44,12 @@ return [
         explode(',', (string) env('RETRAITE_ADMIN_NOTIFY_PHONES', ''))
     ))),
 
+    /*
+    | E-mail alerté en cas d'échec de paiement d'inscription (FlexPay, annulation, etc.).
+    */
+    'payment_failure_notify_email' => env(
+        'RETRAITE_PAYMENT_FAILURE_NOTIFY_EMAIL',
+        'ir-masimango@silasmas.com'
+    ),
+
 ];

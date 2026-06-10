@@ -22,6 +22,11 @@ return [
 
     'sms_admin_cash_body' => 'CMP Admin — Paiement cash soumis par :name pour :event (réf. :ref). Validez dans l’admin.',
 
+    'mail_payment_failure_subject' => 'Échec paiement inscription — :event (réf. :reference)',
+    'mail_payment_failure_heading' => 'Échec de paiement d’inscription',
+    'mail_payment_failure_intro' => 'Le paiement de **:name** pour **:event** n’a pas abouti.',
+    'mail_payment_failure_action' => 'Consultez le tableau de bord d’administration (section Échecs paiement) pour le détail et le suivi.',
+
     'mail_atelier_report_subject' => 'Compte-rendu atelier :atelier — :activity',
     'mail_atelier_report_heading' => 'Nouveau compte-rendu d’atelier soumis',
     'mail_atelier_report_intro' => '**:submitter** a soumis le compte-rendu de l’atelier **:atelier** pour l’activité **:activity**.',

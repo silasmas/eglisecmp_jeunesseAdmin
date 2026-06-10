@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Models\RetreatPayment;
 use App\Models\User;
 use App\Services\PanelNotificationDispatcher;
+use App\Services\RetreatPaymentFailureNotifier;
 use App\Services\RetreatRegistrationFulfillmentService;
 use Illuminate\Support\Facades\Auth;
 
@@ -13,6 +14,7 @@ class RetreatPaymentObserver
     public function __construct(
         protected PanelNotificationDispatcher $dispatcher,
         protected RetreatRegistrationFulfillmentService $fulfillment,
+        protected RetreatPaymentFailureNotifier $paymentFailureNotifier,
     ) {}
 
     public function updating(RetreatPayment $payment): void
@@ -79,6 +81,33 @@ class RetreatPaymentObserver
     {
         $participant = $payment->participant()->first();
         if (! $participant) {
+            return;
+        }
+
+        if (in_array($payment->etat, ['echouee', 'annulee'], true)) {
+            $reason = $payment->etat === 'annulee' ? 'payment_cancelled' : 'payment_failed';
+            $message = filled($payment->provider_message)
+                ? (string) $payment->provider_message
+                : ($payment->etat === 'annulee'
+                    ? 'Paiement annulé ou refusé.'
+                    : 'Paiement échoué.');
+
+            try {
+                $this->paymentFailureNotifier->notify(
+                    $payment,
+                    $reason,
+                    'state_change',
+                    $message,
+                    [
+                        'etat' => $payment->etat,
+                        'channel' => $payment->channel,
+                    ],
+                    $participant,
+                );
+            } catch (\Throwable $e) {
+                report($e);
+            }
+
             return;
         }
 

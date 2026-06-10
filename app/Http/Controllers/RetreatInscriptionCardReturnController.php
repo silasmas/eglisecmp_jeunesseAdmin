@@ -44,7 +44,10 @@ class RetreatInscriptionCardReturnController extends Controller
         }
 
         if (in_array($status, ['cancel', 'decline', 'failure', 'failed', 'error'], true)) {
-            $payment->update(['etat' => 'echouee']);
+            $payment->update([
+                'etat' => 'echouee',
+                'provider_message' => 'Retour carte FlexPay : '.$status.'.',
+            ]);
 
             return redirect()
                 ->route('retraite.inscription')

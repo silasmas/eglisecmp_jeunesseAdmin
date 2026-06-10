@@ -18,6 +18,7 @@ use App\Services\KeccelSmsService;
 use App\Services\PublicStorageUrl;
 use App\Services\RegistrationFormConfigService;
 use App\Services\RetreatCashPaymentAdminNotifier;
+use App\Services\RetreatPaymentFailureNotifier;
 use App\Services\RetreatPlacementAssignmentService;
 use App\Services\RetreatInscriptionFunnelService;
 use App\Services\RetreatInscriptionPaymentCompletionService;
@@ -46,6 +47,7 @@ class RetreatPublicRegistrationController extends Controller
         protected RetreatInscriptionPaymentCompletionService $paymentCompletion,
         protected KeccelSmsService $keccelSms,
         protected RetreatCashPaymentAdminNotifier $cashPaymentAdminNotifier,
+        protected RetreatPaymentFailureNotifier $paymentFailureNotifier,
         protected RetreatInscriptionFunnelService $inscriptionFunnel,
         protected RegistrationFormConfigService $formConfigService,
     ) {}
@@ -1140,8 +1142,23 @@ class RetreatPublicRegistrationController extends Controller
         $this->logPaymentTransaction($payment, 'mobile_initiation', $validated, $result);
 
         if (! ($result['reponse'] ?? false)) {
+            $failureMessage = $result['message'] ?? 'Impossible de joindre le service de paiement mobile. Réessayez ou changez de moyen de paiement.';
+
+            try {
+                $this->paymentFailureNotifier->notify(
+                    $payment,
+                    'mobile_init_failed',
+                    'mobile_init',
+                    $failureMessage,
+                    is_array($result) ? $result : null,
+                    $participant,
+                );
+            } catch (\Throwable $e) {
+                report($e);
+            }
+
             return response()->json([
-                'message' => $result['message'] ?? 'Impossible de joindre le service de paiement mobile. Réessayez ou changez de moyen de paiement.',
+                'message' => $failureMessage,
                 'detail' => $result['raw'] ?? null,
             ], 422);
         }
@@ -1221,8 +1238,23 @@ class RetreatPublicRegistrationController extends Controller
         ], $result);
 
         if (! ($result['rep'] ?? false)) {
+            $failureMessage = $result['message'] ?? 'Impossible d’initier le paiement par carte.';
+
+            try {
+                $this->paymentFailureNotifier->notify(
+                    $payment,
+                    'card_init_failed',
+                    'card_init',
+                    $failureMessage,
+                    is_array($result) ? $result : null,
+                    $participant,
+                );
+            } catch (\Throwable $e) {
+                report($e);
+            }
+
             return response()->json([
-                'message' => $result['message'] ?? 'Impossible d’initier le paiement par carte.',
+                'message' => $failureMessage,
             ], 422);
         }
 
@@ -1348,7 +1380,22 @@ class RetreatPublicRegistrationController extends Controller
         ], $check);
 
         if (! ($check['ok'] ?? false)) {
-            return response()->json(['message' => $check['error'] ?? 'Erreur vérification.'], 500);
+            $failureMessage = $check['error'] ?? 'Erreur vérification FlexPay.';
+
+            try {
+                $this->paymentFailureNotifier->notify(
+                    $payment,
+                    'check_api_error',
+                    'polling',
+                    $failureMessage,
+                    is_array($check) ? $check : null,
+                    $payment->participant,
+                );
+            } catch (\Throwable $e) {
+                report($e);
+            }
+
+            return response()->json(['message' => $failureMessage], 500);
         }
 
         $payload = $check['payload'] ?? [];
@@ -1392,7 +1439,10 @@ class RetreatPublicRegistrationController extends Controller
                 }
                 break;
             case 1:
-                $payment->update(['etat' => 'annulee']);
+                $payment->update([
+                    'etat' => 'annulee',
+                    'provider_message' => 'Transaction annulée côté opérateur (polling FlexPay).',
+                ]);
                 $message = 'Paiement annulé.';
                 if ($payment->participant) {
                     $this->inscriptionFunnel->record(
@@ -1416,10 +1466,28 @@ class RetreatPublicRegistrationController extends Controller
                 }
                 break;
             default:
+                $unknownMessage = data_get(is_array($mergedPayload) ? $mergedPayload : [], 'message', 'Statut inconnu');
+
+                try {
+                    $this->paymentFailureNotifier->notify(
+                        $payment,
+                        'polling_unknown_status',
+                        'polling',
+                        'Statut FlexPay inconnu : '.$unknownMessage,
+                        [
+                            'statut_code' => $status,
+                            'payload' => $mergedPayload,
+                        ],
+                        $payment->participant,
+                    );
+                } catch (\Throwable $e) {
+                    report($e);
+                }
+
                 return response()->json([
                     'data' => [
                         'statut_code' => $status,
-                        'message' => data_get(is_array($mergedPayload) ? $mergedPayload : [], 'message', 'Statut inconnu'),
+                        'message' => $unknownMessage,
                         'payee' => false,
                         'en_cours' => false,
                         'participant_id' => $payment->participant_id,
