@@ -1,5 +1,7 @@
 # Frontend - Intégration
 
+> **Mobile Money multi-opérateurs** : la sélection M-Pesa / Airtel / Orange en interface est **UX uniquement**. L’API FlexPay reçoit toujours `type: "1"`. Voir [`08-MOBILE-MONEY-CORRECTIFS.md`](../08-MOBILE-MONEY-CORRECTIFS.md).
+
 ## Fichiers
 
 - **formulaire-paiement.blade.php** : Formulaire HTML (montant, nom, email, choix paiement)
@@ -29,7 +31,17 @@ Le script attend ces IDs dans le HTML :
 - `paiement-section` : bloc choix paiement (masqué au départ)
 - `formPaie` : formulaire paiement
 - `channel` : select Mobile Money / Carte
-- `phoneContainer`, `phone` : pour Mobile Money
+- `phoneContainer`, `phone` : pour Mobile Money (12 chiffres, `243…`, sans `+`)
+- Si multi-opérateurs : envoyer `provider_code` (ex. `orange`) au backend — **ne pas** l’envoyer comme `type` FlexPay
+
+## Mobile Money — bonnes pratiques UI
+
+| Élément | Recommandation |
+|---------|----------------|
+| Sélection opérateur | Cartes / boutons avec `data-provider-code="orange"` |
+| Payload backend | `{ phone: "243…", provider_code: "orange" }` |
+| Validation locale | Regex par opérateur (`msisdn_regex` dans config) |
+| Appel FlexPay | Uniquement côté **serveur**, avec `type: "1"` |
 - `customCheck7` : checkbox CGU
 - `referenceCreate`, `total`, `currency` : champs cachés
 - `totalAff` : affichage du total

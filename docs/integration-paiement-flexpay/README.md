@@ -2,7 +2,22 @@
 
 Ce dossier contient tout le code et la documentation nécessaires pour intégrer le paiement FlexPay (Mobile Money + Carte bancaire) dans un projet Laravel.
 
-**Utilisable pour :** Dons, achats, abonnements, services, etc.
+**Utilisable pour :** Dons, inscriptions retraite, achats, abonnements, services, etc.
+
+---
+
+## ⚠️ Mobile Money — lecture obligatoire
+
+Si vous intégrez ou corrigez le **Mobile Money**, commencez par :
+
+**[`08-MOBILE-MONEY-CORRECTIFS.md`](08-MOBILE-MONEY-CORRECTIFS.md)**
+
+Points clés (doc FlexPay v1.4) :
+
+- API `type` = **`"1"`** pour **tout** Mobile Money (M-Pesa, Airtel, Orange, Afri…)
+- **`"2"`** = carte bancaire (sur `paymentService`)
+- **Ne pas** envoyer `type: "2"` pour Airtel ou `type: "3"` pour Orange
+- La sélection d’opérateur dans l’UI sert à **valider le numéro** ; FlexPay route via le **`phone`**
 
 ---
 
@@ -10,57 +25,65 @@ Ce dossier contient tout le code et la documentation nécessaires pour intégrer
 
 ```
 integration-paiement-flexpay/
-├── README.md                    # Ce fichier
-├── 01-CONFIGURATION.md          # Variables d'environnement et config
+├── README.md                         # Ce fichier
+├── 01-CONFIGURATION.md               # Variables .env, config/services.php
+├── 08-MOBILE-MONEY-CORRECTIFS.md     # ★ Correctifs type API + opérateurs UI
 ├── 02-BACKEND/
-│   ├── README.md                # Instructions copie backend
-│   ├── FlexPayService.php       # Service API FlexPay (carte bancaire)
-│   ├── FlexPayMobileHelper.php  # Helper Mobile Money (à intégrer dans helpers.php)
-│   └── DonationPaymentController.php  # Contrôleur adapté pour les dons
+│   ├── README.md
+│   ├── FlexPayService.php            # Carte bancaire
+│   ├── FlexPayMobileHelper.php       # Helper Mobile Money (type "1")
+│   ├── FlexPayMobileService.example.php  # Service Mobile Money (recommandé)
+│   └── DonationPaymentController.php # Exemple dons
 ├── 03-FRONTEND/
-│   ├── README.md                # Instructions frontend
-│   ├── formulaire-paiement.blade.php  # Formulaire HTML
-│   ├── paiement.blade.php       # Script JS avec routes Laravel
-│   └── paiement.js              # Version JS pure (sans Blade)
-├── 04-ROUTES.md                 # Routes à ajouter
-├── 05-MIGRATIONS.md             # Migrations base de données
-├── 06-ADAPTATION-DONS.md        # Guide spécifique projet dons
-└── 07-EXEMPLE-ENV.md            # Exemple .env
+│   ├── README.md
+│   ├── formulaire-paiement.blade.php
+│   ├── paiement.blade.php
+│   └── paiement.js
+├── 04-ROUTES.md
+├── 05-MIGRATIONS.md
+├── 06-ADAPTATION-DONS.md
+└── 07-EXEMPLE-ENV.md
 ```
 
 ---
 
 ## 🚀 Démarrage rapide
 
-1. **Configuration** : Copier les variables dans `.env` (voir `07-EXEMPLE-ENV.md`)
-2. **Backend** : Copier les fichiers de `02-BACKEND/` dans votre projet
-3. **Frontend** : Intégrer le formulaire et le JS de `03-FRONTEND/`
-4. **Routes** : Ajouter les routes dans `routes/web.php` (voir `04-ROUTES.md`)
-5. **Base de données** : Exécuter les migrations (voir `05-MIGRATIONS.md`)
+1. **Lire** `08-MOBILE-MONEY-CORRECTIFS.md` si Mobile Money
+2. **Configuration** : `.env` (voir `07-EXEMPLE-ENV.md` et `01-CONFIGURATION.md`)
+3. **Backend** : copier `02-BACKEND/` dans votre projet
+4. **Frontend** : intégrer `03-FRONTEND/`
+5. **Routes** : `04-ROUTES.md`
+6. **Base de données** : `05-MIGRATIONS.md`
 
 ---
 
-## 🔄 Flux de paiement
+## 🔄 Flux de paiement Mobile Money (corrigé)
 
 ```
-Utilisateur remplit formulaire
+Utilisateur choisit opérateur (UI) + saisit numéro 243…
         ↓
-POST /init-don (ou /caisse)
+Validation locale (regex opérateur) — provider_code interne
         ↓
-Choix : Mobile Money OU Carte bancaire
+POST backend → FlexPay paymentService
+        {
+          "type": "1",          ← toujours "1" pour mobile
+          "phone": "243…",
+          "merchant", "amount", "reference", "callbackUrl"
+        }
         ↓
-┌─────────────────────────────────────────────────────────────┐
-│ MOBILE MONEY                    │ CARTE BANCAIRE             │
-│ → Appel API FlexPay Mobile      │ → Appel API FlexPay Card    │
-│ → Polling /checkTransactionStatus│ → Redirection vers FlexPay  │
-│ → Mise à jour statut            │ → Retour /paid/{ref}/...    │
-└─────────────────────────────────────────────────────────────┘
+FlexPay → push USSD / notification opérateur (selon numéro)
+        ↓
+Polling GET /check/{orderNumber} + webhook callbackUrl
+        ↓
+Statut payé / annulé / en attente
 ```
 
 ---
 
 ## 📋 Prérequis
 
-- Laravel 8+ (ou 9, 10, 11)
+- Laravel 8+ (ou 9, 10, 11, 12, 13)
 - Compte marchand FlexPay
-- Token API FlexPay
+- Token API FlexPay (JWT)
+- URLs de passerelle confirmées par FlexPay pour votre marchand

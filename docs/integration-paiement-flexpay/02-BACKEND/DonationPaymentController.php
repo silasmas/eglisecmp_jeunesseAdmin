@@ -76,6 +76,8 @@ class DonationPaymentController extends Controller
         $don = Don::where('reference', $request->reference)->firstOrFail();
 
         if ($request->channel === 'mobile_money') {
+            // Doc FlexPay v1.4 : type "1" = Mobile Money (tous opérateurs RDC)
+            // Ne pas utiliser 2, 3, 4… pour Airtel / Orange — voir docs/08-MOBILE-MONEY-CORRECTIFS.md
             $data = [
                 'merchant' => env('FLEXPAY_MARCHAND'),
                 'type' => '1',

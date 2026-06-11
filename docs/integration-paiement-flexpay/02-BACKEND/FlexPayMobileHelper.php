@@ -3,8 +3,13 @@
 /**
  * Helper FlexPay - Paiement MOBILE MONEY
  *
- * Envoie une requête à l'API FlexPay pour déclencher un paiement Mobile Money.
+ * Envoie une requête à l'API FlexPay paymentService pour déclencher un paiement Mobile Money.
  * L'utilisateur reçoit une notification sur son téléphone pour valider.
+ *
+ * IMPORTANT (doc FlexPay v1.4) :
+ * - Le champ API "type" doit TOUJOURS valoir "1" pour Mobile Money (tous opérateurs).
+ * - Ne pas confondre avec un code opérateur UI (mpesa, airtel, orange…) — voir 08-MOBILE-MONEY-CORRECTIFS.md
+ * - FlexPay choisit l'opérateur via le numéro "phone" (12 chiffres, 243…).
  *
  * ADAPTATION : Remplacer "Don" par votre modèle (Commande, Abonnement, etc.)
  */
@@ -17,6 +22,7 @@ use Illuminate\Support\Str;
 if (! function_exists('initRequeteFlexPayMobile')) {
     /**
      * @param  array  $data  [merchant, type, phone, reference, amount, currency, callbackUrl]
+     *                        type API FlexPay = "1" pour Mobile Money (voir 08-MOBILE-MONEY-CORRECTIFS.md)
      * @param  object  $order  Modèle avec update() et champs provider_reference, etat
      * @return array|JsonResponse
      */

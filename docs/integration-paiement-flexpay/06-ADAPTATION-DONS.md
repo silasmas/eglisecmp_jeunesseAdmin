@@ -74,3 +74,15 @@ Créer `resources/views/don/merci.blade.php` :
 3. **Polling Mobile Money** : Vérifier toutes les 5 secondes, max ~14 tentatives
 4. **URLs de retour** : FlexPay redirige vers `/paid/{ref}/{amount}/{currency}/success|cancel|decline`
 5. **Middleware** : Protéger les routes avec `auth` si les dons sont réservés aux utilisateurs connectés
+6. **Mobile Money — type API** : Toujours `'type' => '1'` vers FlexPay (voir [`08-MOBILE-MONEY-CORRECTIFS.md`](08-MOBILE-MONEY-CORRECTIFS.md))
+7. **Numéro mobile** : 12 chiffres, préfixe `243`, sans `+` (ex. `243891234567`)
+8. **JSON dans .env** : Liste d’opérateurs UI entre **guillemets simples** (`FLEXPAY_MOBILE_PROVIDERS='[...]'`)
+
+### Migrer un ancien projet
+
+Si vous aviez mappé M-Pesa=1, Airtel=2, Orange=3 dans le champ FlexPay `type` :
+
+- [ ] Remplacer par **`type: "1"`** pour tous les appels Mobile Money
+- [ ] Déplacer les codes opérateur dans un champ / config **UI** (`provider_code`, `flexpay_mobile_providers`)
+- [ ] Corriger `max:5` → `max:32` sur la validation du code opérateur
+- [ ] Vérifier `FLEXPAY_GATEWAY_MOBILE` (`paymentService` vs `/mobile`)

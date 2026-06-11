@@ -1,5 +1,7 @@
 # Routes à ajouter
 
+> Paiement Mobile Money : le contrôleur doit envoyer **`type: "1"`** à FlexPay — voir [`08-MOBILE-MONEY-CORRECTIFS.md`](08-MOBILE-MONEY-CORRECTIFS.md).
+
 Dans `routes/web.php` :
 
 ```php
