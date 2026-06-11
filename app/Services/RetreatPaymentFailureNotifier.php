@@ -8,6 +8,7 @@ use App\Models\RetreatParticipant;
 use App\Models\RetreatPayment;
 use App\Models\RetreatPaymentFailureAlert;
 use App\Models\User;
+use App\Support\RetreatPaymentFailureAlertsSchema;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 
@@ -55,6 +56,12 @@ class RetreatPaymentFailureNotifier
             return null;
         }
 
+        if (! RetreatPaymentFailureAlertsSchema::isReady()) {
+            $this->notifyWithoutPersistence($payment, $participant, $reason, $source, $message, $reference);
+
+            return null;
+        }
+
         $alert = RetreatPaymentFailureAlert::query()->create([
             'retreat_payment_id' => $payment?->id,
             'participant_id' => $participant?->id ?? $payment?->participant_id,
@@ -71,6 +78,38 @@ class RetreatPaymentFailureNotifier
         $this->sendConfiguredEmail($alert, $participant, $payment);
 
         return $alert;
+    }
+
+    /**
+     * Envoie e-mail et notification cloche même si la table SQL n'est pas encore migrée.
+     *
+     * @param RetreatPayment|null $payment Paiement concerné
+     * @param RetreatParticipant|null $participant Participant lié
+     * @param string $reason Code de la cause
+     * @param string $source Origine technique
+     * @param string $message Message lisible
+     * @param string $reference Référence paiement
+     * @return void
+     */
+    protected function notifyWithoutPersistence(
+        ?RetreatPayment $payment,
+        ?RetreatParticipant $participant,
+        string $reason,
+        string $source,
+        string $message,
+        string $reference,
+    ): void {
+        $alert = new RetreatPaymentFailureAlert([
+            'reference' => $reference,
+            'channel' => $payment?->channel,
+            'failure_reason' => $reason,
+            'failure_source' => $source,
+            'message' => $message,
+            'created_at' => now(),
+        ]);
+
+        $this->notifySuperAdmins($alert, $participant, $payment);
+        $this->sendConfiguredEmail($alert, $participant, $payment, persistSentAt: false);
     }
 
     /**
@@ -117,6 +156,7 @@ class RetreatPaymentFailureNotifier
         RetreatPaymentFailureAlert $alert,
         ?RetreatParticipant $participant,
         ?RetreatPayment $payment,
+        bool $persistSentAt = true,
     ): void {
         $recipient = (string) config('retraite.payment_failure_notify_email', '');
 
@@ -129,10 +169,12 @@ class RetreatPaymentFailureNotifier
                 new RetreatPaymentFailureMail($alert, $participant, $payment)
             );
 
-            $alert->update([
-                'email_sent_at' => now(),
-                'email_recipient' => $recipient,
-            ]);
+            if ($persistSentAt && $alert->exists) {
+                $alert->update([
+                    'email_sent_at' => now(),
+                    'email_recipient' => $recipient,
+                ]);
+            }
         } catch (\Throwable $e) {
             report($e);
         }

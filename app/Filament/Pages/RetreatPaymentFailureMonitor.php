@@ -8,7 +8,9 @@ use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use App\Support\RetreatPaymentFailureAlertsSchema;
 use Filament\Schemas\Components\EmbeddedTable;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -18,7 +20,6 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Schema as DbSchema;
 use UnitEnum;
 
 /**
@@ -26,9 +27,7 @@ use UnitEnum;
  */
 class RetreatPaymentFailureMonitor extends Page implements HasTable
 {
-    use InteractsWithTable {
-        makeTable as makeBaseTable;
-    }
+    use InteractsWithTable;
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-exclamation-triangle';
 
@@ -41,6 +40,17 @@ class RetreatPaymentFailureMonitor extends Page implements HasTable
     protected static ?int $navigationSort = 10;
 
     protected static ?string $slug = 'echecs-paiement';
+
+    /** @var bool Indique si la table SQL des alertes est disponible */
+    public bool $alertsTableReady = false;
+
+    /**
+     * Vérifie la table avant d'afficher la liste.
+     */
+    public function mount(): void
+    {
+        $this->alertsTableReady = RetreatPaymentFailureAlertsSchema::isReady();
+    }
 
     /**
      * @param array<string, mixed> $parameters Paramètres de route
@@ -58,7 +68,7 @@ class RetreatPaymentFailureMonitor extends Page implements HasTable
      */
     public static function getNavigationBadge(): ?string
     {
-        if (! DbSchema::hasTable('retreat_payment_failure_alerts')) {
+        if (! RetreatPaymentFailureAlertsSchema::isReady()) {
             return null;
         }
 
@@ -83,6 +93,12 @@ class RetreatPaymentFailureMonitor extends Page implements HasTable
      */
     public function content(Schema $schema): Schema
     {
+        if (! $this->alertsTableReady) {
+            return $schema->components([
+                View::make('filament.pages.payment-failure-alerts-migration-required'),
+            ]);
+        }
+
         return $schema->components([
             EmbeddedTable::make(),
         ]);

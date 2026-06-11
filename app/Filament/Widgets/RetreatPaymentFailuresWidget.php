@@ -5,11 +5,11 @@ namespace App\Filament\Widgets;
 use App\Filament\Pages\RetreatPaymentFailureMonitor;
 use App\Models\RetreatPaymentFailureAlert;
 use App\Models\User;
+use App\Support\RetreatPaymentFailureAlertsSchema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Schema as DbSchema;
 
 /**
  * Widget tableau de bord : derniers échecs de paiement d'inscription non traités.
@@ -25,7 +25,7 @@ class RetreatPaymentFailuresWidget extends TableWidget
      */
     public static function canView(): bool
     {
-        if (! DbSchema::hasTable('retreat_payment_failure_alerts')) {
+        if (! RetreatPaymentFailureAlertsSchema::isReady()) {
             return false;
         }
 
@@ -39,6 +39,10 @@ class RetreatPaymentFailuresWidget extends TableWidget
      */
     public function getTableHeading(): ?string
     {
+        if (! RetreatPaymentFailureAlertsSchema::isReady()) {
+            return 'Échecs paiement inscription';
+        }
+
         $pending = RetreatPaymentFailureAlert::query()
             ->whereNull('acknowledged_at')
             ->count();
