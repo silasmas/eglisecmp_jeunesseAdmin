@@ -137,7 +137,11 @@ class RegistrationFormConfigService
             $fields[] = $this->resolveFieldPayload($definition, $items->get($definition->key->value));
         }
 
-        return $this->sortResolvedFields($fields);
+        $uiSettings = $this->resolvedUiSettingsForEvent($event);
+
+        return $this->sortResolvedFields(
+            RegistrationFormUiSettings::applyContactCoordinationToFields($fields, $uiSettings)
+        );
     }
 
     /**
@@ -282,11 +286,29 @@ class RegistrationFormConfigService
         }
 
         $telephoneField = $fieldsByApiKey->get('telephone');
+        $emailField = $fieldsByApiKey->get('email');
         $telephoneRequired = $telephoneField && $telephoneField['is_required'];
+        $emailRequired = $emailField && $emailField['is_required'];
 
         $rules['indicatif'] = $telephoneRequired
             ? ['required', 'string', 'max:10']
             : ['nullable', 'string', 'max:10'];
+
+        if ($telephoneField && ! ($telephoneField['is_visible'] ?? true)) {
+            $rules['telephone'] = ['nullable', 'string', 'max:30'];
+        } elseif (isset($rules['telephone'])) {
+            $rules['telephone'] = $telephoneRequired
+                ? array_merge(['required'], array_filter($rules['telephone'], fn ($r) => $r !== 'required' && $r !== 'nullable'))
+                : ['nullable', 'string', 'max:30'];
+        }
+
+        if ($emailField && ! ($emailField['is_visible'] ?? true)) {
+            $rules['email'] = ['nullable', 'email', 'max:254'];
+        } elseif (isset($rules['email'])) {
+            $rules['email'] = $emailRequired
+                ? array_merge(['required', 'email', 'max:254'], array_filter($rules['email'], fn ($r) => ! in_array($r, ['required', 'nullable', 'email', 'max:254'], true)))
+                : ['nullable', 'email', 'max:254'];
+        }
         $rules['postnom'] = ['nullable', 'string', 'max:100'];
         $rules['role'] = ['required', 'string', 'max:80'];
         $rules['role_autre'] = ['nullable', 'string', 'max:255'];

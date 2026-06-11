@@ -654,6 +654,17 @@ async function confirmRecapAndProceed() {
   }
 }
 
+function formatFlexPayInitError(message, flexpayType) {
+  const raw = String(message || '').toLowerCase();
+  if (raw.includes('type') && (raw.includes('ne correspond') || raw.includes('correspond pas'))) {
+    const providers = (App.activeEvent && App.activeEvent.flexpay_mobile_providers) || [];
+    const selected = providers.find((p) => String(p.type) === String(flexpayType));
+    const label = selected ? selected.label : 'opérateur sélectionné';
+    return `FlexPay a refusé le code opérateur « ${flexpayType} » (${label}). Ce code ne correspond pas à votre contrat marchand : vérifiez la configuration RETRAITE_FLEXPAY_MOBILE_PROVIDERS côté administration ou contactez FlexPay pour obtenir le bon type pour Orange / Airtel / M-Pesa.`;
+  }
+  return message || 'Impossible de lancer le paiement. Vérifiez le numéro et le réseau choisi.';
+}
+
 async function triggerMobilePayment() {
   if (!App.participantId) {
     retraiteNotifyToast('Participant introuvable. Revenez au récapitulatif.', 'warning');
@@ -727,7 +738,7 @@ async function triggerMobilePayment() {
     }
     retraiteNotifyError({
       title: 'Paiement Mobile Money',
-      text: json.message || 'Impossible de lancer le paiement. Vérifiez le numéro et le réseau choisi.',
+      text: formatFlexPayInitError(json.message, App.selectedFlexpayType),
       persistent: true,
     });
     return;

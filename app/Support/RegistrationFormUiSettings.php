@@ -21,6 +21,10 @@ class RegistrationFormUiSettings
         'cash' => 'Espèces (cash)',
     ];
 
+    public const CONTACT_PREFERRED_PHONE = 'phone';
+
+    public const CONTACT_PREFERRED_EMAIL = 'email';
+
     /**
      * Opérateurs Mobile Money déclarés dans la configuration FlexPay.
      *
@@ -116,6 +120,11 @@ class RegistrationFormUiSettings
             'payment_modes_order' => self::PAYMENT_MODE_KEYS,
             'mobile_money_providers' => self::defaultMobileProviderVisibility(),
             'mobile_money_providers_order' => self::defaultMobileProviderCodes(),
+            'contact_coordination' => [
+                'preferred_channel' => self::CONTACT_PREFERRED_PHONE,
+                'telephone' => ['is_visible' => true],
+                'email' => ['is_visible' => true],
+            ],
         ];
     }
 
@@ -156,7 +165,83 @@ class RegistrationFormUiSettings
             'payment_modes_order' => self::normalizePaymentModesOrder($stored['payment_modes_order'] ?? null),
             'mobile_money_providers' => self::mergeMobileProviderVisibility($stored['mobile_money_providers'] ?? null),
             'mobile_money_providers_order' => self::normalizeMobileProvidersOrder($stored['mobile_money_providers_order'] ?? null),
+            'contact_coordination' => [
+                'preferred_channel' => self::normalizeContactPreferredChannel(
+                    $stored['contact_coordination']['preferred_channel'] ?? null
+                ),
+                'telephone' => [
+                    'is_visible' => (bool) ($stored['contact_coordination']['telephone']['is_visible']
+                        ?? $defaults['contact_coordination']['telephone']['is_visible']),
+                ],
+                'email' => [
+                    'is_visible' => (bool) ($stored['contact_coordination']['email']['is_visible']
+                        ?? $defaults['contact_coordination']['email']['is_visible']),
+                ],
+            ],
         ];
+    }
+
+    /**
+     * @return array<string, string> Options du canal de contact privilégié
+     */
+    public static function contactPreferredChannelOptions(): array
+    {
+        return [
+            self::CONTACT_PREFERRED_PHONE => 'Téléphone (l’e-mail devient facultatif)',
+            self::CONTACT_PREFERRED_EMAIL => 'E-mail (le téléphone devient facultatif)',
+        ];
+    }
+
+    /**
+     * @param  mixed  $channel Canal choisi
+     * @return string phone|email
+     */
+    public static function normalizeContactPreferredChannel(mixed $channel): string
+    {
+        return $channel === self::CONTACT_PREFERRED_EMAIL
+            ? self::CONTACT_PREFERRED_EMAIL
+            : self::CONTACT_PREFERRED_PHONE;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $uiSettings Paramètres fusionnés
+     * @return bool Au moins un contact (téléphone ou e-mail) reste visible
+     */
+    public static function hasVisibleContactField(?array $uiSettings): bool
+    {
+        $ui = self::merge($uiSettings);
+        $coord = $ui['contact_coordination'];
+
+        return ($coord['telephone']['is_visible'] ?? true) || ($coord['email']['is_visible'] ?? true);
+    }
+
+    /**
+     * Applique visibilité et obligation téléphone/e-mail selon la coordination contact.
+     *
+     * @param  array<int, array<string, mixed>>  $fields Champs résolus
+     * @param  array<string, mixed>|null  $uiSettings Paramètres fusionnés
+     * @return array<int, array<string, mixed>>
+     */
+    public static function applyContactCoordinationToFields(array $fields, ?array $uiSettings): array
+    {
+        $ui = self::merge($uiSettings);
+        $coord = $ui['contact_coordination'];
+        $preferred = $coord['preferred_channel'];
+
+        foreach ($fields as &$field) {
+            if (($field['api_key'] ?? '') === 'telephone') {
+                $field['is_visible'] = (bool) ($coord['telephone']['is_visible'] ?? true);
+                $field['is_required'] = $field['is_visible'] && $preferred === self::CONTACT_PREFERRED_PHONE;
+            }
+
+            if (($field['api_key'] ?? '') === 'email') {
+                $field['is_visible'] = (bool) ($coord['email']['is_visible'] ?? true);
+                $field['is_required'] = $field['is_visible'] && $preferred === self::CONTACT_PREFERRED_EMAIL;
+            }
+        }
+        unset($field);
+
+        return $fields;
     }
 
     /**

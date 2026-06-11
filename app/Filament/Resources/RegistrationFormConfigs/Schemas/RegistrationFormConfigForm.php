@@ -120,6 +120,28 @@ class RegistrationFormConfigForm
                             ->default(RegistrationFormUiSettings::POSITION_BEFORE_FIELDS)
                             ->live(),
                     ]),
+                Section::make('Contact identité (téléphone / e-mail)')
+                    ->description('Choisissez le canal le plus simple pour vos participants. L’autre devient facultatif s’il reste affiché. Masquez un champ pour ne plus le demander.')
+                    ->schema([
+                        Select::make('ui_settings.contact_coordination.preferred_channel')
+                            ->label('Canal privilégié (obligatoire si affiché)')
+                            ->options(RegistrationFormUiSettings::contactPreferredChannelOptions())
+                            ->default(RegistrationFormUiSettings::CONTACT_PREFERRED_PHONE)
+                            ->required()
+                            ->live(),
+                        Grid::make(2)
+                            ->schema([
+                                Toggle::make('ui_settings.contact_coordination.telephone.is_visible')
+                                    ->label('Afficher le téléphone')
+                                    ->default(true)
+                                    ->live(),
+                                Toggle::make('ui_settings.contact_coordination.email.is_visible')
+                                    ->label('Afficher l’e-mail')
+                                    ->default(true)
+                                    ->live(),
+                            ]),
+                    ])
+                    ->columnSpanFull(),
                 Section::make('Moyens de paiement')
                     ->description('Décochez un moyen pour le masquer sur le formulaire public. L’ordre ci-dessous ne concerne que les moyens affichés.')
                     ->schema([
@@ -297,10 +319,15 @@ class RegistrationFormConfigForm
                         'mobile_money_providers_order' => RegistrationFormUiSettings::mobileProvidersOrderFromRepeater(
                             $get('mobile_money_providers_order') ?? []
                         ),
+                        'contact_coordination' => $get('ui_settings.contact_coordination') ?? [],
+                        'contact_coordination' => $get('ui_settings.contact_coordination') ?? [],
                     ]);
                     $fields = in_array($step, [0, 1, 2], true)
                         ? RegistrationFormPreviewBuilder::fieldsForStep($items, $step, $canUnlock, $fieldOrder)
                         : [];
+                    if ($step === 0 && $fields !== []) {
+                        $fields = RegistrationFormUiSettings::applyContactCoordinationToFields($fields, $uiSettings);
+                    }
                     $uiBlocks = RegistrationFormPreviewBuilder::uiBlocksForStep($step, $uiSettings);
 
                     $previewHtml = view('filament.registration-form-configs.preview', [

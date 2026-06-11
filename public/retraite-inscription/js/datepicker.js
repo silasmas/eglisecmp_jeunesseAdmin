@@ -26,7 +26,21 @@ function initFlatpickr() {
     maxDate: minEligibleBirthDate,
     defaultDate: dateNaissanceInput.value || null,
     disableMobile: true,
-    allowInput: false,
+    allowInput: true,
+    parseDate: (datestr, format) => {
+      if (!datestr) {
+        return null;
+      }
+      const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(datestr.trim());
+      if (iso) {
+        return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
+      }
+      const fr = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/.exec(datestr.trim());
+      if (fr) {
+        return new Date(Number(fr[3]), Number(fr[2]) - 1, Number(fr[1]));
+      }
+      return null;
+    },
     animate: true,
     monthSelectorType: 'dropdown',
     prevArrow: '<svg width="10" height="10" viewBox="0 0 10 10"><path d="M7 1L3 5l4 4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',

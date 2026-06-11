@@ -233,6 +233,16 @@ class EditRegistrationFormConfig extends EditRecord
             $this->halt();
         }
 
+        if (! RegistrationFormUiSettings::hasVisibleContactField($uiSettings)) {
+            Notification::make()
+                ->title('Contact requis')
+                ->body('Au moins le téléphone ou l’e-mail doit rester visible à l’étape identité.')
+                ->danger()
+                ->send();
+
+            $this->halt();
+        }
+
         $record->update([
             'name' => $data['name'] ?? $record->name,
             'ui_settings' => $uiSettings,

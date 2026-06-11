@@ -580,24 +580,55 @@ function validateContactStepPhones() {
   const telInput = document.getElementById('telephone');
   const telUrgEl = document.getElementById('telUrgence');
   const guardianEl = document.getElementById('guardianPhone');
+  const emailEl = document.getElementById('email');
   const indicatif = indicatifEl ? indicatifEl.value : '+243';
 
-  if (!telInput) return false;
+  let valid = true;
+
+  const telRequired = telInput && telInput.hasAttribute('data-required');
+  const emailRequired = emailEl && emailEl.hasAttribute('data-required');
+
+  if (telInput && telRequired) {
+    const mainCanon = normalizeMainPhoneCanon(indicatif, telInput.value);
+    if (!(telInput.value || '').trim()) {
+      telephoneMarkInvalid(true);
+      setLiveHint(
+        'telephoneLiveFeedback',
+        '<i class="bi bi-exclamation-circle"></i> Le numéro de téléphone est obligatoire.',
+        'danger'
+      );
+      valid = false;
+    } else if (!digitsLookLikeE164(mainCanon)) {
+      telephoneMarkInvalid(true);
+      valid = false;
+    } else {
+      telephoneMarkInvalid(false);
+    }
+  }
+
+  const emailRaw = emailEl ? (emailEl.value || '').trim() : '';
+  if (emailEl && emailRequired) {
+    if (!emailRaw) {
+      showFieldError(emailEl);
+      setLiveHint(
+        'emailLiveFeedback',
+        '<i class="bi bi-exclamation-circle"></i> L’adresse e-mail est obligatoire.',
+        'danger'
+      );
+      valid = false;
+    } else if (!retraiteLiveEmailLooksValid(emailRaw)) {
+      showFieldError(emailEl, 'Adresse e-mail invalide');
+      valid = false;
+    }
+  }
+
+  if (!telInput) {
+    return valid;
+  }
 
   const mainCanon = normalizeMainPhoneCanon(indicatif, telInput.value);
 
-  let valid = true;
-  if (!(telInput.value || '').trim()) {
-    telephoneMarkInvalid(true);
-    valid = false;
-  } else if (!digitsLookLikeE164(mainCanon)) {
-    telephoneMarkInvalid(true);
-    valid = false;
-  } else {
-    telephoneMarkInvalid(false);
-  }
-
-  if (App.mainPhoneDuplicateRegistered) {
+  if (telRequired && App.mainPhoneDuplicateRegistered) {
     setLiveHint(
       'telephoneLiveFeedback',
       '<i class="bi bi-telephone-x"></i> Ce numéro est déjà utilisé pour une autre inscription à cette retraite.',
@@ -615,7 +646,13 @@ function validateContactStepPhones() {
     ? canonicalEmergencyDigitsClient((guardianEl.value || '').trim(), indicatif)
     : null;
 
-  if (tutorCanon && digitsLookLikeE164(tutorCanon) && tutorCanon === mainCanon) {
+  if (
+    tutorCanon &&
+    digitsLookLikeE164(tutorCanon) &&
+    mainCanon &&
+    digitsLookLikeE164(mainCanon) &&
+    tutorCanon === mainCanon
+  ) {
     setTutorSameFamilyAckVisible(false);
     if (telUrgEl) {
       telUrgEl.classList.add('is-error');
@@ -642,6 +679,8 @@ function validateContactStepPhones() {
     rawGuardian &&
     guardianCanon &&
     digitsLookLikeE164(guardianCanon) &&
+    mainCanon &&
+    digitsLookLikeE164(mainCanon) &&
     guardianCanon === mainCanon
   ) {
     guardianEl.classList.add('is-error');
@@ -684,9 +723,7 @@ function validateContactStepPhones() {
     valid = false;
   }
 
-  const emailEl = document.getElementById('email');
-  const emailRaw = emailEl ? (emailEl.value || '').trim() : '';
-  if (emailEl && emailRaw && retraiteLiveEmailLooksValid(emailRaw)) {
+  if (emailEl && emailRaw && retraiteLiveEmailLooksValid(emailRaw) && !emailRequired) {
     if (App.emailDuplicateRegistered) {
       setLiveHint(
         'emailLiveFeedback',

@@ -46,7 +46,7 @@
           </div>
           <div class="field" data-reg-field="date_naissance">
             <label class="field-label" for="dateNaissance">Date de naissance <span class="required">*</span></label>
-            <input type="text" id="dateNaissance" class="field-input" data-required placeholder="Sélectionnez votre date" readonly>
+            <input type="text" id="dateNaissance" class="field-input" data-required placeholder="JJ/MM/AAAA ou sélectionnez" autocomplete="bday">
             <span class="field-error"><i class="bi bi-exclamation-circle"></i> Ce champ est requis</span>
             <span class="field-hint" id="ageDisplay"></span>
           </div>
@@ -258,7 +258,7 @@
                 <span>Oui</span>
               </label>
               <label class="participation-inline-option" for="hasObservationsNo">
-                <input type="radio" id="hasObservationsNo" name="hasObservations" value="no">
+                <input type="radio" id="hasObservationsNo" name="hasObservations" value="no" checked>
                 <span>Non</span>
               </label>
             </div>

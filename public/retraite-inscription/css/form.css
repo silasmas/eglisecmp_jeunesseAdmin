@@ -113,6 +113,15 @@
   gap: 4px;
 }
 .field-error.visible { display: flex; }
+.is-error-text {
+  color: var(--error);
+  font-weight: 600;
+}
+[data-reg-field].is-error .participation-inline-options {
+  outline: 2px solid rgba(198, 40, 40, 0.35);
+  outline-offset: 4px;
+  border-radius: 8px;
+}
 .field-hint {
   font-size: 0.78rem;
   color: var(--text-muted);

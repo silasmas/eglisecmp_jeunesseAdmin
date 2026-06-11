@@ -899,6 +899,7 @@ class RetreatPublicRegistrationController extends Controller
             'channel' => $channel,
             'email' => $email,
             'phone' => $phone,
+            'event_id' => $event?->id,
             'otp' => password_hash($otp, PASSWORD_BCRYPT),
             'attempts' => 0,
         ], now()->addMinutes(self::PARENT_CONTACT_OTP_TTL_MINUTES));
@@ -1008,10 +1009,22 @@ class RetreatPublicRegistrationController extends Controller
         }
 
         $verifiedToken = Str::random(48);
+        $eventId = isset($payload['event_id']) ? (int) $payload['event_id'] : null;
+        $event = $eventId ? ChurchEvent::query()->find($eventId) : null;
+        $channel = (string) ($payload['channel'] ?? 'email');
+        $email = $payload['email'] ?? null;
+        $phone = $payload['phone'] ?? null;
+        $knownParentFullName = $this->resolveKnownParentFullNameForVerifiedContact(
+            $event,
+            $channel,
+            is_string($email) ? $email : null,
+            is_string($phone) ? $phone : null,
+        );
+
         Cache::put($this->parentVerifiedCacheKey($verifiedToken), [
-            'channel' => $payload['channel'] ?? 'email',
-            'email' => $payload['email'],
-            'phone' => $payload['phone'] ?? null,
+            'channel' => $channel,
+            'email' => $email,
+            'phone' => $phone,
         ], now()->addHours(self::PARENT_CONTACT_VERIFIED_TTL_HOURS));
         Cache::forget($this->parentOtpCacheKey($verificationId));
 
@@ -1019,12 +1032,63 @@ class RetreatPublicRegistrationController extends Controller
             'message' => 'Contacts parent/tuteur vérifiés avec succès.',
             'data' => [
                 'verified_token' => $verifiedToken,
-                'channel' => $payload['channel'] ?? 'email',
-                'email' => $payload['email'],
-                'phone' => $payload['phone'] ?? null,
+                'channel' => $channel,
+                'email' => $email,
+                'phone' => $phone,
+                'known_parent_full_name' => $knownParentFullName,
                 'expires_in_hours' => self::PARENT_CONTACT_VERIFIED_TTL_HOURS,
             ],
         ]);
+    }
+
+    /**
+     * Retrouve le nom de parent/tuteur déjà utilisé pour un enfant inscrit avec les mêmes contacts.
+     *
+     * @param ChurchEvent|null $event Événement cible
+     * @param string $channel Canal OTP (email|sms)
+     * @param string|null $email E-mail parent vérifié
+     * @param string|null $phone Téléphone parent vérifié
+     * @return string|null Nom complet connu ou null
+     */
+    protected function resolveKnownParentFullNameForVerifiedContact(
+        ?ChurchEvent $event,
+        string $channel,
+        ?string $email,
+        ?string $phone,
+    ): ?string {
+        if (! $event) {
+            return null;
+        }
+
+        $contactHash = $this->familyContactHash($channel, $email, $phone);
+
+        $participant = RetreatParticipant::query()
+            ->where('event_id', $event->id)
+            ->where('is_active', true)
+            ->whereNotNull('family_group_id')
+            ->where(function ($query) use ($channel, $email, $phone, $contactHash): void {
+                $query->where('family_contact_hash', $contactHash);
+
+                if ($channel === 'sms' && filled($phone)) {
+                    $query->orWhere('guardian_phone', $phone);
+                }
+
+                if ($channel !== 'sms' && filled($email)) {
+                    $query->orWhereRaw('LOWER(TRIM(email)) = ?', [Str::lower((string) $email)]);
+                }
+            })
+            ->orderByDesc('id')
+            ->first(['family_group_name', 'guardian_name']);
+
+        if (! $participant) {
+            return null;
+        }
+
+        $name = filled($participant->family_group_name)
+            ? trim((string) $participant->family_group_name)
+            : trim((string) ($participant->guardian_name ?? ''));
+
+        return $name !== '' ? Str::limit($name, 150, '') : null;
     }
 
     protected function participantJustificatifAbsoluteUrl(RetreatParticipant $participant): string

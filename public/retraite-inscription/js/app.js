@@ -129,6 +129,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (typeof wirePhoneLiveValidation === 'function') {
     wirePhoneLiveValidation();
   }
+  if (typeof wireInstantRequiredValidation === 'function') {
+    wireInstantRequiredValidation();
+  }
   wireParentMultiChildVerification();
   wireWorkerPrefill();
   wireObservationsToggle();
@@ -217,13 +220,16 @@ function wireParentMultiChildVerification() {
     });
   };
 
-  const showParentVerifiedState = () => {
+  const showParentVerifiedState = (knownParentFullName) => {
     setParentContactLocked(true);
     sendBtn.classList.add('hidden');
     verifyBtn.classList.add('hidden');
     if (parentFullNameField) parentFullNameField.classList.remove('hidden');
     if (parentFullNameInput) {
       parentFullNameInput.setAttribute('data-required', '');
+      if (knownParentFullName && !parentFullNameInput.value.trim()) {
+        parentFullNameInput.value = knownParentFullName;
+      }
       parentFullNameInput.focus();
     }
   };
@@ -425,7 +431,12 @@ function wireParentMultiChildVerification() {
       if (!res.ok) throw new Error(json.message || 'Vérification OTP impossible.');
       App.parentVerifiedToken = json.data && json.data.verified_token ? String(json.data.verified_token) : null;
       App.parentContactVerified = !!App.parentVerifiedToken;
-      if (App.parentContactVerified) showParentVerifiedState();
+      const knownParentName = json.data && json.data.known_parent_full_name
+        ? String(json.data.known_parent_full_name)
+        : '';
+      if (App.parentContactVerified) {
+        showParentVerifiedState(knownParentName);
+      }
       setStatus(channel === 'sms'
         ? 'Téléphone parent/tuteur vérifié par SMS. Vous pouvez réutiliser ces contacts pour d’autres enfants.'
         : 'E-mail parent/tuteur vérifié. Vous pouvez réutiliser ces contacts pour d’autres enfants.', 'success');
