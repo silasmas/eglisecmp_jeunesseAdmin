@@ -325,9 +325,11 @@ function normalizeFlexpayCdMsisdn(raw) {
   return digits;
 }
 
-function flexpayMsisdnMatchesSelectedType(normalized, flexpayType) {
+function flexpayMsisdnMatchesSelectedType(normalized, providerKey) {
   const list = (App.activeEvent && App.activeEvent.flexpay_mobile_providers) || [];
-  const p = list.find(x => String(x.type) === String(flexpayType));
+  const p = list.find(
+    (x) => String(x.type) === String(providerKey) || String(x.code) === String(providerKey)
+  );
   if (!p || !p.msisdn_regex) {
     return /^243\d{9}$/.test(normalized);
   }
@@ -342,7 +344,7 @@ function syncFlexpayMsisdnFormatHint() {
   const hint = document.getElementById('flexpayPhoneFormatHint');
   if (!hint) return;
   const p = (App.activeEvent && App.activeEvent.flexpay_mobile_providers || []).find(
-    x => String(x.type) === String(App.selectedFlexpayType)
+    (x) => String(x.type) === String(App.selectedFlexpayType) || String(x.code) === String(App.selectedFlexpayType)
   );
   if (!p) {
     hint.innerHTML =
@@ -654,13 +656,15 @@ async function confirmRecapAndProceed() {
   }
 }
 
-function formatFlexPayInitError(message, flexpayType) {
+function formatFlexPayInitError(message, providerKey) {
   const raw = String(message || '').toLowerCase();
   if (raw.includes('type') && (raw.includes('ne correspond') || raw.includes('correspond pas'))) {
     const providers = (App.activeEvent && App.activeEvent.flexpay_mobile_providers) || [];
-    const selected = providers.find((p) => String(p.type) === String(flexpayType));
+    const selected = providers.find(
+      (p) => String(p.type) === String(providerKey) || String(p.code) === String(providerKey)
+    );
     const label = selected ? selected.label : 'opérateur sélectionné';
-    return `FlexPay a refusé le code opérateur « ${flexpayType} » (${label}). Ce code ne correspond pas à votre contrat marchand : vérifiez la configuration RETRAITE_FLEXPAY_MOBILE_PROVIDERS côté administration ou contactez FlexPay pour obtenir le bon type pour Orange / Airtel / M-Pesa.`;
+    return `FlexPay a refusé la requête (type API attendu : « 1 » pour Mobile Money). Réseau choisi : ${label}. Vérifiez le numéro 243… et que le marchand FlexPay a bien le Mobile Money activé.`;
   }
   return message || 'Impossible de lancer le paiement. Vérifiez le numéro et le réseau choisi.';
 }

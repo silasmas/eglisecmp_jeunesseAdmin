@@ -12,8 +12,9 @@ class FlexPayMobileService
         float|string $amount,
         string $currency,
         string $phone,
-        string $type = '1'
+        ?string $type = null
     ): array {
+        $apiType = $type ?? (string) config('retraite.flexpay_mobile_money_api_type', '1');
         $token = config('services.flexpay.token');
         $url = config('services.flexpay.gateway_mobile');
         $merchant = config('services.flexpay.merchant');
@@ -28,7 +29,7 @@ class FlexPayMobileService
 
         $body = [
             'merchant' => $merchant,
-            'type' => $type,
+            'type' => $apiType,
             'phone' => $phone,
             'reference' => $reference,
             'amount' => $amount,

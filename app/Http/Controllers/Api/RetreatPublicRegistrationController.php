@@ -1209,7 +1209,7 @@ class RetreatPublicRegistrationController extends Controller
             $payment->amount_expected,
             $payment->currency,
             $normalized,
-            $validated['flexpay_type']
+            (string) config('retraite.flexpay_mobile_money_api_type', '1')
         );
 
         $this->logPaymentTransaction($payment, 'mobile_initiation', $validated, $result);
@@ -1924,7 +1924,8 @@ class RetreatPublicRegistrationController extends Controller
                 continue;
             }
             $type = isset($provider['type']) ? (string) $provider['type'] : '';
-            if ($type !== (string) $flexpayType) {
+            $code = isset($provider['code']) ? (string) $provider['code'] : '';
+            if ($type !== (string) $flexpayType && $code !== (string) $flexpayType) {
                 continue;
             }
             $regex = isset($provider['msisdn_regex']) ? trim((string) $provider['msisdn_regex']) : '';
@@ -2324,15 +2325,24 @@ class RetreatPublicRegistrationController extends Controller
      * Refuse un opérateur Mobile Money masqué dans la configuration publiée.
      *
      * @param ChurchEvent $event Événement cible
-     * @param string $flexpayType Code type FlexPay (1, 2, 3, 4…)
+     * @param string $flexpayType Identifiant interne opérateur (mpesa, orange…) pour validation UI
      * @return JsonResponse|null Réponse 422 si l'opérateur est masqué
      */
     protected function assertMobileProviderAllowed(ChurchEvent $event, string $flexpayType): ?JsonResponse
     {
-        $allowedTypes = array_map(
-            static fn (array $provider): string => (string) ($provider['type'] ?? ''),
-            $this->formConfigService->resolvedMobileProvidersForEvent($event)
-        );
+        $allowedTypes = [];
+        foreach ($this->formConfigService->resolvedMobileProvidersForEvent($event) as $provider) {
+            if (! is_array($provider)) {
+                continue;
+            }
+            if (isset($provider['type'])) {
+                $allowedTypes[] = (string) $provider['type'];
+            }
+            if (isset($provider['code'])) {
+                $allowedTypes[] = (string) $provider['code'];
+            }
+        }
+        $allowedTypes = array_values(array_unique($allowedTypes));
 
         if (in_array((string) $flexpayType, $allowedTypes, true)) {
             return null;

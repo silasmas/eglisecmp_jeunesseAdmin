@@ -256,7 +256,7 @@ class RegistrationFormConfigForm
                 ->label('Aucun opérateur configuré')
                 ->disabled()
                 ->dehydrated(false)
-                ->helperText('Définissez RETRAITE_FLEXPAY_MOBILE_PROVIDERS dans le .env.');
+                ->helperText('Liste des réseaux affichés (identifiants internes). FlexPay API : type « 1 » pour tout Mobile Money — voir RETRAITE_FLEXPAY_MOBILE_PROVIDERS dans le .env.');
         }
 
         return $toggles;

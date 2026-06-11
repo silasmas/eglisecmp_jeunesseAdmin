@@ -86,7 +86,7 @@ class FlexPayTestService
 
         $body = [
             'merchant' => $merchant,
-            'type' => $type,
+            'type' => (string) config('retraite.flexpay_mobile_money_api_type', '1'),
             'phone' => $phone,
             'reference' => $reference,
             'amount' => $amount,
@@ -110,6 +110,8 @@ class FlexPayTestService
 
         $result['operation'] = 'mobile';
         $result['flexpay_accepted'] = $flexpayOk;
+        $result['provider_selected'] = $type;
+        $result['flexpay_api_type'] = (string) config('retraite.flexpay_mobile_money_api_type', '1');
         $result['summary'] = $flexpayOk
             ? 'FlexPay a accepté la demande mobile (code 0).'
             : ($result['success']

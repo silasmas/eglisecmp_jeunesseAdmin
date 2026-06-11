@@ -44,7 +44,7 @@ class FlexPayPaymentTest extends Page
 
     public string $phone = '243891234567';
 
-    public string $flexpayType = '2';
+    public string $flexpayType = 'orange';
 
     public string $description = 'Test FlexPay CMP';
 
@@ -163,7 +163,8 @@ class FlexPayPaymentTest extends Page
                 ->visible(fn (): bool => in_array($this->operation, ['mobile', 'card'], true))
                 ->required(fn (): bool => in_array($this->operation, ['mobile', 'card'], true)),
             Select::make('flexpayType')
-                ->label('Opérateur (type FlexPay)')
+                ->label('Opérateur (validation numéro)')
+                ->helperText('FlexPay API : type « 1 » pour tout Mobile Money. L’opérateur est déterminé par le numéro.')
                 ->options($this->mobileProviderOptions())
                 ->visible(fn (): bool => $this->operation === 'mobile')
                 ->required(fn (): bool => $this->operation === 'mobile'),
@@ -265,19 +266,19 @@ class FlexPayPaymentTest extends Page
                 continue;
             }
 
-            $type = (string) ($provider['type'] ?? '');
+            $type = (string) ($provider['type'] ?? $provider['code'] ?? '');
             $label = (string) ($provider['label'] ?? $type);
 
             if ($type !== '') {
-                $options[$type] = $label.' (type '.$type.')';
+                $options[$type] = $label;
             }
         }
 
         if ($options === []) {
             return [
-                '1' => 'M-Pesa (type 1)',
-                '2' => 'Airtel Money (type 2)',
-                '3' => 'Orange Money (type 3)',
+                'mpesa' => 'M-Pesa',
+                'airtel' => 'Airtel Money',
+                'orange' => 'Orange Money',
             ];
         }
 

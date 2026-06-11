@@ -4,11 +4,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Paiements Mobile Money (FlexPay — champ "type" de l’API mobile)
+    | Paiements Mobile Money — opérateurs affichés + type API FlexPay
     |--------------------------------------------------------------------------
-    | Les codes peuvent différer selon votre contrat FlexPay ; ajustez via .env
-    | RETRAITE_FLEXPAY_MOBILE_PROVIDERS en JSON ou modifiez ce tableau par défaut.
+    | Doc FlexPay v1.4 (paymentService) : le champ API "type" vaut toujours
+    |   1 = mobile money (tous opérateurs, routage via le numéro phone)
+    |   2 = carte bancaire (sur paymentService ; la carte utilise aussi cardpayment…/v1|v2/pay)
+    |
+    | Le champ "type" dans flexpay_mobile_providers ci-dessous est un identifiant
+    | interne UI (sélection M-Pesa / Airtel / Orange…) — PAS le type FlexPay API.
+    | Personnalisez la liste via RETRAITE_FLEXPAY_MOBILE_PROVIDERS dans le .env.
     */
+    'flexpay_mobile_money_api_type' => '1',
+
+    'flexpay_card_api_type' => '2',
+
     'flexpay_mobile_providers' => (function (): array {
         $raw = env('RETRAITE_FLEXPAY_MOBILE_PROVIDERS');
         if ($raw) {
@@ -19,14 +28,14 @@ return [
         }
 
         /*
+         * type : identifiant interne (UI / validation numéro), pas le type API FlexPay.
          * msisdn_regex : numéro normalisé 12 chiffres (243 + 9 chiffres nationaux sans le 0 initial).
-         * Indicatif international 243 uniquement (pas de + dans la saisie).
          */
         return [
-            ['type' => '1', 'code' => 'mpesa', 'label' => 'M-Pesa', 'msisdn_regex' => '^2438[123][0-9]{7}$'],
-            ['type' => '2', 'code' => 'airtel', 'label' => 'Airtel Money', 'msisdn_regex' => '^2439[0-9]{8}$'],
-            ['type' => '3', 'code' => 'orange', 'label' => 'Orange Money', 'msisdn_regex' => '^2438[459][0-9]{7}$'],
-            ['type' => '4', 'code' => 'afri', 'label' => 'Afri Money', 'msisdn_regex' => '^2439[0-9]{8}$'],
+            ['type' => 'mpesa', 'code' => 'mpesa', 'label' => 'M-Pesa', 'msisdn_regex' => '^2438[123][0-9]{7}$'],
+            ['type' => 'airtel', 'code' => 'airtel', 'label' => 'Airtel Money', 'msisdn_regex' => '^2439[0-9]{8}$'],
+            ['type' => 'orange', 'code' => 'orange', 'label' => 'Orange Money', 'msisdn_regex' => '^2438[459][0-9]{7}$'],
+            ['type' => 'afri', 'code' => 'afri', 'label' => 'Afri Money', 'msisdn_regex' => '^2439[0-9]{8}$'],
         ];
     })(),
 
