@@ -56,6 +56,7 @@
   <script src="{{ $rv('js/funnel-tracking.js') }}"></script>
   <script src="{{ $r }}/js/stepper.js"></script>
   <script src="{{ $r }}/js/validation.js"></script>
+  <script src="{{ $r }}/js/identity-live-validation.js"></script>
   <script src="{{ $r }}/js/phone-live-validation.js"></script>
   <script src="{{ $r }}/js/datepicker.js"></script>
   <script src="{{ $r }}/js/uploads.js"></script>

@@ -27,13 +27,15 @@
         <div class="fields-grid">
           <div class="field" data-reg-field="nom">
             <label class="field-label" for="nom">Nom <span class="required">*</span></label>
-            <input type="text" id="nom" class="field-input" placeholder="Ex: Kabongo" data-required>
+            <input type="text" id="nom" class="field-input" placeholder="Ex: Kabongo" data-required autocomplete="family-name">
             <span class="field-error"><i class="bi bi-exclamation-circle"></i> Ce champ est requis</span>
+            <p id="nomLiveFeedback" class="phone-live-feedback field-hint hidden" aria-live="polite"></p>
           </div>
           <div class="field" data-reg-field="prenom">
             <label class="field-label" for="prenom">Prénom <span class="required">*</span></label>
-            <input type="text" id="prenom" class="field-input" placeholder="Ex: Jean-Marc" data-required>
+            <input type="text" id="prenom" class="field-input" placeholder="Ex: Jean-Marc" data-required autocomplete="given-name">
             <span class="field-error"><i class="bi bi-exclamation-circle"></i> Ce champ est requis</span>
+            <p id="prenomLiveFeedback" class="phone-live-feedback field-hint hidden" aria-live="polite"></p>
           </div>
           <div class="field" data-reg-field="sexe">
             <label class="field-label" for="sexe">Sexe <span class="required">*</span></label>

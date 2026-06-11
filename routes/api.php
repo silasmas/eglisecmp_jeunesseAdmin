@@ -18,6 +18,9 @@ Route::prefix('v1/retreat/inscription')
         Route::get('hints/email', [RetreatPublicRegistrationController::class, 'emailDuplicateHint'])
             ->middleware('throttle:60,1')
             ->name('hints.email');
+        Route::get('hints/participant-identity', [RetreatPublicRegistrationController::class, 'participantIdentityDuplicateHint'])
+            ->middleware('throttle:60,1')
+            ->name('hints.participant_identity');
         Route::get('policies', [RetreatPublicRegistrationController::class, 'inscriptionPolicies'])->name('policies');
         Route::post('worker-prefill', [RetreatPublicRegistrationController::class, 'workerPrefill'])
             ->middleware('throttle:20,1')

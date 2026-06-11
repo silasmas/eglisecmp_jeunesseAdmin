@@ -126,6 +126,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     wirePaymentModes();
   }
 
+  if (typeof wireIdentityLiveValidation === 'function') {
+    wireIdentityLiveValidation();
+  }
   if (typeof wirePhoneLiveValidation === 'function') {
     wirePhoneLiveValidation();
   }

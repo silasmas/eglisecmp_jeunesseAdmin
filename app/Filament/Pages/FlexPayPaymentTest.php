@@ -214,7 +214,7 @@ class FlexPayPaymentTest extends Page
             'amount' => ['required', 'numeric', 'min:0.01'],
             'currency' => ['required', 'string', 'max:8'],
             'phone' => ['nullable', 'string', 'max:30'],
-            'flexpayType' => ['required', 'string', 'max:5'],
+            'flexpayType' => ['required', 'string', 'max:32'],
             'description' => ['nullable', 'string', 'max:160'],
             'timeoutSeconds' => ['required', 'integer', 'min:5', 'max:120'],
         ]);

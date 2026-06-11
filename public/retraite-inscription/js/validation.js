@@ -81,6 +81,9 @@ function wireInstantRequiredValidation() {
     if (field.dataset.instantValidationWired === '1') {
       return;
     }
+    if (field.id === 'nom' || field.id === 'prenom') {
+      return;
+    }
     field.dataset.instantValidationWired = '1';
 
     field.addEventListener('blur', () => {
@@ -107,6 +110,10 @@ function validateStep(step) {
     clearFieldError(field);
 
     if (field.id === 'telephone' || field.id === 'email') {
+      return;
+    }
+
+    if (field.id === 'nom' || field.id === 'prenom') {
       return;
     }
 
@@ -148,6 +155,12 @@ function validateStep(step) {
   }
 
   if (step === 0) {
+    if (typeof validateIdentityStepFields === 'function') {
+      if (!validateIdentityStepFields()) {
+        valid = false;
+      }
+    }
+
     const dobInput = document.getElementById('dateNaissance');
     if (dobInput && dobInput.hasAttribute('data-required')) {
       if (!(dobInput.value || '').trim()) {

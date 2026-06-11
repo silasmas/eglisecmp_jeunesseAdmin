@@ -31,6 +31,7 @@ window.App = {
   registrationOpen: false,
   mainPhoneDuplicateRegistered: false,
   emailDuplicateRegistered: false,
+  identityDuplicateRegistered: false,
   retreatVerificationUrl: null,
   retreatDownloadToken: null,
   parentOtpVerificationId: null,

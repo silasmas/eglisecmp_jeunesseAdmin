@@ -58,6 +58,7 @@ function resetRetraiteInscriptionFully() {
   App.policiesModalAccepted = false;
   App.mainPhoneDuplicateRegistered = false;
   App.emailDuplicateRegistered = false;
+  App.identityDuplicateRegistered = false;
   App.retreatVerificationUrl = null;
   App.retreatDownloadToken = null;
   App.parentOtpVerificationId = null;

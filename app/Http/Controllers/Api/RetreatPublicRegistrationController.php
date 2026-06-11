@@ -585,6 +585,58 @@ class RetreatPublicRegistrationController extends Controller
         ]);
     }
 
+    /**
+     * Temps réel : nom + prénom déjà inscrits pour la même retraite.
+     *
+     * @param Request $request Requête avec nom, prénom et event_id optionnel
+     * @return JsonResponse Indique si l'identité existe déjà
+     */
+    public function participantIdentityDuplicateHint(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'nom' => ['required', 'string', 'max:100'],
+            'prenom' => ['required', 'string', 'max:100'],
+            'postnom' => ['nullable', 'string', 'max:100'],
+            'event_id' => ['nullable', 'integer', 'exists:events_event,id'],
+        ]);
+
+        $event = $this->resolveEvent($request);
+        if (! $event) {
+            return response()->json([
+                'data' => [
+                    'eligible' => false,
+                    'duplicate_registered' => false,
+                ],
+            ]);
+        }
+
+        $nom = trim((string) $validated['nom']);
+        $prenom = trim((string) $validated['prenom']);
+        $postnomRaw = isset($validated['postnom']) ? trim((string) $validated['postnom']) : '';
+        $postnomNorm = $postnomRaw !== '' ? $postnomRaw : null;
+
+        if (mb_strlen($nom) < 2 || mb_strlen($prenom) < 2) {
+            return response()->json([
+                'data' => [
+                    'eligible' => false,
+                    'duplicate_registered' => false,
+                ],
+            ]);
+        }
+
+        $exists = $this->participantIdentityExists($nom, $prenom, $postnomNorm, $event->id);
+
+        return response()->json([
+            'data' => [
+                'eligible' => true,
+                'duplicate_registered' => $exists,
+                'hint' => $exists
+                    ? 'Une inscription avec ce nom et ce prénom existe déjà pour cette retraite. Vérifiez l’orthographe ou rapprochez-vous de l’organisation si vous pensez qu’il s’agit d’une erreur.'
+                    : null,
+            ],
+        ]);
+    }
+
     public function register(Request $request): JsonResponse
     {
         $validated = $this->validateRegistration($request);
@@ -1169,7 +1221,7 @@ class RetreatPublicRegistrationController extends Controller
     {
         $validated = $request->validate([
             'phone' => ['required', 'string', 'max:30'],
-            'flexpay_type' => ['required', 'string', 'max:5'],
+            'flexpay_type' => ['required', 'string', 'max:32'],
         ]);
 
         $event = $this->resolveEvent($request);
