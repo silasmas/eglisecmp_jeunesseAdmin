@@ -450,6 +450,7 @@ class RetreatVoluntaryDonationController extends Controller
             'data' => [
                 'participant_id' => $participant->id,
                 'payment_covered' => true,
+                'badge_view' => 'sponsorship_success',
             ],
         ]);
     }

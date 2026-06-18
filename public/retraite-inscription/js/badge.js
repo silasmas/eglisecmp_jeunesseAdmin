@@ -138,10 +138,23 @@ function mountBadgePortalNotifications() {
   wrap.innerHTML = `<div class="badge-portal-inner"><strong>Portail & confirmations</strong>${lines}</div>`;
 }
 
-async function assertParticipantElectronicPaymentVerified() {
-  if (!App.participantId) return false;
+async function assertParticipantPaymentVerifiedForView(view) {
+  const allowedByView = {
+    electronic_success: ['mobile_money', 'card'],
+    sponsorship_success: ['sponsorship_voucher'],
+  };
+  const allowedChannels = allowedByView[view];
+  if (!allowedChannels || !allowedChannels.length) {
+    return false;
+  }
+
+  if (!App.participantId) {
+    return false;
+  }
   const base = typeof getRetraiteApiBase === 'function' ? getRetraiteApiBase() : '';
-  if (!base) return false;
+  if (!base) {
+    return false;
+  }
   try {
     const res = await fetch(`${base}/participants/${App.participantId}/status`, {
       headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
@@ -149,12 +162,11 @@ async function assertParticipantElectronicPaymentVerified() {
     const json = res.ok ? await res.json().catch(() => ({})) : {};
     const d = json.data || {};
     const ch = d.payment && d.payment.channel;
-    const electronic = ch === 'mobile_money' || ch === 'card';
     return (
       d.paiement_valide === true &&
-      electronic &&
       d.payment &&
-      d.payment.etat === 'payee'
+      d.payment.etat === 'payee' &&
+      allowedChannels.includes(ch)
     );
   } catch (e) {
     console.warn('Statut paiement badge', e);
@@ -175,7 +187,7 @@ function getBadgeJsPdfConstructor() {
 }
 
 /**
- * @param {'electronic_success'|'cash_pending'} view
+ * @param {'electronic_success'|'sponsorship_success'|'cash_pending'} view
  */
 async function finalizeBadgeUi(view) {
   if (typeof showBilletCreationLoader === 'function') {
@@ -183,14 +195,14 @@ async function finalizeBadgeUi(view) {
   }
 
   try {
-    if (view === 'electronic_success') {
-      const ok = await assertParticipantElectronicPaymentVerified();
+    if (view === 'electronic_success' || view === 'sponsorship_success') {
+      const ok = await assertParticipantPaymentVerifiedForView(view);
       if (!ok) {
         if (typeof trackRetraiteFunnel === 'function' && window.RETRAITE_FUNNEL_STAGES) {
           trackRetraiteFunnel(
             RETRAITE_FUNNEL_STAGES.payment_server_verify_failed,
             'Le serveur n’a pas confirmé le paiement avant l’affichage du billet.',
-            { channel: App.paymentModeCompleted || 'mobile_money' }
+            { channel: App.paymentModeCompleted || view }
           );
         }
         retraiteNotifyToast(
@@ -227,6 +239,18 @@ async function finalizeBadgeUi(view) {
       if (bannerGen) bannerGen.classList.add('hidden');
       if (titleEl) titleEl.textContent = 'Paiement validé';
       if (subEl) subEl.textContent = 'Votre paiement électronique est confirmé. Les détails officiels vous sont envoyés par e-mail.';
+    } else if (view === 'sponsorship_success') {
+      if (bannerGen) bannerGen.classList.remove('hidden');
+      if (titleEl) titleEl.textContent = 'Inscription prise en charge';
+      if (subEl) {
+        subEl.textContent =
+          'Votre code parrainage couvre les frais d’inscription. Les détails officiels vous sont envoyés par e-mail.';
+      }
+      const genericText = document.getElementById('badgeGenericBannerText');
+      if (genericText) {
+        genericText.textContent =
+          'Inscription confirmée grâce au parrainage. Conservez un exemplaire PNG ou PDF de cette synthèse (QR vérifiable) jusqu’à l’accueil sur place.';
+      }
     } else if (view === 'cash_pending') {
       if (bannerCash) bannerCash.classList.remove('hidden');
       if (titleEl) titleEl.textContent = 'Preuve bien reçue';

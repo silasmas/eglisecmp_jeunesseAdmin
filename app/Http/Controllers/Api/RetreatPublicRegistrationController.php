@@ -1193,7 +1193,9 @@ class RetreatPublicRegistrationController extends Controller
     {
         $participant->load(['payments.event']);
 
-        $payment = $participant->payments->first();
+        $payment = $participant->payments
+            ->first(fn (RetreatPayment $p): bool => $p->etat === 'payee')
+            ?? $participant->payments->sortByDesc('updated_at')->first();
 
         return response()->json([
             'data' => [
@@ -2471,6 +2473,10 @@ class RetreatPublicRegistrationController extends Controller
         }
 
         $channel = $payment?->channel;
+
+        if ($participant->paiement_valide && $channel === 'sponsorship_voucher') {
+            return 'sponsorship_success';
+        }
 
         if ($participant->paiement_valide && in_array($channel, ['mobile_money', 'card'], true)) {
             return 'electronic_success';

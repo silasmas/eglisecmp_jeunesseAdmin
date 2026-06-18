@@ -605,8 +605,9 @@ async function applySponsorshipVoucherCode() {
     togglePaymentMethodsShell(true);
     setSponsorshipVoucherHint(json.message || 'Code accepté.', 'ok');
     showPaymentBanner('Inscription couverte par le parrainage. Ouverture de votre billet…', 'success');
+    const badgeView = (json.data && json.data.badge_view) || 'sponsorship_success';
     if (typeof finalizeBadgeUi === 'function') {
-      await finalizeBadgeUi('electronic_success');
+      await finalizeBadgeUi(badgeView);
     }
   } catch (e) {
     setSponsorshipVoucherHint(e.message || 'Code refusé.', 'err');
