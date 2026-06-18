@@ -21,6 +21,7 @@ use App\Services\RetreatCashPaymentAdminNotifier;
 use App\Services\RetreatPaymentFailureNotifier;
 use App\Services\RetreatPlacementAssignmentService;
 use App\Services\RetreatInscriptionFunnelService;
+use App\Services\RetreatInscriptionPaymentCompletionService;
 use App\Services\RetreatRegistration\RetreatEventCapacityService;
 use App\Services\StoragePathService;
 use App\Support\RegistrationFormUiSettings;

@@ -11,7 +11,11 @@
   };
   $displayAmount = (float) ($donation->amount_paid > 0 ? $donation->amount_paid : $donation->amount_expected);
   $vouchers = $donation->relationLoaded('vouchers') ? $donation->vouchers : collect();
+  $portalUrl = rtrim((string) config('app.url'), '/').'/inscription-retraite';
 @endphp
+
+<x-mail::message>
+@include('emails.partials.jeunesse-cmp-mail-header')
 
 # Merci pour votre don
 
@@ -26,7 +30,7 @@ Votre proposition de **don en nature** a été transmise à l'équipe d'organisa
 @else
 Votre **don en espèces** a bien été enregistré{{ $cashStatusSuffix }}
 
-**Montant :** {{ number_format($displayAmount, 2) }} {{ $donation->currency }}
+**Montant :** {{ number_format($displayAmount, 2, ',', ' ') }} {{ $donation->currency }}
 @endif
 
 @if($isCashSubmitted)
@@ -37,13 +41,21 @@ Nous vous enverrons un **second e-mail de confirmation** (avec les codes parrain
 Vous avez sponsorisé **{{ (int) $donation->youth_slots_count }}** jeune{{ (int) $donation->youth_slots_count > 1 ? 's' : '' }}.
 
 @if($vouchers->isNotEmpty())
-**Codes parrainage à transmettre aux jeunes pour leur inscription :**
+## Codes parrainage à transmettre
 
+Chaque jeune doit saisir **un code distinct** lors de l'étape **Paiement** sur le portail d'inscription (après avoir rempli le formulaire).
+
+<x-mail::panel>
 @foreach($vouchers as $voucher)
-- **`{{ $voucher->code }}`**
+**{{ $voucher->code }}**
 @endforeach
+</x-mail::panel>
 
-Chaque jeune doit saisir **un de ces codes** lors de son inscription sur le portail retraite (étape paiement). Le code couvre les frais d'inscription pour une place.
+<x-mail::button :url="$portalUrl">
+Ouvrir le portail d'inscription
+</x-mail::button>
+
+Le code couvre les frais d'inscription pour **une place**. Conservez une copie de ces codes pour les transmettre aux jeunes concernés.
 @else
 Les codes parrainage seront générés sous peu. Contactez l'équipe d'organisation si vous ne les recevez pas.
 @endif
@@ -51,7 +63,17 @@ Les codes parrainage seront générés sous peu. Contactez l'équipe d'organisat
 
 @if($donation->donor_message)
 **Votre message :**
+
 {{ $donation->donor_message }}
 @endif
 
-Merci pour votre générosité au service de la jeunesse CMP.
+---
+
+Cordialement,
+
+**Équipe Jeunesse CMP**  
+*Centre Missionnaire Philadelphie*
+
+{{ __('retraite.mail_footer') }}
+
+</x-mail::message>

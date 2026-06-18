@@ -5,6 +5,7 @@ namespace App\Filament\Resources\ChurchEvents\Schemas;
 use App\Enums\EventAccessAuthMode;
 use App\Enums\EventAccessOtpChannel;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -27,7 +28,8 @@ class ChurchEventForm
                             ->required(),
                         TextInput::make('type')
                             ->label("Type d'evenement")
-                            ->required(),
+                            ->required()
+                            ->helperText('Pour le formulaire public d\'inscription retraite, saisir exactement : retraite'),
                         TextInput::make('location')
                             ->label('Lieu')
                             ->required(),
@@ -46,14 +48,32 @@ class ChurchEventForm
                             ->required(),
                     ])
                     ->columns(2),
+                Section::make('Inscriptions publiques en ligne')
+                    ->description('Il n\'y a pas de date de début d\'inscription séparée : le portail s\'ouvre dès que les conditions ci-dessous sont remplies.')
+                    ->schema([
+                        Placeholder::make('registration_rules')
+                            ->label('Comment ouvrir les inscriptions ?')
+                            ->content(new \Illuminate\Support\HtmlString(
+                                '<ol style="margin:0;padding-left:1.25rem;line-height:1.6;">'
+                                .'<li><strong>Type</strong> = <code>retraite</code></li>'
+                                .'<li><strong>Actif (événement courant)</strong> = oui (un seul à la fois)</li>'
+                                .'<li><strong>Date de fin</strong> non dépassée (ou laisser vide pour garder ouvert tant que l\'événement est actif)</li>'
+                                .'</ol>'
+                                .'<p style="margin:0.75rem 0 0;">La <strong>date de début</strong> sert au planning de l\'événement ; elle ne bloque pas l\'ouverture du formulaire.</p>'
+                            ))
+                            ->columnSpanFull(),
+                    ])
+                    ->columns(1)
+                    ->collapsible(),
                 Section::make('Planning et capacite')
                     ->schema([
                         DateTimePicker::make('start_at')
-                            ->label('Debut'),
+                            ->label('Debut')
+                            ->helperText('Début de la retraite (information planning — n\'ouvre pas le formulaire d\'inscription).'),
                         DateTimePicker::make('end_at')
                             ->label('Fin')
                             ->helperText(
-                                'Les inscriptions publiques se ferment automatiquement après cette date. Obligatoire pour clôturer le formulaire en ligne.'
+                                'Les inscriptions publiques se ferment automatiquement après cette date. Laisser vide pour ne pas fermer automatiquement.'
                             ),
                         TextInput::make('capacity')
                             ->label('Capacite')
