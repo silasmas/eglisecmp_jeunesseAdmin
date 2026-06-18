@@ -3,6 +3,13 @@
   $isInKind = $donation->donation_kind === \App\Models\RetreatVoluntaryDonation::KIND_IN_KIND;
   $isSponsor = $donation->cash_purpose === \App\Models\RetreatVoluntaryDonation::PURPOSE_SPONSOR_YOUTH;
   $isPaid = $donation->status === \App\Models\RetreatVoluntaryDonation::STATUS_PAID;
+  $isCashSubmitted = $donation->status === \App\Models\RetreatVoluntaryDonation::STATUS_CASH_SUBMITTED;
+  $cashStatusSuffix = match (true) {
+    $isPaid => ' et le paiement est confirmé.',
+    $isCashSubmitted => ' : votre preuve est en cours de validation par l\'équipe.',
+    default => '.',
+  };
+  $displayAmount = (float) ($donation->amount_paid > 0 ? $donation->amount_paid : $donation->amount_expected);
 @endphp
 
 # Merci pour votre don
@@ -16,12 +23,12 @@ Nous confirmons la bonne réception de votre don pour **{{ $eventName }}**.
 @if($isInKind)
 Votre proposition de **don en nature** a été transmise à l'équipe d'organisation. Nous vous recontacterons si nécessaire pour la coordination logistique.
 @else
-Votre **don en espèces** a bien été enregistré@if($isPaid) et le paiement est confirmé@elseif($donation->status === \App\Models\RetreatVoluntaryDonation::STATUS_CASH_SUBMITTED) : votre preuve est en cours de validation par l'équipe@endif.
+Votre **don en espèces** a bien été enregistré{{ $cashStatusSuffix }}
 
-**Montant :** {{ number_format((float) ($donation->amount_paid > 0 ? $donation->amount_paid : $donation->amount_expected), 2) }} {{ $donation->currency }}
+**Montant :** {{ number_format($displayAmount, 2) }} {{ $donation->currency }}
 @endif
 
-@if($donation->status === \App\Models\RetreatVoluntaryDonation::STATUS_CASH_SUBMITTED)
+@if($isCashSubmitted)
 Nous vous confirmerons par e-mail dès validation du paiement en espèces par l'administration.
 @endif
 
