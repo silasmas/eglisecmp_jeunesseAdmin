@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ChurchEvent;
 use App\Models\RetreatParticipant;
 use App\Models\RetreatVoluntaryDonation;
+use App\Support\RetreatRegistrationBadgeViewResolver;
 use App\Services\FlexPay\FlexPayCardService;
 use App\Services\FlexPay\FlexPayMobileService;
 use App\Services\FlexPay\FlexPayMsisdnValidator;
@@ -429,7 +430,16 @@ class RetreatVoluntaryDonationController extends Controller
         ]);
 
         if ($participant->paiement_valide) {
-            return response()->json(['message' => 'Le paiement est déjà validé pour cette inscription.'], 422);
+            $payment = RetreatRegistrationBadgeViewResolver::resolvePrimaryPayment($participant);
+
+            return response()->json([
+                'message' => 'Votre inscription est déjà confirmée. Vous pouvez accéder à votre billet.',
+                'data' => [
+                    'already_paid' => true,
+                    'payment_covered' => true,
+                    'badge_view' => RetreatRegistrationBadgeViewResolver::resolve($participant, $payment),
+                ],
+            ]);
         }
 
         $voucher = $this->voucherService->findRedeemable($validated['code'], (int) $participant->event_id);

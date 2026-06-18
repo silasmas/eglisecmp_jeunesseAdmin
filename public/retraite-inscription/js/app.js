@@ -150,6 +150,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     await resumeInscriptionPaymentPollIfNeeded();
   }
 
+  if (App.participantId && typeof refreshPaidProceedToBadgePanel === 'function') {
+    void refreshPaidProceedToBadgePanel();
+  }
+
   if (typeof handleCardReturnFlash === 'function') {
     handleCardReturnFlash();
   }

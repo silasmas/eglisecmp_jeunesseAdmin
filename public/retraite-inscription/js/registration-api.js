@@ -490,6 +490,9 @@ function onEnterPaymentStep() {
     togglePaymentSections(null);
     autoSelectSinglePaymentMode();
   }
+  if (typeof refreshPaidProceedToBadgePanel === 'function') {
+    void refreshPaidProceedToBadgePanel();
+  }
 }
 
 let sponsorshipVoucherHintTimer = null;
@@ -598,13 +601,26 @@ async function applySponsorshipVoucherCode() {
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
+      const alreadyPaid =
+        typeof json.message === 'string' &&
+        json.message.toLowerCase().includes('déjà validé');
+      if (alreadyPaid && typeof proceedToBilletFromPaidRegistration === 'function') {
+        setSponsorshipVoucherHint(json.message, 'ok');
+        await proceedToBilletFromPaidRegistration();
+        return;
+      }
       throw new Error(json.message || 'Code refusé.');
     }
     App.sponsorshipVoucherApplied = true;
     App.paymentModeCompleted = 'sponsorship_voucher';
     togglePaymentMethodsShell(true);
-    setSponsorshipVoucherHint(json.message || 'Code accepté.', 'ok');
-    showPaymentBanner('Inscription couverte par le parrainage. Ouverture de votre billet…', 'success');
+    if (json.data && json.data.already_paid) {
+      setSponsorshipVoucherHint(json.message || 'Inscription déjà confirmée.', 'ok');
+      showPaymentBanner('Ouverture de votre billet…', 'success');
+    } else {
+      setSponsorshipVoucherHint(json.message || 'Code accepté.', 'ok');
+      showPaymentBanner('Inscription couverte par le parrainage. Ouverture de votre billet…', 'success');
+    }
     const badgeView = (json.data && json.data.badge_view) || 'sponsorship_success';
     if (typeof finalizeBadgeUi === 'function') {
       await finalizeBadgeUi(badgeView);
@@ -637,6 +653,13 @@ function wireSponsorshipVoucher() {
 
 function wirePaymentModes() {
   wireSponsorshipVoucher();
+  const proceedBtn = document.getElementById('btnProceedToBadge');
+  if (proceedBtn && proceedBtn.dataset.wired !== '1') {
+    proceedBtn.dataset.wired = '1';
+    proceedBtn.addEventListener('click', () => {
+      void proceedToBilletFromPaidRegistration();
+    });
+  }
   document.querySelectorAll('input[name="paymentMode"]').forEach(radio => {
     radio.addEventListener('change', () => {
       if (radio.checked) togglePaymentSections(radio.value);

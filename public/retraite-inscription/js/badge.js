@@ -138,41 +138,167 @@ function mountBadgePortalNotifications() {
   wrap.innerHTML = `<div class="badge-portal-inner"><strong>Portail & confirmations</strong>${lines}</div>`;
 }
 
-async function assertParticipantPaymentVerifiedForView(view) {
-  const allowedByView = {
-    electronic_success: ['mobile_money', 'card'],
-    sponsorship_success: ['sponsorship_voucher'],
-  };
-  const allowedChannels = allowedByView[view];
-  if (!allowedChannels || !allowedChannels.length) {
-    return false;
-  }
-
+/**
+ * Charge le statut serveur du participant inscrit.
+ *
+ * @return {Promise<object|null>} Données statut ou null
+ */
+async function fetchParticipantRegistrationStatus() {
   if (!App.participantId) {
-    return false;
+    return null;
   }
   const base = typeof getRetraiteApiBase === 'function' ? getRetraiteApiBase() : '';
   if (!base) {
-    return false;
+    return null;
   }
   try {
     const res = await fetch(`${base}/participants/${App.participantId}/status`, {
       headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
     });
-    const json = res.ok ? await res.json().catch(() => ({})) : {};
-    const d = json.data || {};
-    const ch = d.payment && d.payment.channel;
-    return (
-      d.paiement_valide === true &&
-      d.payment &&
-      d.payment.etat === 'payee' &&
-      allowedChannels.includes(ch)
-    );
+    if (!res.ok) {
+      return null;
+    }
+    const json = await res.json().catch(() => ({}));
+    return json.data || null;
   } catch (e) {
-    console.warn('Statut paiement badge', e);
-    return false;
+    console.warn('Statut participant', e);
+    return null;
   }
 }
+
+/**
+ * Déduit la vue billet à afficher depuis le statut API.
+ *
+ * @param {object|null} status Statut participant
+ * @return {'electronic_success'|'sponsorship_success'|'cash_pending'|null}
+ */
+function resolveBadgeViewFromStatus(status) {
+  if (!status || typeof status !== 'object') {
+    return null;
+  }
+
+  const explicit = status.badge_view;
+  if (explicit === 'electronic_success' || explicit === 'sponsorship_success' || explicit === 'cash_pending') {
+    return explicit;
+  }
+  if (explicit === 'cash_validated') {
+    return 'electronic_success';
+  }
+
+  if (status.paiement_valide === true && status.payment && status.payment.etat === 'payee') {
+    const channel = status.payment.channel;
+    if (channel === 'sponsorship_voucher') {
+      return 'sponsorship_success';
+    }
+    if (channel === 'mobile_money' || channel === 'card' || channel === 'cash') {
+      return 'electronic_success';
+    }
+    return 'electronic_success';
+  }
+
+  if (status.payment && status.payment.channel === 'cash' && status.paiement_valide !== true) {
+    return 'cash_pending';
+  }
+
+  return null;
+}
+
+/**
+ * Affiche ou masque le panneau « Accéder à mon billet » sur l'étape paiement.
+ *
+ * @param {object|null} status Statut participant
+ * @return {void}
+ */
+function updatePaidProceedToBadgePanel(status) {
+  const panel = document.getElementById('paidProceedToBadgePanel');
+  if (!panel) {
+    return;
+  }
+
+  const view = resolveBadgeViewFromStatus(status);
+  const canProceed =
+    view === 'electronic_success' ||
+    view === 'sponsorship_success' ||
+    (view === 'cash_pending' && status && status.paiement_valide !== true);
+
+  panel.classList.toggle('hidden', !canProceed);
+
+  if (!canProceed) {
+    return;
+  }
+
+  const titleEl = document.getElementById('paidProceedToBadgeTitle');
+  const textEl = document.getElementById('paidProceedToBadgeText');
+  if (view === 'sponsorship_success') {
+    if (titleEl) titleEl.textContent = 'Inscription déjà prise en charge';
+    if (textEl) {
+      textEl.textContent =
+        'Votre code parrainage a déjà été enregistré. Ouvrez votre billet sans resaisir le code.';
+    }
+  } else if (view === 'cash_pending') {
+    if (titleEl) titleEl.textContent = 'Preuve déjà envoyée';
+    if (textEl) {
+      textEl.textContent =
+        'Votre preuve de paiement est enregistrée. Vous pouvez consulter votre synthèse en attendant la validation.';
+    }
+  } else {
+    if (titleEl) titleEl.textContent = 'Inscription déjà confirmée';
+    if (textEl) {
+      textEl.textContent =
+        'Votre paiement a déjà été enregistré. Vous pouvez ouvrir votre billet sans refaire cette étape.';
+    }
+  }
+}
+
+/**
+ * Vérifie le statut et propose le billet si l'inscription est déjà finalisée.
+ *
+ * @return {Promise<void>}
+ */
+async function refreshPaidProceedToBadgePanel() {
+  if (!App.participantId) {
+    updatePaidProceedToBadgePanel(null);
+    return;
+  }
+  const status = await fetchParticipantRegistrationStatus();
+  updatePaidProceedToBadgePanel(status);
+}
+
+/**
+ * Ouvre le billet lorsque le serveur confirme déjà le paiement ou le parrainage.
+ *
+ * @param {{ silent?: boolean }} options Options d'affichage
+ * @return {Promise<boolean>} True si le billet a été ouvert
+ */
+async function proceedToBilletFromPaidRegistration(options) {
+  const silent = options && options.silent === true;
+  const status = await fetchParticipantRegistrationStatus();
+  const view = resolveBadgeViewFromStatus(status);
+
+  if (!view) {
+    if (!silent) {
+      retraiteNotifyToast('Le paiement n’est pas encore confirmé côté serveur.', 'warning');
+    }
+    updatePaidProceedToBadgePanel(status);
+    return false;
+  }
+
+  if (status && status.payment && status.payment.channel === 'sponsorship_voucher') {
+    App.sponsorshipVoucherApplied = true;
+    App.paymentModeCompleted = 'sponsorship_voucher';
+    if (typeof togglePaymentMethodsShell === 'function') {
+      togglePaymentMethodsShell(true);
+    }
+  }
+
+  if (typeof finalizeBadgeUi === 'function') {
+    await finalizeBadgeUi(view);
+  }
+  return true;
+}
+
+window.proceedToBilletFromPaidRegistration = proceedToBilletFromPaidRegistration;
+window.refreshPaidProceedToBadgePanel = refreshPaidProceedToBadgePanel;
 
 function getBadgeJsPdfConstructor() {
   const g = typeof window !== 'undefined' ? window : {};
@@ -196,8 +322,11 @@ async function finalizeBadgeUi(view) {
 
   try {
     if (view === 'electronic_success' || view === 'sponsorship_success') {
-      const ok = await assertParticipantPaymentVerifiedForView(view);
-      if (!ok) {
+      const status = await fetchParticipantRegistrationStatus();
+      const resolved = resolveBadgeViewFromStatus(status);
+      if (status && status.paiement_valide === true && status.payment && status.payment.etat === 'payee' && resolved) {
+        view = resolved;
+      } else {
         if (typeof trackRetraiteFunnel === 'function' && window.RETRAITE_FUNNEL_STAGES) {
           trackRetraiteFunnel(
             RETRAITE_FUNNEL_STAGES.payment_server_verify_failed,
@@ -205,8 +334,9 @@ async function finalizeBadgeUi(view) {
             { channel: App.paymentModeCompleted || view }
           );
         }
+        updatePaidProceedToBadgePanel(status);
         retraiteNotifyToast(
-          'Le paiement n’est pas confirmé côté serveur. Le suivi reste visible — réessayez ou contactez l’organisation.',
+          'Impossible d’ouvrir le billet automatiquement. Utilisez « Accéder à mon billet » ci-dessous ou contactez l’organisation.',
           'warning'
         );
         if (typeof goToStep === 'function') {

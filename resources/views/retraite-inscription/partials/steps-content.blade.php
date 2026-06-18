@@ -460,6 +460,17 @@
 
         <div id="paymentStatusBanner" class="info-box mt-3 hidden"></div>
 
+        <div id="paidProceedToBadgePanel" class="info-box success mt-3 hidden" style="max-width:560px;">
+          <i class="bi bi-ticket-perforated"></i>
+          <div>
+            <strong id="paidProceedToBadgeTitle">Inscription déjà confirmée</strong>
+            <p id="paidProceedToBadgeText" class="mb-2 mt-1">Votre paiement ou code parrainage a déjà été enregistré. Vous pouvez ouvrir votre billet sans refaire cette étape.</p>
+            <button type="button" class="btn btn-submit" id="btnProceedToBadge">
+              <i class="bi bi-arrow-right-circle"></i> Accéder à mon billet
+            </button>
+          </div>
+        </div>
+
         <div class="nav-buttons mt-4">
           <button type="button" class="btn btn-prev" onclick="prevStep()">
             <i class="bi bi-arrow-left"></i> Précédent

@@ -24,6 +24,7 @@ use App\Services\RetreatInscriptionFunnelService;
 use App\Services\RetreatInscriptionPaymentCompletionService;
 use App\Services\RetreatRegistration\RetreatEventCapacityService;
 use App\Services\StoragePathService;
+use App\Support\RetreatRegistrationBadgeViewResolver;
 use App\Support\RegistrationFormUiSettings;
 use App\Support\StoragePath;
 use Carbon\Carbon;
@@ -1193,9 +1194,7 @@ class RetreatPublicRegistrationController extends Controller
     {
         $participant->load(['payments.event']);
 
-        $payment = $participant->payments
-            ->first(fn (RetreatPayment $p): bool => $p->etat === 'payee')
-            ?? $participant->payments->sortByDesc('updated_at')->first();
+        $payment = RetreatRegistrationBadgeViewResolver::resolvePrimaryPayment($participant);
 
         return response()->json([
             'data' => [
@@ -2464,29 +2463,7 @@ class RetreatPublicRegistrationController extends Controller
 
     protected function resolveBadgeView(?RetreatParticipant $participant, ?RetreatPayment $payment): string
     {
-        if (! $participant) {
-            return 'unknown';
-        }
-
-        if ($participant->paiement_valide && ! $participant->badge_received) {
-            return 'badge_pending';
-        }
-
-        $channel = $payment?->channel;
-
-        if ($participant->paiement_valide && $channel === 'sponsorship_voucher') {
-            return 'sponsorship_success';
-        }
-
-        if ($participant->paiement_valide && in_array($channel, ['mobile_money', 'card'], true)) {
-            return 'electronic_success';
-        }
-
-        if ($channel === 'cash') {
-            return $participant->paiement_valide ? 'cash_validated' : 'cash_pending';
-        }
-
-        return 'payment_incomplete';
+        return RetreatRegistrationBadgeViewResolver::resolve($participant, $payment);
     }
 
     protected function logPaymentTransaction(RetreatPayment $payment, string $type, ?array $requestPayload, mixed $responsePayload): void
