@@ -203,8 +203,9 @@ class RetreatVoluntaryDonationController extends Controller
         }
 
         $donation->update([
-            'donor_phone' => $phone,
             'payment_channel' => 'mobile_money',
+            'payment_operator' => $this->resolveMobileProviderLabel($event, $flexpayType),
+            'payment_phone' => $phone,
             'provider_reference' => $result['orderNumber'] ?? $donation->provider_reference,
             'status' => RetreatVoluntaryDonation::STATUS_PENDING,
         ]);
@@ -237,7 +238,10 @@ class RetreatVoluntaryDonationController extends Controller
 
         $external = config('retraite.card_external_form_url');
         if (filled($external)) {
-            $donation->update(['payment_channel' => 'card']);
+            $donation->update([
+                'payment_channel' => 'card',
+                'payment_operator' => 'Carte bancaire (formulaire externe)',
+            ]);
 
             return response()->json([
                 'data' => [
@@ -271,6 +275,7 @@ class RetreatVoluntaryDonationController extends Controller
 
         $donation->update([
             'payment_channel' => 'card',
+            'payment_operator' => 'Carte bancaire (FlexPay)',
             'provider_reference' => $result['orderNumber'] ?? $donation->provider_reference,
             'status' => RetreatVoluntaryDonation::STATUS_PENDING,
         ]);
@@ -497,5 +502,26 @@ class RetreatVoluntaryDonationController extends Controller
         }
 
         return $query->orderByDesc('start_at')->orderByDesc('id')->first();
+    }
+
+    /**
+     * @param ChurchEvent $event Événement retraite
+     * @param string $flexpayType Type ou code opérateur FlexPay
+     * @return string Libellé affichable
+     */
+    protected function resolveMobileProviderLabel(ChurchEvent $event, string $flexpayType): string
+    {
+        foreach ($this->formConfigService->resolvedMobileProvidersForEvent($event) as $provider) {
+            if (! is_array($provider)) {
+                continue;
+            }
+            $type = isset($provider['type']) ? (string) $provider['type'] : '';
+            $code = isset($provider['code']) ? (string) $provider['code'] : '';
+            if ($type === $flexpayType || $code === $flexpayType) {
+                return (string) ($provider['label'] ?? $provider['code'] ?? $flexpayType);
+            }
+        }
+
+        return $flexpayType;
     }
 }

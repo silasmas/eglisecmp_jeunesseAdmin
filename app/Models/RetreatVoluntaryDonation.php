@@ -44,6 +44,8 @@ class RetreatVoluntaryDonation extends Model
         'amount_paid',
         'currency',
         'payment_channel',
+        'payment_operator',
+        'payment_phone',
         'provider_reference',
         'cash_proof_path',
         'cash_validated_at',
@@ -91,5 +93,31 @@ class RetreatVoluntaryDonation extends Model
     public function vouchers(): HasMany
     {
         return $this->hasMany(RetreatSponsorshipVoucher::class, 'donation_id');
+    }
+
+    /**
+     * Résumé lisible du moyen de paiement pour l'administration.
+     *
+     * @return string
+     */
+    public function paymentDetailsSummary(): string
+    {
+        if ($this->donation_kind === self::KIND_IN_KIND) {
+            return '—';
+        }
+
+        return match ($this->payment_channel) {
+            'mobile_money' => trim(sprintf(
+                'Mobile Money — %s%s',
+                $this->payment_operator ?: 'Opérateur',
+                filled($this->payment_phone) ? " · {$this->payment_phone}" : ''
+            )),
+            'card' => trim(sprintf(
+                'Carte bancaire — %s',
+                $this->payment_operator ?: 'FlexPay'
+            ).(filled($this->provider_reference) ? " · ref. {$this->provider_reference}" : '')),
+            'cash' => $this->payment_operator ?: 'Espèces (dépôt physique)',
+            default => filled($this->payment_channel) ? (string) $this->payment_channel : 'Non renseigné',
+        };
     }
 }

@@ -378,6 +378,72 @@ function showDonPaymentPrepared() {
   }
 }
 
+/**
+ * Réinitialise le formulaire don après un envoi ou un paiement terminé.
+ *
+ * @return {void}
+ */
+function resetDonForm() {
+  stopDonMobilePaymentPollTimer();
+  hideDonPaymentProgressPanel();
+  donMobilePayManualSessionsLeft = null;
+
+  DonApp.donationId = null;
+  DonApp.donationReference = null;
+  DonApp.proofFile = null;
+  DonApp.selectedFlexpayType = null;
+  DonApp.mobilePayPollOrigBtnHtml = null;
+
+  document.getElementById('donForm')?.reset();
+
+  document.getElementById('cashPaymentBlock')?.classList.add('hidden');
+  document.getElementById('btnSubmitDon')?.classList.remove('hidden');
+
+  const banner = document.getElementById('donPaymentStatusBanner');
+  if (banner) {
+    banner.classList.add('hidden');
+    banner.innerHTML = '';
+  }
+
+  const statusEl = document.getElementById('donPaymentStatus');
+  if (statusEl) {
+    statusEl.textContent = '';
+  }
+
+  const hint = document.getElementById('donMobilePayHint');
+  if (hint) {
+    hint.textContent = 'Une demande sera envoyée sur votre téléphone. Laissez cette page ouverte.';
+  }
+
+  const proofInput = document.getElementById('donProofInput');
+  if (proofInput) {
+    proofInput.value = '';
+  }
+  document.getElementById('donProofDropZone')?.classList.remove('has-file');
+  document.getElementById('donProofPreview')?.classList.add('hidden');
+  const image = document.getElementById('donProofImage');
+  if (image) {
+    image.src = '';
+    image.style.display = 'none';
+  }
+
+  setDonKind('in_kind');
+  toggleCashPurposeFields();
+  updateCapacityUi();
+}
+
+/**
+ * Réinitialise le formulaire après un court délai pour laisser lire le message de succès.
+ *
+ * @param {number} delayMs Délai en millisecondes
+ * @return {void}
+ */
+function scheduleDonFormReset(delayMs = 3500) {
+  window.setTimeout(() => {
+    resetDonForm();
+  }, delayMs);
+}
+
 function buildDonPayload() {
   return {
     donor_name: document.getElementById('donorName').value.trim(),
@@ -429,7 +495,7 @@ async function submitDonForm(e) {
         throw new Error(json.message || 'Échec envoi.');
       }
       retraiteNotifyToast('Merci ! Un e-mail de confirmation vous sera envoyé.', 'success');
-      document.getElementById('donForm')?.reset();
+      scheduleDonFormReset(2500);
       return;
     }
 
@@ -654,6 +720,7 @@ async function submitDonCashProof() {
     btn.disabled = false;
     btn.innerHTML = orig;
   }
+  scheduleDonFormReset(3500);
 }
 
 function startDonPaymentPoll(originalBtnHtml, pollOptions) {
@@ -794,6 +861,7 @@ function startDonPaymentPoll(originalBtnHtml, pollOptions) {
       }
       retraiteNotifyToast('Merci pour votre don !', 'success');
       loadDonContext().catch(() => {});
+      scheduleDonFormReset(4000);
       donMobilePayPollInFlight = false;
       return;
     }

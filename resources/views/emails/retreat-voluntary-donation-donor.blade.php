@@ -10,6 +10,7 @@
     default => '.',
   };
   $displayAmount = (float) ($donation->amount_paid > 0 ? $donation->amount_paid : $donation->amount_expected);
+  $vouchers = $donation->relationLoaded('vouchers') ? $donation->vouchers : collect();
 @endphp
 
 # Merci pour votre don
@@ -29,13 +30,23 @@ Votre **don en espèces** a bien été enregistré{{ $cashStatusSuffix }}
 @endif
 
 @if($isCashSubmitted)
-Nous vous confirmerons par e-mail dès validation du paiement en espèces par l'administration.
+Nous vous enverrons un **second e-mail de confirmation** (avec les codes parrainage le cas échéant) dès validation du paiement en espèces par l'administration.
 @endif
 
 @if($isSponsor && $isPaid)
 Vous avez sponsorisé **{{ (int) $donation->youth_slots_count }}** jeune{{ (int) $donation->youth_slots_count > 1 ? 's' : '' }}.
 
-Les jeunes concernés devront **vous demander le code parrainage** que nous vous communiquerons séparément (ou via l'équipe d'organisation). Ce code leur permettra de finaliser leur inscription sans payer les frais.
+@if($vouchers->isNotEmpty())
+**Codes parrainage à transmettre aux jeunes pour leur inscription :**
+
+@foreach($vouchers as $voucher)
+- **`{{ $voucher->code }}`**
+@endforeach
+
+Chaque jeune doit saisir **un de ces codes** lors de son inscription sur le portail retraite (étape paiement). Le code couvre les frais d'inscription pour une place.
+@else
+Les codes parrainage seront générés sous peu. Contactez l'équipe d'organisation si vous ne les recevez pas.
+@endif
 @endif
 
 @if($donation->donor_message)

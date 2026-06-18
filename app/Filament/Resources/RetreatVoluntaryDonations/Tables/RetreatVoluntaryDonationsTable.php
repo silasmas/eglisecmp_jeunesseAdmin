@@ -73,6 +73,11 @@ class RetreatVoluntaryDonationsTable
                         RetreatVoluntaryDonation::STATUS_CANCELLED => 'danger',
                         default => 'gray',
                     }),
+                TextColumn::make('paymentDetailsSummary')
+                    ->label('Paiement')
+                    ->state(fn (RetreatVoluntaryDonation $record): string => $record->paymentDetailsSummary())
+                    ->wrap()
+                    ->toggleable(),
                 IconColumn::make('admin_notified')
                     ->label('Admin notifié')
                     ->boolean()

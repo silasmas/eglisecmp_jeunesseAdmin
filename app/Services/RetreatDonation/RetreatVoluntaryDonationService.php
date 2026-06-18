@@ -121,6 +121,7 @@ class RetreatVoluntaryDonationService
         $donation->update([
             'cash_proof_path' => $proofPath,
             'payment_channel' => 'cash',
+            'payment_operator' => 'Espèces (dépôt physique)',
             'status' => RetreatVoluntaryDonation::STATUS_CASH_SUBMITTED,
         ]);
 
@@ -220,9 +221,9 @@ class RetreatVoluntaryDonationService
         }
 
         $this->notifier->notifySuperAdmins($donation->fresh(['event', 'vouchers']));
-        $this->notifier->notifyDonor($donation->fresh(['event']));
+        $this->notifier->notifyDonor($donation->fresh(['event', 'vouchers']));
 
-        return $donation;
+        return $donation->fresh(['event', 'vouchers']);
     }
 
     /**

@@ -208,5 +208,5 @@
 @push('scripts')
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <meta name="retraite-don-api-base" content="{{ url('/api/v1/retreat/donations') }}">
-  <script src="{{ asset('retraite-don/js/don-form.js') }}?v=5"></script>
+  <script src="{{ asset('retraite-don/js/don-form.js') }}?v=6"></script>
 @endpush

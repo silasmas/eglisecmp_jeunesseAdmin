@@ -46,7 +46,7 @@ class RetreatVoluntaryDonationNotifier
     }
 
     /**
-     * Envoie la confirmation au donateur (une seule fois, si e-mail renseigné).
+     * Envoie la confirmation finale au donateur (nature ou espèces payées), avec codes parrainage si applicable.
      *
      * @param RetreatVoluntaryDonation $donation Don enregistré ou payé
      * @return void
@@ -57,14 +57,21 @@ class RetreatVoluntaryDonationNotifier
             return;
         }
 
+        if (
+            $donation->donation_kind === RetreatVoluntaryDonation::KIND_CASH
+            && $donation->status !== RetreatVoluntaryDonation::STATUS_PAID
+        ) {
+            return;
+        }
+
         $email = trim((string) ($donation->donor_email ?? ''));
         if ($email === '') {
             return;
         }
 
-        $donation->loadMissing(['event']);
+        $donation->loadMissing(['event', 'vouchers']);
 
-        Mail::to($email)->send(new RetreatVoluntaryDonationDonorMail($donation->fresh(['event'])));
+        Mail::to($email)->send(new RetreatVoluntaryDonationDonorMail($donation->fresh(['event', 'vouchers'])));
 
         $donation->update(['donor_notified' => true]);
     }
@@ -96,7 +103,7 @@ class RetreatVoluntaryDonationNotifier
     }
 
     /**
-     * Accusé au donateur : preuve cash reçue, en attente de validation admin.
+     * Accusé au donateur : preuve cash reçue, en attente de validation admin (sans codes parrainage).
      *
      * @param RetreatVoluntaryDonation $donation Don concerné
      * @return void
@@ -110,6 +117,6 @@ class RetreatVoluntaryDonationNotifier
 
         $donation->loadMissing(['event']);
 
-        Mail::to($email)->send(new RetreatVoluntaryDonationDonorMail($donation));
+        Mail::to($email)->send(new RetreatVoluntaryDonationDonorMail($donation->fresh(['event'])));
     }
 }

@@ -21,7 +21,7 @@ class RetreatVoluntaryDonationInfolist
             ->components([
                 TextEntry::make('reference')->label('Référence'),
                 TextEntry::make('donor_name')->label('Donateur'),
-                TextEntry::make('donor_phone')->label('Téléphone'),
+                TextEntry::make('donor_phone')->label('Téléphone contact'),
                 TextEntry::make('donor_email')->label('E-mail'),
                 TextEntry::make('donation_kind')->label('Type de don'),
                 TextEntry::make('cash_purpose')->label('Destination espèces'),
@@ -34,8 +34,29 @@ class RetreatVoluntaryDonationInfolist
                 TextEntry::make('amount_paid')->label('Montant payé'),
                 TextEntry::make('currency')->label('Devise'),
                 TextEntry::make('status')->label('Statut'),
-                TextEntry::make('payment_channel')->label('Canal paiement'),
-                TextEntry::make('provider_reference')->label('Réf. opérateur'),
+                TextEntry::make('payment_channel')
+                    ->label('Canal paiement')
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                        'mobile_money' => 'Mobile Money',
+                        'card' => 'Carte bancaire',
+                        'cash' => 'Espèces',
+                        default => $state ?? '—',
+                    }),
+                TextEntry::make('payment_operator')
+                    ->label('Opérateur / moyen')
+                    ->placeholder('—'),
+                TextEntry::make('payment_phone')
+                    ->label('Numéro Mobile Money')
+                    ->placeholder('—')
+                    ->visible(fn ($record) => $record->payment_channel === 'mobile_money'),
+                TextEntry::make('paymentDetailsSummary')
+                    ->label('Résumé paiement')
+                    ->state(fn ($record) => $record->paymentDetailsSummary())
+                    ->columnSpanFull()
+                    ->visible(fn ($record) => $record->donation_kind === 'cash'),
+                TextEntry::make('provider_reference')
+                    ->label('Réf. opérateur / passerelle')
+                    ->placeholder('—'),
                 TextEntry::make('donor_message')
                     ->label('Message')
                     ->columnSpanFull(),
