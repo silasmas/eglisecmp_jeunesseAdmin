@@ -151,6 +151,10 @@ class ListRetreatParticipants extends ListRecords
                 ->badge(fn (): int => RetreatParticipant::query()->where('paiement_valide', true)->count())
                 ->badgeColor('success')
                 ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('paiement_valide', true)),
+            'sponsored' => Tab::make('Prise en charge (code)')
+                ->badge(fn (): int => RetreatParticipant::query()->whereHas('sponsorshipVoucher')->count())
+                ->badgeColor('info')
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query->whereHas('sponsorshipVoucher')),
             'access_granted' => Tab::make('Accès accordé')
                 ->badge(fn (): int => RetreatParticipant::query()->where('present', true)->count())
                 ->badgeColor('success')

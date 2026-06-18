@@ -96,6 +96,65 @@ class RetreatVoluntaryDonation extends Model
     }
 
     /**
+     * Nombre total de places jeunes prévues pour ce don parrainage.
+     *
+     * @return int
+     */
+    public function sponsorshipSlotsTotal(): int
+    {
+        if ($this->cash_purpose !== self::PURPOSE_SPONSOR_YOUTH) {
+            return 0;
+        }
+
+        $fromVouchers = $this->relationLoaded('vouchers')
+            ? $this->vouchers->count()
+            : $this->vouchers()->count();
+
+        return max((int) ($this->youth_slots_count ?? 0), $fromVouchers);
+    }
+
+    /**
+     * Nombre de places déjà utilisées via un code parrainage.
+     *
+     * @return int
+     */
+    public function sponsorshipSlotsUsed(): int
+    {
+        if ($this->cash_purpose !== self::PURPOSE_SPONSOR_YOUTH) {
+            return 0;
+        }
+
+        if ($this->relationLoaded('vouchers')) {
+            return $this->vouchers->whereNotNull('redeemed_by_participant_id')->count();
+        }
+
+        return $this->vouchers()->whereNotNull('redeemed_by_participant_id')->count();
+    }
+
+    /**
+     * Places parrainage encore disponibles.
+     *
+     * @return int
+     */
+    public function sponsorshipSlotsRemaining(): int
+    {
+        return max(0, $this->sponsorshipSlotsTotal() - $this->sponsorshipSlotsUsed());
+    }
+
+    /**
+     * Libellé de progression pour l'administration.
+     *
+     * @return string
+     */
+    public function sponsorshipProgressLabel(): string
+    {
+        $used = $this->sponsorshipSlotsUsed();
+        $total = $this->sponsorshipSlotsTotal();
+
+        return "{$used} / {$total} inscrit(s)";
+    }
+
+    /**
      * Résumé lisible du moyen de paiement pour l'administration.
      *
      * @return string

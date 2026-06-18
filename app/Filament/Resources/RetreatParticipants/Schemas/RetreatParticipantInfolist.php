@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\RetreatParticipants\Schemas;
 
+use App\Filament\Resources\RetreatParticipants\RetreatParticipantResource;
+use App\Filament\Resources\RetreatVoluntaryDonations\RetreatVoluntaryDonationResource;
 use App\Models\RetreatParticipant;
 use App\Services\PublicStorageUrl;
 use App\Services\RetreatInscriptionFunnelService;
@@ -58,6 +60,31 @@ class RetreatParticipantInfolist
                     ->schema([
                         TextEntry::make('preuve_paiement')->placeholder('-'),
                         IconEntry::make('paiement_valide')->boolean(),
+                        TextEntry::make('sponsorshipVoucher.code')
+                            ->label('Code prise en charge')
+                            ->badge()
+                            ->color('info')
+                            ->copyable()
+                            ->copyMessage('Code copié')
+                            ->copyMessageDuration(2000)
+                            ->visible(fn (RetreatParticipant $record): bool => filled($record->sponsorshipVoucher?->code)),
+                        TextEntry::make('sponsorshipVoucher.donation.reference')
+                            ->label('Référence don parrain')
+                            ->badge()
+                            ->color('gray')
+                            ->copyable()
+                            ->url(fn (RetreatParticipant $record): ?string => $record->sponsorshipVoucher?->donation_id
+                                ? RetreatVoluntaryDonationResource::getUrl('view', ['record' => $record->sponsorshipVoucher->donation_id])
+                                : null)
+                            ->visible(fn (RetreatParticipant $record): bool => filled($record->sponsorshipVoucher?->donation_id)),
+                        TextEntry::make('sponsorshipVoucher.donation.donor_name')
+                            ->label('Donateur parrain')
+                            ->placeholder('—')
+                            ->visible(fn (RetreatParticipant $record): bool => filled($record->sponsorshipVoucher?->donation_id)),
+                        TextEntry::make('sponsorshipVoucher.redeemed_at')
+                            ->label('Code utilisé le')
+                            ->dateTime('d/m/Y H:i')
+                            ->visible(fn (RetreatParticipant $record): bool => filled($record->sponsorshipVoucher?->redeemed_at)),
                         IconEntry::make('billet_envoye')->boolean(),
                         TextEntry::make('date_billet_envoye')->dateTime()->placeholder('-'),
                         TextEntry::make('billet_pdf')->placeholder('-'),

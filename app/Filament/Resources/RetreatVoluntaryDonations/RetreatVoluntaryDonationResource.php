@@ -11,6 +11,7 @@ use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
 /**
@@ -48,6 +49,17 @@ class RetreatVoluntaryDonationResource extends Resource
     public static function table(Table $table): Table
     {
         return RetreatVoluntaryDonationsTable::configure($table);
+    }
+
+    /**
+     * @return Builder<RetreatVoluntaryDonation>
+     */
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->with([
+            'event',
+            'vouchers.redeemedByParticipant',
+        ]);
     }
 
     /**

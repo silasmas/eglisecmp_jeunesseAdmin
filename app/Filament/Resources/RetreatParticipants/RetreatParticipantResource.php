@@ -14,6 +14,7 @@ use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
 class RetreatParticipantResource extends Resource
@@ -43,6 +44,16 @@ class RetreatParticipantResource extends Resource
     public static function table(Table $table): Table
     {
         return RetreatParticipantsTable::configure($table);
+    }
+
+    /**
+     * @return Builder<RetreatParticipant>
+     */
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->with([
+            'sponsorshipVoucher.donation',
+        ]);
     }
 
     public static function getRelations(): array

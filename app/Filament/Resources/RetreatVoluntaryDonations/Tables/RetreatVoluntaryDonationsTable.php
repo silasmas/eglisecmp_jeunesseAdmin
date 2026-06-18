@@ -25,7 +25,7 @@ class RetreatVoluntaryDonationsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn ($query) => $query->with(['event']))
+            ->modifyQueryUsing(fn ($query) => $query->with(['event', 'vouchers']))
             ->defaultSort('created_at', 'desc')
             ->columns([
                 TextColumn::make('reference')
@@ -47,8 +47,21 @@ class RetreatVoluntaryDonationsTable
                     ->label('Destination')
                     ->formatStateUsing(fn (?string $state): string => match ($state) {
                         RetreatVoluntaryDonation::PURPOSE_GENERAL => 'Fonctionnement',
-                        RetreatVoluntaryDonation::PURPOSE_SPONSOR_YOUTH => 'Sponsor jeunes',
+                        RetreatVoluntaryDonation::PURPOSE_SPONSOR_YOUTH => 'Prise en charge jeunes',
                         default => '—',
+                    })
+                    ->toggleable(),
+                TextColumn::make('sponsorshipProgressLabel')
+                    ->label('Prise en charge')
+                    ->state(fn (RetreatVoluntaryDonation $record): string => $record->cash_purpose === RetreatVoluntaryDonation::PURPOSE_SPONSOR_YOUTH
+                        ? $record->sponsorshipProgressLabel()
+                        : '—')
+                    ->badge()
+                    ->color(fn (RetreatVoluntaryDonation $record): string => match (true) {
+                        $record->cash_purpose !== RetreatVoluntaryDonation::PURPOSE_SPONSOR_YOUTH => 'gray',
+                        $record->sponsorshipSlotsRemaining() === 0 && $record->sponsorshipSlotsTotal() > 0 => 'success',
+                        $record->sponsorshipSlotsUsed() > 0 => 'info',
+                        default => 'warning',
                     })
                     ->toggleable(),
                 TextColumn::make('amount_expected')

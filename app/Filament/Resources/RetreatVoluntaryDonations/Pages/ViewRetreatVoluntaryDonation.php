@@ -53,6 +53,8 @@ class ViewRetreatVoluntaryDonation extends ViewRecord
                             ->success()
                             ->send();
 
+                        $this->record = $result['donation']->load(['event', 'vouchers.redeemedByParticipant']);
+
                         return;
                     }
 

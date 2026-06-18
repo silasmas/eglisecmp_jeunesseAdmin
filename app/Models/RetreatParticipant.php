@@ -118,6 +118,30 @@ class RetreatParticipant extends Model implements HasAvatar, HasName
         return $this->belongsTo(ChurchEvent::class, 'event_id');
     }
 
+    /**
+     * Code parrainage utilisé pour couvrir l'inscription de ce participant.
+     *
+     * @return HasOne<RetreatSponsorshipVoucher, $this>
+     */
+    public function sponsorshipVoucher(): HasOne
+    {
+        return $this->hasOne(RetreatSponsorshipVoucher::class, 'redeemed_by_participant_id');
+    }
+
+    /**
+     * Indique si l'inscription a été couverte par un code de prise en charge.
+     *
+     * @return bool
+     */
+    public function isSponsoredRegistration(): bool
+    {
+        if ($this->relationLoaded('sponsorshipVoucher')) {
+            return $this->sponsorshipVoucher !== null;
+        }
+
+        return $this->sponsorshipVoucher()->exists();
+    }
+
     public function getFullNameAttribute(): string
     {
         return trim(($this->prenom ?? '').' '.($this->nom ?? ''));

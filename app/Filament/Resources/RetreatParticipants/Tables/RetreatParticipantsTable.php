@@ -41,6 +41,7 @@ class RetreatParticipantsTable
                 'retreatAccessGrantedBy',
                 'badgeReceivedBy',
                 'latestCashPayment.accessGrantedBy',
+                'sponsorshipVoucher.donation',
             ]))
             ->columns([
                 HoverImageColumn::make('photo')
@@ -147,6 +148,18 @@ class RetreatParticipantsTable
                         default => 'gray',
                     })
                     ->tooltip(fn (RetreatParticipant $record): ?string => $record->date_billet_envoye?->format('d/m/Y H:i')),
+                TextColumn::make('sponsorshipVoucher.code')
+                    ->label('Code prise en charge')
+                    ->badge()
+                    ->color('info')
+                    ->copyable()
+                    ->copyMessage('Code copié')
+                    ->placeholder('—')
+                    ->toggleable(),
+                TextColumn::make('sponsorshipVoucher.donation.donor_name')
+                    ->label('Parrainé par')
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('preuve_paiement')
                     ->label('Preuve paiement')
                     ->searchable()
@@ -337,6 +350,9 @@ class RetreatParticipantsTable
                         'en_attente' => 'En attente',
                         'valide' => 'Confirme',
                     ]),
+                Filter::make('sponsored')
+                    ->label('Inscrit via code prise en charge')
+                    ->query(fn (Builder $query): Builder => $query->whereHas('sponsorshipVoucher')),
                 SelectFilter::make('chambre_id')
                     ->label('Chambre')
                     ->relationship('chambre', 'nom'),

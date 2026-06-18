@@ -14,6 +14,7 @@ class RetreatParticipantsStats extends StatsOverviewWidget
             Stat::make('Total participants', (string) RetreatParticipant::query()->count()),
             Stat::make('Presents', (string) RetreatParticipant::query()->where('present', true)->count()),
             Stat::make('Paiement valide', (string) RetreatParticipant::query()->where('paiement_valide', true)->count()),
+            Stat::make('Prise en charge (code)', (string) RetreatParticipant::query()->whereHas('sponsorshipVoucher')->count()),
             Stat::make('Actifs', (string) RetreatParticipant::query()->where('is_active', true)->count()),
             Stat::make('Hommes', (string) RetreatParticipant::query()->where('sexe', 'homme')->count()),
             Stat::make('Femmes', (string) RetreatParticipant::query()->where('sexe', 'femme')->count()),
