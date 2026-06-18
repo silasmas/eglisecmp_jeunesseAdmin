@@ -4,7 +4,10 @@ namespace App\Filament\Resources\RetreatVoluntaryDonations\Tables;
 
 use App\Filament\Resources\RetreatVoluntaryDonations\RetreatVoluntaryDonationResource;
 use App\Models\RetreatVoluntaryDonation;
+use App\Services\RetreatDonation\RetreatVoluntaryDonationService;
+use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -100,7 +103,66 @@ class RetreatVoluntaryDonationsTable
                     ]),
             ])
             ->recordActions([
+                Action::make('recheckFlexPay')
+                    ->label('Relancer FlexPay')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('warning')
+                    ->visible(fn (RetreatVoluntaryDonation $record): bool => self::canRecheckFlexPay($record))
+                    ->requiresConfirmation()
+                    ->modalHeading('Relancer la vérification FlexPay')
+                    ->action(function (RetreatVoluntaryDonation $record): void {
+                        $service = app(RetreatVoluntaryDonationService::class);
+
+                        try {
+                            $result = $service->recheckFlexPayMobilePayment($record);
+                        } catch (\RuntimeException $e) {
+                            Notification::make()
+                                ->title('Vérification impossible')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+
+                        if ($result['confirmed']) {
+                            Notification::make()
+                                ->title('Paiement confirmé')
+                                ->body($result['message'])
+                                ->success()
+                                ->send();
+
+                            return;
+                        }
+
+                        Notification::make()
+                            ->title('Pas encore confirmé')
+                            ->body($result['message'])
+                            ->warning()
+                            ->send();
+                    }),
                 ViewAction::make(),
             ]);
+    }
+
+    /**
+     * @param RetreatVoluntaryDonation $record Don listé
+     * @return bool
+     */
+    protected static function canRecheckFlexPay(RetreatVoluntaryDonation $record): bool
+    {
+        if ($record->status === RetreatVoluntaryDonation::STATUS_PAID) {
+            return false;
+        }
+
+        if ($record->donation_kind !== RetreatVoluntaryDonation::KIND_CASH) {
+            return false;
+        }
+
+        if ($record->status === RetreatVoluntaryDonation::STATUS_CASH_SUBMITTED) {
+            return false;
+        }
+
+        return $record->payment_channel === 'mobile_money' || filled($record->provider_reference);
     }
 }

@@ -5,6 +5,8 @@ namespace App\Services\RetreatDonation;
 use App\Models\ChurchEvent;
 use App\Models\RetreatVoluntaryDonation;
 use App\Models\User;
+use App\Services\FlexPay\FlexPayMobileService;
+use App\Services\FlexPay\FlexPayTransactionStatusReader;
 use App\Services\RetreatRegistration\RetreatEventCapacityService;
 use Illuminate\Support\Str;
 
@@ -17,6 +19,8 @@ class RetreatVoluntaryDonationService
         protected RetreatVoluntaryDonationNotifier $notifier,
         protected RetreatSponsorshipVoucherService $voucherService,
         protected RetreatEventCapacityService $capacityService,
+        protected FlexPayMobileService $flexPayMobile,
+        protected FlexPayTransactionStatusReader $flexPayStatusReader,
     ) {}
 
     /**
@@ -219,5 +223,94 @@ class RetreatVoluntaryDonationService
         $this->notifier->notifyDonor($donation->fresh(['event']));
 
         return $donation;
+    }
+
+    /**
+     * Interroge FlexPay et confirme le don si l'opérateur a encaissé.
+     *
+     * @param RetreatVoluntaryDonation $donation Don en attente
+     * @return array{confirmed: bool, message: string, statut_code: int|null, donation: RetreatVoluntaryDonation}
+     */
+    public function recheckFlexPayMobilePayment(RetreatVoluntaryDonation $donation): array
+    {
+        if ($donation->status === RetreatVoluntaryDonation::STATUS_PAID) {
+            return [
+                'confirmed' => true,
+                'message' => 'Ce don est déjà confirmé.',
+                'statut_code' => 0,
+                'donation' => $donation->fresh(['event', 'vouchers']),
+            ];
+        }
+
+        if ($donation->donation_kind !== RetreatVoluntaryDonation::KIND_CASH) {
+            throw new \RuntimeException('Seuls les dons en espèces peuvent être vérifiés via FlexPay.');
+        }
+
+        if ($donation->status === RetreatVoluntaryDonation::STATUS_CASH_SUBMITTED) {
+            throw new \RuntimeException('Ce don est en attente de validation cash par l’administration.');
+        }
+
+        if ($donation->payment_channel !== 'mobile_money' && ! filled($donation->provider_reference)) {
+            throw new \RuntimeException('Aucune demande Mobile Money n’a été lancée pour ce don.');
+        }
+
+        $lookupReference = filled($donation->provider_reference)
+            ? (string) $donation->provider_reference
+            : $donation->reference;
+
+        $check = $this->flexPayMobile->checkTransaction($lookupReference);
+        if (! ($check['ok'] ?? false)) {
+            throw new \RuntimeException($check['error'] ?? 'Erreur lors de la vérification FlexPay.');
+        }
+
+        $payload = is_array($check['payload'] ?? null) ? $check['payload'] : [];
+        $merged = $this->flexPayStatusReader->mergePayload($payload);
+        $statusRaw = $this->flexPayStatusReader->extractStatus($merged);
+
+        if ($statusRaw === null || $statusRaw === '' || ! is_numeric($statusRaw)) {
+            return [
+                'confirmed' => false,
+                'message' => data_get($merged, 'message', 'Statut indisponible — le paiement n’est pas confirmé.'),
+                'statut_code' => null,
+                'donation' => $donation->fresh(['event']),
+            ];
+        }
+
+        $status = (int) $statusRaw;
+
+        if ($status === 0) {
+            $transaction = is_array($merged['transaction'] ?? null) ? $merged['transaction'] : [];
+            $amount = (float) ($transaction['amount'] ?? $donation->amount_expected);
+
+            return [
+                'confirmed' => true,
+                'message' => 'Paiement confirmé par l’opérateur.',
+                'statut_code' => 0,
+                'donation' => $this->markCashPaid(
+                    $donation->fresh(),
+                    $amount,
+                    'mobile_money',
+                    $donation->provider_reference ?: ($transaction['orderNumber'] ?? null)
+                ),
+            ];
+        }
+
+        if ($status === 1) {
+            return [
+                'confirmed' => false,
+                'message' => 'Transaction annulée côté opérateur.',
+                'statut_code' => 1,
+                'donation' => $donation->fresh(['event']),
+            ];
+        }
+
+        return [
+            'confirmed' => false,
+            'message' => $status === 2
+                ? 'Paiement toujours en attente chez l’opérateur.'
+                : data_get($merged, 'message', 'Statut inconnu.'),
+            'statut_code' => $status,
+            'donation' => $donation->fresh(['event']),
+        ];
     }
 }

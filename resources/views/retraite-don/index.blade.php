@@ -115,12 +115,39 @@
               <p class="field-label"><i class="bi bi-phone"></i> Opérateur Mobile Money</p>
               <div id="donFlexpayProvidersMount" class="payment-methods mb-3"></div>
               <div class="field full">
-                <label class="field-label" for="donFlexpayPhone">Numéro Mobile Money (243…) <span class="required">*</span></label>
-                <input type="tel" id="donFlexpayPhone" class="field-input" placeholder="243891234567" inputmode="numeric">
+                <label class="field-label" for="donFlexpayPhone">Numéro Mobile Money (12 chiffres, commence par 243) <span class="required">*</span></label>
+                <input type="tel" id="donFlexpayPhone" class="field-input" placeholder="2438XX XXX XXX" inputmode="numeric" autocomplete="tel">
+                <p id="donFlexpayPhoneFormatHint" class="field-hint" role="note">Sans le signe « + ». Exemple : <strong>243</strong> puis 9 chiffres (équivalent à un numéro national commençant par 0).</p>
               </div>
               <button type="button" id="btnDonMobilePay" class="btn btn-next mt-2">
                 Déclencher le paiement <i class="bi bi-phone-vibrate"></i>
               </button>
+              <p class="field-hint mt-2" id="donMobilePayHint">Une demande sera envoyée sur votre téléphone. Laissez cette page ouverte.</p>
+            </div>
+
+            <div id="donPaymentProgressPanel" class="payment-progress-panel hidden" aria-live="polite">
+              <div class="payment-progress-title"><i class="bi bi-activity"></i> Suivi du paiement</div>
+              <ol class="payment-progress-steps">
+                <li class="payment-progress-step" data-step="1">
+                  <span class="payment-progress-dot">1</span>
+                  <span class="payment-progress-label">Envoi de la demande à votre opérateur</span>
+                </li>
+                <li class="payment-progress-step" data-step="2">
+                  <span class="payment-progress-dot">2</span>
+                  <span class="payment-progress-label">Confirmation sur votre téléphone</span>
+                </li>
+                <li class="payment-progress-step" data-step="3">
+                  <span class="payment-progress-dot">3</span>
+                  <span class="payment-progress-label">Validation de l’encaissement</span>
+                </li>
+              </ol>
+              <p id="donPaymentProgressDetail" class="payment-progress-detail"></p>
+              <div id="donPaymentPollRelaunchWrap" class="payment-poll-relaunch hidden">
+                <p id="donPaymentPollRelaunchHint" class="payment-progress-rehint"></p>
+                <button type="button" id="btnRelaunchDonPaymentPoll" class="btn btn-submit payment-poll-relaunch-btn">
+                  <i class="bi bi-arrow-clockwise"></i> Relancer la vérification du statut
+                </button>
+              </div>
             </div>
 
             <div id="donCardBlock" class="hidden mt-3">
@@ -160,6 +187,8 @@
               </button>
             </div>
 
+            <div id="donPaymentStatusBanner" class="info-box mt-3 hidden"></div>
+
             <p id="donPaymentStatus" class="field-hint mt-3" aria-live="polite"></p>
           </div>
 
@@ -179,5 +208,5 @@
 @push('scripts')
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <meta name="retraite-don-api-base" content="{{ url('/api/v1/retreat/donations') }}">
-  <script src="{{ asset('retraite-don/js/don-form.js') }}?v=4"></script>
+  <script src="{{ asset('retraite-don/js/don-form.js') }}?v=5"></script>
 @endpush

@@ -8,6 +8,7 @@ use App\Models\RetreatParticipant;
 use App\Models\RetreatVoluntaryDonation;
 use App\Services\FlexPay\FlexPayCardService;
 use App\Services\FlexPay\FlexPayMobileService;
+use App\Services\FlexPay\FlexPayMsisdnValidator;
 use App\Services\RegistrationFormConfigService;
 use App\Services\RetreatDonation\RetreatSponsorshipVoucherService;
 use App\Services\RetreatDonation\RetreatVoluntaryDonationService;
@@ -30,6 +31,7 @@ class RetreatVoluntaryDonationController extends Controller
         protected FlexPayCardService $flexPayCard,
         protected RegistrationFormConfigService $formConfigService,
         protected RetreatEventCapacityService $capacityService,
+        protected FlexPayMsisdnValidator $msisdnValidator,
     ) {}
 
     /**
@@ -146,6 +148,7 @@ class RetreatVoluntaryDonationController extends Controller
     {
         $validated = $request->validate([
             'phone' => ['required', 'string', 'max:30'],
+            'flexpay_type' => ['required', 'string', 'max:32'],
             'provider_code' => ['nullable', 'string', 'max:32'],
         ]);
 
@@ -161,17 +164,27 @@ class RetreatVoluntaryDonationController extends Controller
             return response()->json(['message' => 'Preuve cash en attente de validation admin.'], 422);
         }
 
-        $phone = preg_replace('/\D+/', '', $validated['phone']);
-        if (str_starts_with($phone, '0')) {
-            $phone = '243'.substr($phone, 1);
-        }
-        if (! str_starts_with($phone, '243')) {
-            $phone = '243'.ltrim($phone, '0');
+        $event = $donation->event;
+        if (! $event instanceof ChurchEvent) {
+            return response()->json(['message' => 'Événement introuvable pour ce don.'], 422);
         }
 
-        if (strlen($phone) !== 12) {
+        $flexpayType = (string) ($validated['flexpay_type'] ?: ($validated['provider_code'] ?? ''));
+        if (! $this->msisdnValidator->isMobileProviderAllowed($event, $flexpayType)) {
+            return response()->json(['message' => 'Opérateur mobile non autorisé pour cette retraite.'], 422);
+        }
+
+        $phone = $this->msisdnValidator->normalizeCdMobileMoneyMsisdn($validated['phone']);
+
+        if (strlen($phone) !== 12 || ! str_starts_with($phone, '243')) {
             return response()->json([
-                'message' => 'Numéro invalide : 12 chiffres commençant par 243.',
+                'message' => 'Numéro mobile invalide : saisissez 12 chiffres commençant par 243 (sans « + » ni « 0 » initial). Exemple : 243891234567.',
+            ], 422);
+        }
+
+        if (! $this->msisdnValidator->msisdnMatchesFlexpayMobileType($event, $flexpayType, $phone)) {
+            return response()->json([
+                'message' => 'Ce numéro ne correspond pas au format habituel du réseau sélectionné. Vérifiez l’opérateur choisi puis le numéro saisi.',
             ], 422);
         }
 
@@ -190,6 +203,7 @@ class RetreatVoluntaryDonationController extends Controller
         }
 
         $donation->update([
+            'donor_phone' => $phone,
             'payment_channel' => 'mobile_money',
             'provider_reference' => $result['orderNumber'] ?? $donation->provider_reference,
             'status' => RetreatVoluntaryDonation::STATUS_PENDING,
@@ -324,7 +338,7 @@ class RetreatVoluntaryDonationController extends Controller
 
         if ($donation->status === RetreatVoluntaryDonation::STATUS_PAID) {
             return response()->json([
-                'data' => $this->donationPaidPayload($donation),
+                'data' => $this->donationPaidPollPayload($donation),
             ]);
         }
 
@@ -339,33 +353,27 @@ class RetreatVoluntaryDonationController extends Controller
             ]);
         }
 
-        $check = $this->flexPayMobile->checkTransaction($donation->reference);
-        $payload = is_array($check['payload'] ?? null) ? $check['payload'] : [];
-        $transaction = is_array($payload['transaction'] ?? null) ? $payload['transaction'] : [];
-        $status = (string) ($transaction['status'] ?? '');
+        try {
+            $result = $this->donationService->recheckFlexPayMobilePayment($donation);
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
 
-        if ($status === '0') {
-            $amount = (float) ($transaction['amount'] ?? $donation->amount_expected);
-            try {
-                $donation = $this->donationService->markCashPaid(
-                    $donation,
-                    $amount,
-                    $donation->payment_channel ?? 'mobile_money',
-                    $donation->provider_reference
-                );
-            } catch (\RuntimeException $e) {
-                return response()->json(['message' => $e->getMessage()], 422);
-            }
-
+        if ($result['confirmed']) {
             return response()->json([
-                'data' => $this->donationPaidPayload($donation),
+                'data' => $this->donationPaidPollPayload($result['donation']),
             ]);
         }
+
+        $statutCode = $result['statut_code'];
 
         return response()->json([
             'data' => [
                 'paid' => false,
-                'status' => $status,
+                'statut_code' => $statutCode,
+                'message' => $result['message'],
+                'payee' => false,
+                'en_cours' => $statutCode === 2 || $statutCode === null,
                 'reference' => $donation->reference,
             ],
         ]);
@@ -454,6 +462,22 @@ class RetreatVoluntaryDonationController extends Controller
             'reference' => $donation->reference,
             'cash_purpose' => $donation->cash_purpose,
         ];
+    }
+
+    /**
+     * Payload polling front après confirmation paiement don.
+     *
+     * @param RetreatVoluntaryDonation $donation Don payé
+     * @return array<string, mixed>
+     */
+    protected function donationPaidPollPayload(RetreatVoluntaryDonation $donation): array
+    {
+        return array_merge($this->donationPaidPayload($donation), [
+            'statut_code' => 0,
+            'payee' => true,
+            'en_cours' => false,
+            'message' => 'Paiement confirmé.',
+        ]);
     }
 
     /**
