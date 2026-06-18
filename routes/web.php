@@ -37,6 +37,9 @@ Route::get('/', function () {
 /** Formulaire public Grande Retraite des Jeunes (UI Blade + assets dans public/retraite-inscription) */
 Route::view('/inscription-retraite', 'retraite-inscription.index')->name('retraite.inscription');
 
+/** Don volontaire pour la retraite (nature ou espèces) */
+Route::view('/don-retraite', 'retraite-don.index')->name('retraite.don');
+
 /** Page publique liée au QR code imprimé après inscription (token unique) */
 Route::get('/inscription-retraite/justificatif/{token}', RetreatInscriptionJustificatifController::class)
     ->where('token', '[A-Za-z0-9]{32}')

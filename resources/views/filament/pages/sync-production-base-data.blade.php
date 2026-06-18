@@ -41,6 +41,21 @@
 
     <x-filament::section class="mt-6">
         <x-slot name="heading">
+            Synchronisation des migrations (contournement des erreurs)
+        </x-slot>
+
+        <p class="text-sm text-gray-600 dark:text-gray-300">
+            Le bouton vert <strong>Synchroniser les migrations</strong> exécute chaque fichier de migration en attente
+            individuellement. Si le schéma existe déjà (colonne/table dupliquée), la migration est marquée comme appliquée
+            et les suivantes — y compris les nouvelles — continuent.
+        </p>
+        <div class="mt-2 rounded-lg bg-gray-100 p-3 font-mono text-xs dark:bg-gray-800">
+            php artisan cmp:migrate-resilient
+        </div>
+    </x-filament::section>
+
+    <x-filament::section class="mt-6">
+        <x-slot name="heading">
             Migrations + synchronisation
         </x-slot>
 

@@ -21,6 +21,9 @@ Route::prefix('v1/retreat/inscription')
         Route::get('hints/participant-identity', [RetreatPublicRegistrationController::class, 'participantIdentityDuplicateHint'])
             ->middleware('throttle:60,1')
             ->name('hints.participant_identity');
+        Route::get('hints/sponsorship-voucher', [\App\Http\Controllers\Api\RetreatVoluntaryDonationController::class, 'sponsorshipVoucherHint'])
+            ->middleware('throttle:60,1')
+            ->name('hints.sponsorship_voucher');
         Route::get('policies', [RetreatPublicRegistrationController::class, 'inscriptionPolicies'])->name('policies');
         Route::post('worker-prefill', [RetreatPublicRegistrationController::class, 'workerPrefill'])
             ->middleware('throttle:20,1')
@@ -45,8 +48,34 @@ Route::prefix('v1/retreat/inscription')
         Route::post('participants/{participant}/payments/mobile', [RetreatPublicRegistrationController::class, 'initMobilePayment'])->name('participants.payments.mobile');
         Route::post('participants/{participant}/payments/card', [RetreatPublicRegistrationController::class, 'initCardPayment'])->name('participants.payments.card');
         Route::post('participants/{participant}/payments/cash', [RetreatPublicRegistrationController::class, 'submitCashPayment'])->name('participants.payments.cash');
+        Route::post('participants/{participant}/sponsorship-voucher', [\App\Http\Controllers\Api\RetreatVoluntaryDonationController::class, 'applySponsorshipVoucher'])
+            ->middleware('throttle:30,1')
+            ->name('participants.sponsorship_voucher');
         Route::get('payments/check', [RetreatPublicRegistrationController::class, 'checkPayment'])->name('payments.check');
         Route::post('webhooks/flexpay-callback', [RetreatPublicRegistrationController::class, 'flexpayWebhook'])->name('webhooks.flexpay');
+    });
+
+Route::prefix('v1/retreat/donations')
+    ->name('api.v1.retreat.donations.')
+    ->middleware(['throttle:60,1'])
+    ->group(function (): void {
+        Route::get('context', [\App\Http\Controllers\Api\RetreatVoluntaryDonationController::class, 'context'])->name('context');
+        Route::post('in-kind', [\App\Http\Controllers\Api\RetreatVoluntaryDonationController::class, 'storeInKind'])
+            ->middleware('throttle:20,1')
+            ->name('in_kind');
+        Route::post('cash/init', [\App\Http\Controllers\Api\RetreatVoluntaryDonationController::class, 'initCash'])
+            ->middleware('throttle:20,1')
+            ->name('cash.init');
+        Route::post('{donation}/payments/mobile', [\App\Http\Controllers\Api\RetreatVoluntaryDonationController::class, 'initMobilePayment'])
+            ->middleware('throttle:20,1')
+            ->name('payments.mobile');
+        Route::post('{donation}/payments/card', [\App\Http\Controllers\Api\RetreatVoluntaryDonationController::class, 'initCardPayment'])
+            ->middleware('throttle:20,1')
+            ->name('payments.card');
+        Route::post('{donation}/payments/cash', [\App\Http\Controllers\Api\RetreatVoluntaryDonationController::class, 'submitCashPayment'])
+            ->middleware('throttle:20,1')
+            ->name('payments.cash');
+        Route::get('payments/check', [\App\Http\Controllers\Api\RetreatVoluntaryDonationController::class, 'checkPayment'])->name('payments.check');
     });
 
 Route::prefix('v1/retreat')->name('api.v1.retreat.')->group(function (): void {

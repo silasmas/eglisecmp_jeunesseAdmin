@@ -342,7 +342,22 @@
           </div>
         </div>
 
-        <div class="field full">
+        <div class="info-box info mb-3" id="sponsorshipVoucherPanel">
+          <div class="field full mb-0">
+            <label class="field-label" for="sponsorshipVoucherInput">
+              <i class="bi bi-gift"></i> Code parrainage (optionnel)
+            </label>
+            <p class="field-hint mb-2">Si un donateur a sponsorisé votre place, saisissez le code reçu pour éviter le paiement.</p>
+            <div class="fields-grid" style="align-items: end;">
+              <input type="text" id="sponsorshipVoucherInput" class="field-input" placeholder="RET-SP-XXXXXX" autocomplete="off" spellcheck="false">
+              <button type="button" class="btn btn-next" id="btnApplySponsorshipVoucher">Valider le code</button>
+            </div>
+            <p id="sponsorshipVoucherHint" class="field-hint mt-2" aria-live="polite"></p>
+          </div>
+        </div>
+
+        <div id="paymentMethodsShell">
+          <div class="field full">
           <div class="field-label">Mode de paiement <span class="required">*</span></div>
           <div class="participation-inline-options mt-2" id="paymentModesGroup" role="radiogroup" aria-label="Mode de paiement">
             <label class="participation-inline-option" for="payModeMm" data-payment-mode="mobile_money">
@@ -358,7 +373,7 @@
               <span>Espèces (cash)</span>
             </label>
           </div>
-        </div>
+          </div>
 
         <div id="mobileMoneyBlock" class="hidden mt-3">
           <p class="field-label"><i class="bi bi-phone"></i> Opérateur Mobile Money</p>
@@ -440,6 +455,8 @@
             <i class="bi bi-upload"></i> Envoyer la preuve et finaliser
           </button>
         </div>
+
+        </div>{{-- /paymentMethodsShell --}}
 
         <div id="paymentStatusBanner" class="info-box mt-3 hidden"></div>
 

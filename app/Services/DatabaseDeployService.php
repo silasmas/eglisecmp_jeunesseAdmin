@@ -3,8 +3,6 @@
 namespace App\Services;
 
 use Illuminate\Database\Migrations\Migrator;
-use Illuminate\Support\Facades\Artisan;
-use Symfony\Component\Console\Command\Command as SymfonyCommand;
 use Throwable;
 
 /**
@@ -17,9 +15,18 @@ class DatabaseDeployService
     ) {}
 
     /**
-     * Exécute les migrations en attente une par une ; ignore celles déjà appliquées au schéma.
+     * Exécute les migrations en attente une par une.
+     * En cas d'erreur « déjà existant », enregistre la migration et continue.
+     * Les autres erreurs sont signalées mais n'empêchent pas les suivantes.
      *
-     * @return array{success: bool, message: string}
+     * @return array{
+     *   success: bool,
+     *   partial: bool,
+     *   message: string,
+     *   applied: list<string>,
+     *   skipped: list<string>,
+     *   failed: list<string>
+     * }
      */
     public function runMigrations(): array
     {
@@ -32,74 +39,75 @@ class DatabaseDeployService
             $pending = array_values(array_diff(array_keys($files), $repository->getRan()));
 
             if ($pending === []) {
-                return [
-                    'success' => true,
-                    'message' => 'Aucune migration en attente.',
-                ];
+                return $this->migrationResult(
+                    applied: [],
+                    skipped: [],
+                    failed: [],
+                    extraMessage: 'Aucune migration en attente.'
+                );
             }
 
-            $lines = [];
-            $failures = [];
+            $applied = [];
+            $skipped = [];
+            $failed = [];
             $skipBatch = $repository->getNextBatchNumber();
 
             foreach ($pending as $migration) {
-                $relativePath = $this->migrationRelativePath($files[$migration]);
+                $fullPath = $files[$migration];
 
-                $exitCode = Artisan::call('migrate', [
-                    '--force' => true,
-                    '--path' => $relativePath,
-                ]);
-                $output = trim(Artisan::output());
+                try {
+                    $migrator->run([$fullPath]);
+                    $applied[] = $migration;
+                } catch (Throwable $e) {
+                    $output = $e->getMessage();
 
-                if ($exitCode === SymfonyCommand::SUCCESS) {
-                    $lines[] = "✓ {$migration}";
+                    if ($this->migrationTargetAlreadyExists($output)) {
+                        if (! in_array($migration, $repository->getRan(), true)) {
+                            $repository->log($migration, $skipBatch);
+                        }
 
-                    continue;
-                }
+                        $skipped[] = $migration;
 
-                if ($this->migrationTargetAlreadyExists($output)) {
-                    if (! in_array($migration, $repository->getRan(), true)) {
-                        $repository->log($migration, $skipBatch);
+                        continue;
                     }
 
-                    $lines[] = "⊘ {$migration} (schéma déjà présent, migration enregistrée)";
-
-                    continue;
+                    report($e);
+                    $failed[] = "{$migration} — {$output}";
                 }
-
-                $failures[] = "✗ {$migration}\n{$output}";
             }
 
-            $message = implode("\n", array_merge($lines, $failures));
-
-            if ($message === '') {
-                $message = 'Migrations traitées.';
-            }
-
-            return [
-                'success' => $failures === [],
-                'message' => $message,
-            ];
+            return $this->migrationResult($applied, $skipped, $failed);
         } catch (Throwable $e) {
             report($e);
 
             return [
                 'success' => false,
+                'partial' => false,
                 'message' => $e->getMessage(),
+                'applied' => [],
+                'skipped' => [],
+                'failed' => [],
             ];
         }
     }
 
     /**
      * Migrations puis seeders de base (Shield, admin, SMS, retraite).
+     * La sync s'exécute même si certaines migrations ont échoué (sauf exception fatale).
      *
-     * @return array{success: bool, message: string}
+     * @return array{success: bool, partial: bool, message: string, applied: list<string>, skipped: list<string>, failed: list<string>}
      */
     public function runMigrationsAndSyncBase(): array
     {
         $migrationResult = $this->runMigrations();
 
-        if (! $migrationResult['success']) {
+        $isFatalException = $migrationResult['success'] === false
+            && ($migrationResult['partial'] ?? false) === false
+            && $migrationResult['applied'] === []
+            && $migrationResult['skipped'] === []
+            && $migrationResult['failed'] === [];
+
+        if ($isFatalException) {
             return $migrationResult;
         }
 
@@ -110,33 +118,69 @@ class DatabaseDeployService
 
             return [
                 'success' => false,
-                'message' => "Migrations OK, mais échec de la synchronisation : {$e->getMessage()}",
+                'partial' => $migrationResult['partial'] || $migrationResult['success'],
+                'message' => $migrationResult['message']."\n\nÉchec de la synchronisation : {$e->getMessage()}",
+                'applied' => $migrationResult['applied'],
+                'skipped' => $migrationResult['skipped'],
+                'failed' => $migrationResult['failed'],
             ];
         }
 
+        $syncLine = "\n\nDonnées de base et rôles Shield synchronisés.";
+
         return [
-            'success' => true,
-            'message' => $migrationResult['message']."\n\nDonnées de base et rôles Shield synchronisés.",
+            'success' => $migrationResult['failed'] === [],
+            'partial' => $migrationResult['failed'] !== [] || $migrationResult['skipped'] !== [],
+            'message' => $migrationResult['message'].$syncLine,
+            'applied' => $migrationResult['applied'],
+            'skipped' => $migrationResult['skipped'],
+            'failed' => $migrationResult['failed'],
         ];
     }
 
     /**
-     * Chemin relatif d'un fichier de migration pour artisan migrate --path.
-     *
-     * @param string $fullPath Chemin absolu du fichier
-     * @return string Chemin relatif à la racine du projet
+     * @param list<string> $applied Migrations appliquées
+     * @param list<string> $skipped Migrations ignorées (schéma déjà présent)
+     * @param list<string> $failed Migrations en échec
+     * @param string|null $extraMessage Message additionnel
+     * @return array{success: bool, partial: bool, message: string, applied: list<string>, skipped: list<string>, failed: list<string>}
      */
-    protected function migrationRelativePath(string $fullPath): string
+    protected function migrationResult(array $applied, array $skipped, array $failed, ?string $extraMessage = null): array
     {
-        $base = rtrim(str_replace('\\', '/', base_path()), '/').'/';
+        $lines = [];
 
-        return str_replace($base, '', str_replace('\\', '/', $fullPath));
+        foreach ($applied as $name) {
+            $lines[] = "✓ {$name}";
+        }
+
+        foreach ($skipped as $name) {
+            $lines[] = "⊘ {$name} (déjà présent, migration enregistrée)";
+        }
+
+        foreach ($failed as $detail) {
+            $lines[] = "✗ {$detail}";
+        }
+
+        if ($extraMessage !== null) {
+            array_unshift($lines, $extraMessage);
+        }
+
+        $message = $lines !== [] ? implode("\n", $lines) : 'Migrations traitées.';
+
+        return [
+            'success' => $failed === [],
+            'partial' => $failed !== [] || $skipped !== [],
+            'message' => $message,
+            'applied' => $applied,
+            'skipped' => $skipped,
+            'failed' => $failed,
+        ];
     }
 
     /**
      * Détecte une erreur SQL « déjà existant » (colonne, table, index, clé).
      *
-     * @param string $output Sortie console de la migration
+     * @param string $output Message d'erreur
      * @return bool True si le schéma semble déjà à jour
      */
     protected function migrationTargetAlreadyExists(string $output): bool
@@ -144,13 +188,18 @@ class DatabaseDeployService
         $needles = [
             'Duplicate column name',
             'Duplicate key name',
+            'Duplicate foreign key constraint name',
+            'Duplicate entry',
             'already exists',
             'Base table or view already exists',
-            '42S01',
             '42S21',
+            '42S01',
+            '23000',
             '1060',
             '1061',
             '1050',
+            'errno: 121',
+            '1826',
         ];
 
         foreach ($needles as $needle) {

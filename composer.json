@@ -11,6 +11,7 @@
         "bezhansalleh/filament-shield": "^4.2",
         "caresome/filament-auth-designer": "^3.1",
         "devletes/filament-timeline-view": "^1.0",
+        "endroid/qr-code": "^6.0",
         "filafly/filament-identity-column": "^1.1",
         "filament/filament": "^5.5",
         "jibaymcs/tabbed": "^1.0",

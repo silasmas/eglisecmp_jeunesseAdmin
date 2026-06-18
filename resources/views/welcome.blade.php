@@ -862,6 +862,15 @@
                     </a>
                 @endif
 
+                <a class="option" href="{{ route('retraite.don') }}">
+                    <span class="option-index">5</span>
+                    <span>
+                        <h2>Faire un don</h2>
+                        <p>Soutenir la retraite par un don en nature ou en espèces (sponsoriser des jeunes).</p>
+                    </span>
+                    <span class="option-action">Donner <span aria-hidden="true">→</span></span>
+                </a>
+
                 <a class="option portal-option-anchor" href="#assistant-retraite">
                     <span class="option-index">4</span>
                     <span>

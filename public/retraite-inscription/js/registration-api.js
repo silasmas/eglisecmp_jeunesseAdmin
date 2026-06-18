@@ -475,6 +475,7 @@ function onEnterPaymentStep() {
   }
   labelEl.textContent = `${formatRetraiteMoney(ev.price_to_pay, ev.currency)} · frais d’inscription`;
   mountFlexpayProviders(ev.flexpay_mobile_providers || []);
+  togglePaymentMethodsShell(App.sponsorshipVoucherApplied === true);
 
   const preservePollUi = App.paymentPollActive === true && !!App.paymentReference;
   if (!preservePollUi) {
@@ -491,7 +492,150 @@ function onEnterPaymentStep() {
   }
 }
 
+let sponsorshipVoucherHintTimer = null;
+
+/**
+ * Affiche un indice sous le champ code parrainage (validation temps réel).
+ *
+ * @param {string} text Message
+ * @param {'ok'|'err'|''} tone Ton visuel
+ * @return {void}
+ */
+function setSponsorshipVoucherHint(text, tone) {
+  const el = document.getElementById('sponsorshipVoucherHint');
+  if (!el) {
+    return;
+  }
+  el.textContent = text || '';
+  el.classList.remove('text-success', 'text-danger');
+  if (tone === 'ok') {
+    el.classList.add('text-success');
+  }
+  if (tone === 'err') {
+    el.classList.add('text-danger');
+  }
+}
+
+/**
+ * Masque les moyens de paiement lorsque le parrainage couvre l'inscription.
+ *
+ * @param {boolean} covered Parrainage appliqué
+ * @return {void}
+ */
+function togglePaymentMethodsShell(covered) {
+  const shell = document.getElementById('paymentMethodsShell');
+  if (shell) {
+    shell.classList.toggle('hidden', covered);
+  }
+}
+
+/**
+ * Interroge l'API pour valider un code parrainage (debounce).
+ *
+ * @return {void}
+ */
+function scheduleSponsorshipVoucherHint() {
+  clearTimeout(sponsorshipVoucherHintTimer);
+  sponsorshipVoucherHintTimer = setTimeout(async () => {
+    const input = document.getElementById('sponsorshipVoucherInput');
+    const code = input ? input.value.trim().toUpperCase() : '';
+    if (!code || code.length < 6) {
+      setSponsorshipVoucherHint('', '');
+      return;
+    }
+    const base = getRetraiteApiBase();
+    const eventId = App.activeEvent && App.activeEvent.id ? App.activeEvent.id : '';
+    const qs = new URLSearchParams({ code, event_id: String(eventId) });
+    try {
+      const res = await fetch(`${base}/hints/sponsorship-voucher?${qs}`, {
+        headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+      });
+      const json = await res.json().catch(() => ({}));
+      const d = json.data || {};
+      if (d.valid) {
+        setSponsorshipVoucherHint(d.hint || 'Code valide.', 'ok');
+      } else {
+        setSponsorshipVoucherHint(d.hint || 'Code invalide.', 'err');
+      }
+    } catch (e) {
+      setSponsorshipVoucherHint('', '');
+    }
+  }, 400);
+}
+
+/**
+ * Applique un code parrainage et passe au billet si accepté.
+ *
+ * @return {Promise<void>}
+ */
+async function applySponsorshipVoucherCode() {
+  if (!App.participantId) {
+    retraiteNotifyToast('Participant introuvable. Revenez au récapitulatif.', 'warning');
+    return;
+  }
+  const input = document.getElementById('sponsorshipVoucherInput');
+  const code = input ? input.value.trim().toUpperCase() : '';
+  if (!code) {
+    retraiteNotifyToast('Saisissez un code parrainage.', 'warning');
+    return;
+  }
+  const btn = document.getElementById('btnApplySponsorshipVoucher');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Vérification…';
+  }
+  const base = getRetraiteApiBase();
+  try {
+    const res = await fetch(`${base}/participants/${App.participantId}/sponsorship-voucher`, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+      },
+      body: JSON.stringify({ code }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(json.message || 'Code refusé.');
+    }
+    App.sponsorshipVoucherApplied = true;
+    App.paymentModeCompleted = 'sponsorship_voucher';
+    togglePaymentMethodsShell(true);
+    setSponsorshipVoucherHint(json.message || 'Code accepté.', 'ok');
+    showPaymentBanner('Inscription couverte par le parrainage. Ouverture de votre billet…', 'success');
+    if (typeof finalizeBadgeUi === 'function') {
+      await finalizeBadgeUi('electronic_success');
+    }
+  } catch (e) {
+    setSponsorshipVoucherHint(e.message || 'Code refusé.', 'err');
+    retraiteNotifyToast(e.message || 'Code refusé.', 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = 'Valider le code';
+    }
+  }
+}
+
+function wireSponsorshipVoucher() {
+  const input = document.getElementById('sponsorshipVoucherInput');
+  if (input && input.dataset.wired !== '1') {
+    input.dataset.wired = '1';
+    input.addEventListener('input', scheduleSponsorshipVoucherHint);
+  }
+  const btn = document.getElementById('btnApplySponsorshipVoucher');
+  if (btn && btn.dataset.wired !== '1') {
+    btn.dataset.wired = '1';
+    btn.addEventListener('click', () => {
+      void applySponsorshipVoucherCode();
+    });
+  }
+}
+
 function wirePaymentModes() {
+  wireSponsorshipVoucher();
   document.querySelectorAll('input[name="paymentMode"]').forEach(radio => {
     radio.addEventListener('change', () => {
       if (radio.checked) togglePaymentSections(radio.value);

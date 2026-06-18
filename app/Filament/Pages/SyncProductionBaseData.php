@@ -50,6 +50,25 @@ class SyncProductionBaseData extends Page
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('syncMigrationsResilient')
+                ->label('Synchroniser les migrations')
+                ->icon('heroicon-o-circle-stack')
+                ->color('success')
+                ->requiresConfirmation()
+                ->modalHeading('Synchroniser les migrations ?')
+                ->modalDescription(
+                    'Exécute chaque migration en attente une par une. '
+                    .'Si une table ou colonne existe déjà (erreur « Duplicate column », etc.), '
+                    .'la migration est enregistrée comme appliquée et le processus continue avec les suivantes — '
+                    .'y compris les migrations récemment ajoutées.'
+                )
+                ->modalSubmitActionLabel('Synchroniser')
+                ->action(function (): void {
+                    $this->notifyMigrationResult(
+                        app(DatabaseDeployService::class)->runMigrations(),
+                        'Synchronisation des migrations'
+                    );
+                }),
             Action::make('syncProductionBase')
                 ->label('Mettre à jour maintenant')
                 ->icon('heroicon-o-arrow-path')
@@ -110,17 +129,7 @@ class SyncProductionBaseData extends Page
                         return;
                     }
 
-                    $notification = Notification::make()
-                        ->title($result['success'] ? 'Migrations et sync terminées' : 'Échec')
-                        ->body($result['message']);
-
-                    if ($result['success']) {
-                        $notification->success()->send();
-
-                        return;
-                    }
-
-                    $notification->danger()->send();
+                    $this->notifyMigrationResult($result, 'Migrations et sync');
                 }),
             Action::make('storageLink')
                 ->label('Lien storage')
@@ -177,5 +186,53 @@ class SyncProductionBaseData extends Page
         }
 
         return route('system.sync-production-base', ['token' => $token]);
+    }
+
+    /**
+     * Affiche une notification Filament selon le résultat des migrations.
+     *
+     * @param array{success: bool, partial?: bool, message: string, applied?: list<string>, skipped?: list<string>, failed?: list<string>} $result
+     * @param string $titlePrefix Préfixe du titre
+     * @return void
+     */
+    protected function notifyMigrationResult(array $result, string $titlePrefix): void
+    {
+        $summary = [];
+        if (! empty($result['applied'])) {
+            $summary[] = count($result['applied']).' appliquée(s)';
+        }
+        if (! empty($result['skipped'])) {
+            $summary[] = count($result['skipped']).' contournée(s)';
+        }
+        if (! empty($result['failed'])) {
+            $summary[] = count($result['failed']).' en échec';
+        }
+
+        $titleSuffix = $result['success']
+            ? 'terminée'
+            : (($result['partial'] ?? false) ? 'terminée avec avertissements' : 'échouée');
+
+        $body = $result['message'];
+        if ($summary !== []) {
+            $body = implode(' · ', $summary)."\n\n".$body;
+        }
+
+        $notification = Notification::make()
+            ->title("{$titlePrefix} {$titleSuffix}")
+            ->body($body);
+
+        if ($result['success']) {
+            $notification->success()->send();
+
+            return;
+        }
+
+        if ($result['partial'] ?? false) {
+            $notification->warning()->send();
+
+            return;
+        }
+
+        $notification->danger()->send();
     }
 }

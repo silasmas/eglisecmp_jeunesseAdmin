@@ -21,7 +21,7 @@ use App\Services\RetreatCashPaymentAdminNotifier;
 use App\Services\RetreatPaymentFailureNotifier;
 use App\Services\RetreatPlacementAssignmentService;
 use App\Services\RetreatInscriptionFunnelService;
-use App\Services\RetreatInscriptionPaymentCompletionService;
+use App\Services\RetreatRegistration\RetreatEventCapacityService;
 use App\Services\StoragePathService;
 use App\Support\RegistrationFormUiSettings;
 use App\Support\StoragePath;
@@ -1806,10 +1806,11 @@ class RetreatPublicRegistrationController extends Controller
         $event->loadMissing(['afficheMedia', 'retreatDetail']);
 
         $detail = $event->retreatDetail;
-        $capacity = $event->capacity ? (int) $event->capacity : null;
-        $registeredParticipants = $this->retreatParticipantCountForEvent($event->id);
+        $capacitySnapshot = app(RetreatEventCapacityService::class)->snapshot($event);
+        $capacity = $capacitySnapshot['capacity'];
+        $registeredParticipants = $capacitySnapshot['registered_participants'];
         $registeredWorkers = $this->retreatWorkerCountForEvent($event->id);
-        $remaining = ($capacity !== null && $capacity > 0) ? max(0, $capacity - $registeredParticipants) : null;
+        $remaining = $capacitySnapshot['registration_slots_available'];
 
         return [
             'id' => $event->id,
@@ -1825,14 +1826,10 @@ class RetreatPublicRegistrationController extends Controller
             'registered_count' => $registeredParticipants,
             'worker_registered_count' => $registeredWorkers,
             'places_remaining' => $remaining,
-            'is_sold_out' => $remaining !== null && $remaining === 0,
+            'is_sold_out' => $capacitySnapshot['is_sold_out'],
             'registration_open' => $event->isOpenForPublicRetreatRegistration(),
             'registration_closes_at' => $event->end_at?->toISOString(),
-            'places_message' => $remaining === null
-                ? null
-                : ($remaining === 0
-                    ? 'Toutes les places sont occupées pour cette retraite.'
-                    : "Il reste {$remaining} place".($remaining > 1 ? 's' : '').($capacity ? " sur {$capacity}." : '.')),
+            'places_message' => $capacitySnapshot['places_message'],
             'retreat_detail' => $detail ? [
                 'theme' => $detail->theme,
                 'speaker' => $detail->speaker,
@@ -2084,17 +2081,7 @@ class RetreatPublicRegistrationController extends Controller
 
     protected function eventRegistrationClosedMessage(ChurchEvent $event): ?string
     {
-        $capacity = $event->capacity ? (int) $event->capacity : null;
-        if (! $capacity || $capacity < 1) {
-            return null;
-        }
-
-        $count = $this->retreatParticipantCountForEvent($event->id);
-        if ($count >= $capacity) {
-            return 'Le nombre maximal de participants pour cette retraite est atteint.';
-        }
-
-        return null;
+        return app(RetreatEventCapacityService::class)->registrationClosedMessage($event);
     }
 
     protected function assertParticipantMatchesEvent(RetreatParticipant $participant, ChurchEvent $event): ?JsonResponse
