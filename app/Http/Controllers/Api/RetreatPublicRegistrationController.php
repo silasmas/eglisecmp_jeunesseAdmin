@@ -1203,8 +1203,9 @@ class RetreatPublicRegistrationController extends Controller
                 'verification_url' => $this->participantAccessAbsoluteUrl($participant),
                 'justificatif_url' => $this->participantJustificatifAbsoluteUrl($participant),
                 'billet_url' => $this->participantBilletAbsoluteUrl($participant),
-                'paiement_valide' => $participant->paiement_valide,
+                'paiement_valide' => (bool) $participant->paiement_valide,
                 'registration_status' => $participant->registration_status,
+                'registration_confirmed' => (bool) $participant->paiement_valide,
                 'badge_view' => $this->resolveBadgeView($participant, $payment),
                 'payment' => $payment ? [
                     'channel' => $payment->channel,

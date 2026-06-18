@@ -603,10 +603,11 @@ async function applySponsorshipVoucherCode() {
     if (!res.ok) {
       const alreadyPaid =
         typeof json.message === 'string' &&
-        json.message.toLowerCase().includes('déjà validé');
-      if (alreadyPaid && typeof proceedToBilletFromPaidRegistration === 'function') {
+        (json.message.toLowerCase().includes('déjà validé') ||
+          json.message.toLowerCase().includes('déjà confirmée'));
+        if (typeof proceedToBilletFromPaidRegistration === 'function') {
         setSponsorshipVoucherHint(json.message, 'ok');
-        await proceedToBilletFromPaidRegistration();
+        await proceedToBilletFromPaidRegistration({ trustConfirmation: true });
         return;
       }
       throw new Error(json.message || 'Code refusé.');
@@ -623,7 +624,9 @@ async function applySponsorshipVoucherCode() {
     }
     const badgeView = (json.data && json.data.badge_view) || 'sponsorship_success';
     if (typeof finalizeBadgeUi === 'function') {
-      await finalizeBadgeUi(badgeView);
+      await finalizeBadgeUi(badgeView, {
+        trustConfirmation: json.data && (json.data.payment_covered === true || json.data.already_paid === true),
+      });
     }
   } catch (e) {
     setSponsorshipVoucherHint(e.message || 'Code refusé.', 'err');

@@ -48,6 +48,10 @@ class RetreatRegistrationBadgeViewResolver
             return 'electronic_success';
         }
 
+        if ($participant->paiement_valide && ! $payment) {
+            return 'electronic_success';
+        }
+
         if ($channel === 'cash') {
             return $participant->paiement_valide ? 'cash_validated' : 'cash_pending';
         }

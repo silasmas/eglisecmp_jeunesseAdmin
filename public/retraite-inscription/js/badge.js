@@ -139,6 +139,16 @@ function mountBadgePortalNotifications() {
 }
 
 /**
+ * Interprète un booléen JSON/PHP côté navigateur.
+ *
+ * @param {*} value Valeur brute
+ * @return {boolean}
+ */
+function isRetraiteTruthyFlag(value) {
+  return value === true || value === 1 || value === '1';
+}
+
+/**
  * Charge le statut serveur du participant inscrit.
  *
  * @return {Promise<object|null>} Données statut ou null
@@ -185,15 +195,21 @@ function resolveBadgeViewFromStatus(status) {
     return 'electronic_success';
   }
 
-  if (status.paiement_valide === true && status.payment && status.payment.etat === 'payee') {
-    const channel = status.payment.channel;
-    if (channel === 'sponsorship_voucher') {
-      return 'sponsorship_success';
+  if (isRetraiteTruthyFlag(status.registration_confirmed) || isRetraiteTruthyFlag(status.paiement_valide)) {
+    if (!status.payment) {
+      return explicit === 'sponsorship_success' ? 'sponsorship_success' : 'electronic_success';
     }
-    if (channel === 'mobile_money' || channel === 'card' || channel === 'cash') {
+    const channel = status.payment.channel;
+    const etat = status.payment.etat;
+    if (etat === 'payee' || isRetraiteTruthyFlag(status.paiement_valide)) {
+      if (channel === 'sponsorship_voucher') {
+        return 'sponsorship_success';
+      }
+      if (channel === 'mobile_money' || channel === 'card' || channel === 'cash') {
+        return 'electronic_success';
+      }
       return 'electronic_success';
     }
-    return 'electronic_success';
   }
 
   if (status.payment && status.payment.channel === 'cash' && status.paiement_valide !== true) {
@@ -272,16 +288,19 @@ async function refreshPaidProceedToBadgePanel() {
  */
 async function proceedToBilletFromPaidRegistration(options) {
   const silent = options && options.silent === true;
+  const trustConfirmation = options && options.trustConfirmation === true;
   const status = await fetchParticipantRegistrationStatus();
   const view = resolveBadgeViewFromStatus(status);
 
-  if (!view) {
+  if (!view && !trustConfirmation) {
     if (!silent) {
       retraiteNotifyToast('Le paiement n’est pas encore confirmé côté serveur.', 'warning');
     }
     updatePaidProceedToBadgePanel(status);
     return false;
   }
+
+  const finalView = view || 'sponsorship_success';
 
   if (status && status.payment && status.payment.channel === 'sponsorship_voucher') {
     App.sponsorshipVoucherApplied = true;
@@ -292,7 +311,7 @@ async function proceedToBilletFromPaidRegistration(options) {
   }
 
   if (typeof finalizeBadgeUi === 'function') {
-    await finalizeBadgeUi(view);
+    await finalizeBadgeUi(finalView, { trustConfirmation: trustConfirmation || !!view, confirmedStatus: status });
   }
   return true;
 }
@@ -314,35 +333,44 @@ function getBadgeJsPdfConstructor() {
 
 /**
  * @param {'electronic_success'|'sponsorship_success'|'cash_pending'} view
+ * @param {{ trustConfirmation?: boolean, confirmedStatus?: object|null }} [options]
  */
-async function finalizeBadgeUi(view) {
+async function finalizeBadgeUi(view, options) {
+  const opts = options || {};
   if (typeof showBilletCreationLoader === 'function') {
     showBilletCreationLoader('Finalisation de votre inscription…');
   }
 
   try {
     if (view === 'electronic_success' || view === 'sponsorship_success') {
-      const status = await fetchParticipantRegistrationStatus();
-      const resolved = resolveBadgeViewFromStatus(status);
-      if (status && status.paiement_valide === true && status.payment && status.payment.etat === 'payee' && resolved) {
-        view = resolved;
-      } else {
-        if (typeof trackRetraiteFunnel === 'function' && window.RETRAITE_FUNNEL_STAGES) {
-          trackRetraiteFunnel(
-            RETRAITE_FUNNEL_STAGES.payment_server_verify_failed,
-            'Le serveur n’a pas confirmé le paiement avant l’affichage du billet.',
-            { channel: App.paymentModeCompleted || view }
+      if (opts.trustConfirmation !== true) {
+        const status = opts.confirmedStatus || (await fetchParticipantRegistrationStatus());
+        const resolved = resolveBadgeViewFromStatus(status);
+        const confirmed =
+          isRetraiteTruthyFlag(status && status.registration_confirmed) ||
+          isRetraiteTruthyFlag(status && status.paiement_valide) ||
+          (status && status.payment && status.payment.etat === 'payee');
+
+        if (confirmed && resolved) {
+          view = resolved;
+        } else {
+          if (typeof trackRetraiteFunnel === 'function' && window.RETRAITE_FUNNEL_STAGES) {
+            trackRetraiteFunnel(
+              RETRAITE_FUNNEL_STAGES.payment_server_verify_failed,
+              'Le serveur n’a pas confirmé le paiement avant l’affichage du billet.',
+              { channel: App.paymentModeCompleted || view }
+            );
+          }
+          updatePaidProceedToBadgePanel(status);
+          retraiteNotifyToast(
+            'Impossible d’ouvrir le billet automatiquement. Utilisez « Accéder à mon billet » ci-dessous ou contactez l’organisation.',
+            'warning'
           );
+          if (typeof goToStep === 'function') {
+            goToStep(4);
+          }
+          return;
         }
-        updatePaidProceedToBadgePanel(status);
-        retraiteNotifyToast(
-          'Impossible d’ouvrir le billet automatiquement. Utilisez « Accéder à mon billet » ci-dessous ou contactez l’organisation.',
-          'warning'
-        );
-        if (typeof goToStep === 'function') {
-          goToStep(4);
-        }
-        return;
       }
     }
 

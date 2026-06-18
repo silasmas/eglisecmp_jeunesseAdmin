@@ -50,7 +50,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="{{ $rv('js/notifications.js') }}"></script>
-  <script src="{{ $r }}/js/registration-api.js"></script>
+  <script src="{{ $rv('js/registration-api.js') }}"></script>
   <script src="{{ $r }}/js/state.js"></script>
   <script src="{{ $rv('js/form-config.js') }}"></script>
   <script src="{{ $rv('js/funnel-tracking.js') }}"></script>
@@ -65,7 +65,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   {{-- Ne pas utiliser cdnjs pour jspdf 2.5.2/jspdf.umd.min.js : URL en 404 ; jsDelivr OK --}}
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
-  <script src="{{ $r }}/js/badge.js"></script>
+  <script src="{{ $rv('js/badge.js') }}"></script>
   <script src="{{ $r }}/js/storage.js"></script>
   <script src="{{ $rv('js/app.js') }}"></script>
   @stack('scripts')

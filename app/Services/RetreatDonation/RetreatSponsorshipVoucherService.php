@@ -7,6 +7,7 @@ use App\Models\RetreatParticipant;
 use App\Models\RetreatPayment;
 use App\Models\RetreatSponsorshipVoucher;
 use App\Models\RetreatVoluntaryDonation;
+use App\Services\RetreatRegistrationFulfillmentService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -15,6 +16,10 @@ use Illuminate\Support\Str;
  */
 class RetreatSponsorshipVoucherService
 {
+    public function __construct(
+        protected RetreatRegistrationFulfillmentService $fulfillment,
+    ) {}
+
     /**
      * Crée N codes uniques après un don sponsor jeunes payé.
      *
@@ -133,6 +138,8 @@ class RetreatSponsorshipVoucherService
                 'currency' => $locked->currency,
                 'channel' => 'sponsorship_voucher',
                 'etat' => 'payee',
+                'access_granted' => true,
+                'access_granted_at' => now(),
                 'provider_message' => 'Couvert par code parrainage '.$locked->code,
             ]);
             $payment->paid_at = now();
@@ -142,6 +149,8 @@ class RetreatSponsorshipVoucherService
                 'paiement_valide' => true,
                 'registration_status' => 'confirmed',
             ]);
+
+            $this->fulfillment->fulfillIfNeeded($payment->fresh(['participant', 'event']));
         });
     }
 }
