@@ -16,7 +16,19 @@ class RetreatActivityPresenceOverviewService
      * @param int $activityPlanId Identifiant du plan d'activité
      * @return array{
      *     activity: array{id: int, label: string},
-     *     totals: array{participants: int, present: int, late: int, absent: int, excused: int, unmarked: int},
+     *     totals: array{
+     *         participants: int,
+     *         present: int,
+     *         late: int,
+     *         absent: int,
+     *         excused: int,
+     *         unmarked: int,
+     *         marked: int,
+     *         present_effective: int,
+     *         present_rate: float,
+     *         pointage_rate: float,
+     *         ateliers_count: int
+     *     },
      *     rows: list<array{
      *         atelier_id: int,
      *         atelier_numero: int,
@@ -120,6 +132,20 @@ class RetreatActivityPresenceOverviewService
                 'present_rate' => $presentRate,
             ];
         }
+
+        $presentEffective = $totals['present'] + $totals['late'];
+        $marked = $totals['participants'] - $totals['unmarked'];
+        $participants = max(0, $totals['participants']);
+
+        $totals['marked'] = $marked;
+        $totals['present_effective'] = $presentEffective;
+        $totals['ateliers_count'] = count($rows);
+        $totals['present_rate'] = $participants > 0
+            ? round(($presentEffective / $participants) * 100, 1)
+            : 0.0;
+        $totals['pointage_rate'] = $participants > 0
+            ? round(($marked / $participants) * 100, 1)
+            : 0.0;
 
         return [
             'activity' => [

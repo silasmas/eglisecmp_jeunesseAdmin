@@ -98,11 +98,15 @@ class ManageRetreatActivityPresenceOverview extends Page implements HasForms, Ha
                         ->live()
                         ->required(),
                 ]),
-            Section::make('Totaux')
+            Section::make('Synthèse globale')
+                ->description('Totaux consolidés pour l\'activité sélectionnée, tous ateliers confondus.')
                 ->visible(fn (): bool => $this->activityPlanId !== null)
                 ->schema([
                     \Filament\Schemas\Components\View::make('filament.pages.partials.activity-presence-totals')
-                        ->viewData(fn (): array => ['totals' => $this->overviewTotals]),
+                        ->viewData(fn (): array => [
+                            'totals' => $this->overviewTotals,
+                            'activity' => $this->getOverview()['activity'] ?? null,
+                        ]),
                 ]),
             EmbeddedTable::make(),
         ]);
