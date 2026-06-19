@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\EventAccessOtpChannel;
+use App\Jobs\FulfillRetreatRegistrationJob;
 use App\Mail\RetreatRegistrationConfirmedMail;
 use App\Models\ChurchEvent;
 use App\Models\RetreatParticipant;
@@ -24,6 +25,21 @@ class RetreatRegistrationFulfillmentService
     ) {}
 
     /**
+     * Planifie l'envoi billet après la réponse HTTP (ne bloque pas le retour paiement).
+     *
+     * @param RetreatPayment $payment Paiement confirmé
+     * @return void
+     */
+    public function queueFulfillmentIfNeeded(RetreatPayment $payment): void
+    {
+        if ($payment->etat !== 'payee' || ! $payment->access_granted) {
+            return;
+        }
+
+        FulfillRetreatRegistrationJob::dispatch($payment->id)->afterResponse();
+    }
+
+    /**
      * @param RetreatPayment $payment Paiement confirmé avec accès accordé
      * @return void
      */
@@ -33,35 +49,44 @@ class RetreatRegistrationFulfillmentService
             return;
         }
 
-        $payment->loadMissing(['participant', 'event']);
-
-        $participant = $payment->participant;
-        $event = $payment->event;
-
-        if (! $participant || ! $event) {
-            return;
-        }
-
-        if (blank($participant->download_token)) {
-            $participant->update(['download_token' => Str::random(32)]);
-            $participant->refresh();
-        }
-
         try {
-            $this->placementAssignment->assignBalancedPlacements($participant);
-            $participant->refresh();
+            $payment->loadMissing(['participant', 'event']);
+
+            $participant = $payment->participant;
+            $event = $payment->event;
+
+            if (! $participant || ! $event) {
+                return;
+            }
+
+            if (blank($participant->download_token)) {
+                $participant->update(['download_token' => Str::random(32)]);
+                $participant->refresh();
+            }
+
+            try {
+                $this->placementAssignment->assignBalancedPlacements($participant);
+                $participant->refresh();
+            } catch (\Throwable $e) {
+                report($e);
+                Log::channel('daily')->warning('Affectation auto ignorée — envoi billet maintenu', [
+                    'participant_id' => $participant->id,
+                    'payment_id' => $payment->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
+            $participant->load(['chambre', 'atelier']);
+
+            $this->sendBilletNotification($participant, $payment, false);
         } catch (\Throwable $e) {
             report($e);
-            Log::channel('daily')->warning('Affectation auto ignorée — envoi billet maintenu', [
-                'participant_id' => $participant->id,
+            Log::channel('daily')->warning('Fulfillment retraite interrompu (paiement déjà confirmé)', [
                 'payment_id' => $payment->id,
+                'participant_id' => $payment->participant_id,
                 'error' => $e->getMessage(),
             ]);
         }
-
-        $participant->load(['chambre', 'atelier']);
-
-        $this->sendBilletNotification($participant, $payment, false);
     }
 
     /**

@@ -70,7 +70,7 @@ class RetreatPaymentObserver
             ]);
         }
 
-        $this->fulfillment->fulfillIfNeeded($payment->fresh(['participant', 'event']));
+        $this->fulfillment->queueFulfillmentIfNeeded($payment->fresh(['participant', 'event']));
     }
 
     /**

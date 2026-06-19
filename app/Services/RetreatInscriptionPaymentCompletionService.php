@@ -19,7 +19,7 @@ class RetreatInscriptionPaymentCompletionService
         $payment->refresh();
 
         if ($payment->etat === 'payee' && ($payment->participant?->paiement_valide ?? false)) {
-            $this->fulfillment->fulfillIfNeeded($payment->fresh());
+            $this->fulfillment->queueFulfillmentIfNeeded($payment->fresh());
 
             return;
         }
@@ -41,6 +41,6 @@ class RetreatInscriptionPaymentCompletionService
             ]);
         });
 
-        $this->fulfillment->fulfillIfNeeded($payment->fresh());
+        // L'observer planifie l'envoi billet après la réponse HTTP (e-mail ne bloque pas le retour).
     }
 }

@@ -192,6 +192,49 @@ class RetreatParticipantRegistrationService
     }
 
     /**
+     * Envoie les billets à plusieurs participants (action groupée admin).
+     *
+     * @param iterable<RetreatParticipant> $participants Participants sélectionnés
+     * @param bool $forceResend Renvoyer même si déjà marqué envoyé
+     * @return array{sent: int, skipped: int, failures: list<string>}
+     */
+    public function sendBilletNotificationsBulk(iterable $participants, bool $forceResend = false): array
+    {
+        $sent = 0;
+        $skipped = 0;
+        $failures = [];
+
+        foreach ($participants as $participant) {
+            if (! $participant instanceof RetreatParticipant) {
+                continue;
+            }
+
+            if (! $participant->paiement_valide) {
+                $skipped++;
+                $failures[] = $participant->full_name.': paiement non validé';
+
+                continue;
+            }
+
+            $result = $this->sendBilletNotification($participant, $forceResend);
+
+            if ($result['success']) {
+                $sent++;
+
+                continue;
+            }
+
+            $failures[] = $participant->full_name.': '.$result['message'];
+        }
+
+        return [
+            'sent' => $sent,
+            'skipped' => $skipped,
+            'failures' => $failures,
+        ];
+    }
+
+    /**
      * Accorde l'accès à la retraite (présence) et enregistre l'acteur.
      *
      * @param RetreatParticipant $participant Participant

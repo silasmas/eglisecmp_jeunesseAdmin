@@ -1262,7 +1262,10 @@ function startMobilePaymentStatusPolling(reference, mode, originalBtnHtml, pollO
       endMobilePaymentPollSession();
       mobilePayManualSessionsLeft = null;
       setPaymentProgressStep(3, 'Le paiement est confirmé. Vous pouvez passer à votre billet.');
-      showPaymentBanner('Paiement confirmé par votre opérateur. Ouverture de votre billet…', 'success');
+      showPaymentBanner(
+        'Paiement confirmé par votre opérateur. Votre billet s’affiche ici ; l’e-mail de confirmation peut arriver quelques instants plus tard.',
+        'success'
+      );
       App.paymentModeCompleted = mode;
       if (hint) hint.textContent = 'Paiement confirmé.';
       if (typeof finalizeBadgeUi === 'function') {
@@ -1396,7 +1399,10 @@ async function resumeAfterCardPayment(reference) {
     json.data.etat === 'payee';
 
   if (receiptPaid) {
-    showPaymentBanner('Paiement confirmé. Ouverture de votre billet…', 'success');
+    showPaymentBanner(
+      'Paiement confirmé. Votre billet s’affiche ici ; l’e-mail de confirmation peut arriver quelques instants plus tard.',
+      'success'
+    );
     if (typeof finalizeBadgeUi === 'function') finalizeBadgeUi('electronic_success');
     if (typeof resetRetraiteUrlParams === 'function') resetRetraiteUrlParams();
     return;

@@ -12,6 +12,7 @@ use App\Services\RetreatPlacementAssignmentService;
 use App\Support\AvatarFallback;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Forms\Components\Checkbox;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -544,6 +545,34 @@ class RetreatParticipantsTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    BulkAction::make('envoyer_billets')
+                        ->label('Envoyer les billets')
+                        ->icon('heroicon-o-ticket')
+                        ->requiresConfirmation()
+                        ->modalHeading('Envoyer les billets à la sélection')
+                        ->modalDescription('Chaque participant payé recevra son billet par e-mail ou SMS selon la configuration de l\'événement.')
+                        ->form([
+                            Checkbox::make('force_resend')
+                                ->label('Renvoyer même si déjà envoyé')
+                                ->default(false),
+                        ])
+                        ->action(function ($records, array $data): void {
+                            $result = app(RetreatParticipantRegistrationService::class)
+                                ->sendBilletNotificationsBulk($records, (bool) ($data['force_resend'] ?? false));
+
+                            $failures = array_merge(
+                                $result['skipped'] > 0
+                                    ? [sprintf('%d ignoré(s) (paiement non validé).', $result['skipped'])]
+                                    : [],
+                                $result['failures'],
+                            );
+
+                            self::notifyBulkPlacementResult(
+                                'Envoi des billets',
+                                $result['sent'],
+                                $failures,
+                            );
+                        }),
                     BulkAction::make('affecter_chambre')
                         ->label('Affecter chambre (auto)')
                         ->icon('heroicon-o-home-modern')
