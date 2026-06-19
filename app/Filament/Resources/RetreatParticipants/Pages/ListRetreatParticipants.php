@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\RetreatParticipants\Pages;
 
+use App\Filament\Pages\ManageRetreatAtelierQuarantine;
 use App\Filament\Resources\RetreatParticipants\RetreatParticipantResource;
 use App\Filament\Resources\RetreatParticipants\Widgets\RetreatParticipantsStats;
 use App\Models\RetreatParticipant;
@@ -35,40 +36,14 @@ class ListRetreatParticipants extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('reassignAtelierQuarantine')
-                ->label('Réaffecter quarantaine atelier')
-                ->icon('heroicon-o-arrow-path')
+            Action::make('openAtelierQuarantine')
+                ->label('Quarantaine atelier')
+                ->icon('heroicon-o-shield-exclamation')
                 ->color('warning')
-                ->visible(fn (): bool => RetreatParticipant::query()->where('atelier_quarantine', true)->exists())
-                ->requiresConfirmation()
-                ->modalHeading('Réaffecter la quarantaine atelier')
-                ->modalDescription(function (): string {
-                    $count = RetreatParticipant::query()->where('atelier_quarantine', true)->count();
-
-                    return sprintf(
-                        '%d participant(s) en attente d\'affectation atelier. Relancer la répartition automatique ?',
-                        $count,
-                    );
-                })
-                ->action(function (): void {
-                    $placement = app(RetreatPlacementAssignmentService::class);
-                    $stats = $placement->reassignAllQuarantinedParticipants();
-
-                    app(RetreatAtelierQuarantineNotifier::class)->notifySuperAdminsReassignmentSummary(
-                        $stats,
-                        'Quarantaine atelier (participants)',
-                    );
-
-                    FilamentNotification::make()
-                        ->title('Réaffectation terminée')
-                        ->body(sprintf(
-                            '%d réaffecté(s), %d toujours en quarantaine.',
-                            $stats['reassigned'],
-                            $stats['quarantined'],
-                        ))
-                        ->success()
-                        ->send();
-                }),
+                ->url(fn (): string => ManageRetreatAtelierQuarantine::getUrl())
+                ->badge(fn (): ?string => ($count = RetreatParticipant::query()->where('atelier_quarantine', true)->count()) > 0
+                    ? (string) $count
+                    : null),
             Action::make('affectations')
                 ->label('Affectations')
                 ->icon('heroicon-o-arrows-right-left')

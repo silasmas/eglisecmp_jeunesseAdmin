@@ -225,16 +225,150 @@ class RetreatPlacementAssignmentService
                 continue;
             }
 
-            $result = $this->reassignParticipantAtelier($participant);
-
-            if ($result['success']) {
-                $stats['reassigned']++;
-            } else {
-                $stats['quarantined']++;
-            }
+            $this->placeInAtelierQuarantine(
+                $participant,
+                sprintf('Retiré de l\'atelier n°%s : tranche d\'âge incompatible.', $atelier->numero)
+            );
+            $stats['quarantined']++;
         }
 
         return $stats;
+    }
+
+    /**
+     * Tente de réaffecter tous les participants en quarantaine atelier.
+     *
+     * @param RetreatParticipant $participant Participant
+     * @return Collection<int, array{atelier: RetreatAtelier, atelier_id: int, score: float}>
+     */
+    public function rankEligibleAteliersForParticipant(RetreatParticipant $participant): Collection
+    {
+        $eventId = $participant->event_id;
+        $all = $this->loadAtelierPool(null, $eventId);
+
+        if ($all->isEmpty()) {
+            return collect();
+        }
+
+        if (! $this->shouldEnforceAtelierAgeRange($participant)) {
+            $pool = $all;
+        } else {
+            $pool = $this->eligibleAteliersForAge($all, (int) $participant->age);
+        }
+
+        $participantSexe = $this->normalizeSexe($participant->sexe);
+        $participantBand = $this->ageBand((int) $participant->age);
+
+        return $pool
+            ->map(fn (RetreatAtelier $atelier): array => [
+                'atelier' => $atelier,
+                'atelier_id' => (int) $atelier->id,
+                'score' => $this->atelierImbalanceScore($atelier, $participantSexe, $participantBand),
+            ])
+            ->sortBy('score')
+            ->values();
+    }
+
+    /**
+     * Affecte un participant à un atelier après validation manuelle par un admin.
+     *
+     * @param RetreatParticipant $participant Participant
+     * @param int $atelierId Identifiant atelier retenu
+     * @return array{success: bool, message: string}
+     */
+    public function assignParticipantToAtelierByAdmin(RetreatParticipant $participant, int $atelierId): array
+    {
+        $participant->refresh();
+        $atelier = RetreatAtelier::query()->find($atelierId);
+
+        if (! $atelier) {
+            return [
+                'success' => false,
+                'message' => 'Atelier introuvable.',
+            ];
+        }
+
+        if (! $this->isParticipantEligibleForAtelier($participant, $atelier)) {
+            return [
+                'success' => false,
+                'message' => sprintf(
+                    'L\'atelier n°%s (%s) ne correspond pas à l\'âge du participant (%s ans).',
+                    $atelier->numero,
+                    $this->describeAtelierAgeRange($atelier),
+                    $participant->age,
+                ),
+            ];
+        }
+
+        $participant->update([
+            'atelier_id' => $atelier->id,
+            'atelier_quarantine' => false,
+            'atelier_quarantine_at' => null,
+        ]);
+
+        return [
+            'success' => true,
+            'message' => sprintf('Participant affecté à l\'atelier n°%s.', $atelier->numero),
+        ];
+    }
+
+    /**
+     * Crée un nouvel atelier puis affecte le participant (action admin).
+     *
+     * @param RetreatParticipant $participant Participant
+     * @param array{numero: int, age_min: int, age_max: int, responsable_user_id: int, description?: string|null} $data Données atelier
+     * @return array{success: bool, message: string, atelier_id?: int}
+     */
+    public function createAtelierAndAssignParticipant(RetreatParticipant $participant, array $data): array
+    {
+        $numero = (int) $data['numero'];
+
+        if (RetreatAtelier::query()->where('numero', $numero)->exists()) {
+            return [
+                'success' => false,
+                'message' => sprintf('Le numéro d\'atelier %d existe déjà.', $numero),
+            ];
+        }
+
+        $ageMin = (int) $data['age_min'];
+        $ageMax = (int) $data['age_max'];
+        $participantAge = (int) $participant->age;
+
+        if ($participantAge < $ageMin || $participantAge > $ageMax) {
+            return [
+                'success' => false,
+                'message' => sprintf(
+                    'La tranche %d – %d ans ne couvre pas l\'âge du participant (%d ans).',
+                    $ageMin,
+                    $ageMax,
+                    $participantAge,
+                ),
+            ];
+        }
+
+        $atelier = RetreatAtelier::query()->create([
+            'numero' => $numero,
+            'age_min' => $ageMin,
+            'age_max' => $ageMax,
+            'responsable_user_id' => (int) $data['responsable_user_id'],
+            'role_on_atelier' => 'responsable',
+            'description' => $data['description'] ?? null,
+            'is_active' => true,
+        ]);
+
+        $result = $this->assignParticipantToAtelierByAdmin($participant, (int) $atelier->id);
+
+        if (! $result['success']) {
+            $atelier->delete();
+
+            return $result;
+        }
+
+        return [
+            'success' => true,
+            'message' => sprintf('Atelier n°%d créé et participant affecté.', $atelier->numero),
+            'atelier_id' => (int) $atelier->id,
+        ];
     }
 
     /**
@@ -588,6 +722,11 @@ class RetreatPlacementAssignmentService
     {
         $query = RetreatAtelier::query()
             ->where('is_active', true)
+            ->withCount(['participants' => function ($relation) use ($eventId): void {
+                if ($eventId !== null) {
+                    $relation->where('event_id', $eventId);
+                }
+            }])
             ->with(['participants' => function ($relation) use ($eventId): void {
                 $relation->select('id', 'atelier_id', 'sexe', 'age', 'event_id');
                 if ($eventId !== null) {

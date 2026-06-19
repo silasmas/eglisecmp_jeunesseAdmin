@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Filament\Pages\ManageRetreatAtelierQuarantine;
 use App\Filament\Resources\RetreatParticipants\RetreatParticipantResource;
 use App\Models\RetreatParticipant;
 use App\Models\User;
@@ -45,7 +46,7 @@ class RetreatAtelierQuarantineNotifier
             $admins,
             'Atelier en quarantaine',
             $message,
-            $this->participantAdminUrl($participant),
+            ManageRetreatAtelierQuarantine::getUrl(panel: 'admin'),
             'warning',
             $participant,
         );
@@ -82,7 +83,7 @@ class RetreatAtelierQuarantineNotifier
             $skipped,
         );
 
-        $link = RetreatParticipantResource::getUrl('index', panel: 'admin').'?activeTab=atelier_quarantine';
+        $link = ManageRetreatAtelierQuarantine::getUrl(panel: 'admin');
 
         $this->dispatcher->notify(
             $admins,

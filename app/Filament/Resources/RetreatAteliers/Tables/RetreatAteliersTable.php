@@ -2,8 +2,8 @@
 
 namespace App\Filament\Resources\RetreatAteliers\Tables;
 
+use App\Filament\Pages\ManageRetreatAtelierQuarantine;
 use App\Filament\Tables\Columns\UserStackedColumn;
-use App\Services\RetreatAtelierQuarantineNotifier;
 use App\Services\RetreatPlacementAssignmentService;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -79,30 +79,27 @@ class RetreatAteliersTable
             ])
             ->recordActions([
                 ViewAction::make()->modal()->modalWidth(Width::FiveExtraLarge)->modalAlignment(Alignment::Center),
-                Action::make('reassignMismatched')
-                    ->label('Réaffecter hors tranche')
-                    ->icon('heroicon-o-arrow-path')
+                Action::make('moveMismatchedToQuarantine')
+                    ->label('Hors tranche → quarantaine')
+                    ->icon('heroicon-o-shield-exclamation')
                     ->color('warning')
                     ->visible(fn ($record): bool => app(RetreatPlacementAssignmentService::class)
                         ->countMismatchedParticipantsForAtelier($record) > 0)
                     ->requiresConfirmation()
+                    ->modalDescription('Les participants seront retirés de cet atelier et visibles dans « Quarantaine ateliers » avec propositions.')
                     ->action(function ($record): void {
                         $placement = app(RetreatPlacementAssignmentService::class);
                         $stats = $placement->reassignMismatchedAtelierParticipants($record);
 
-                        app(RetreatAtelierQuarantineNotifier::class)->notifySuperAdminsReassignmentSummary(
-                            $stats,
-                            sprintf('Atelier n°%s', $record->numero),
-                        );
-
                         Notification::make()
-                            ->title('Réaffectation terminée')
-                            ->body(sprintf(
-                                '%d réaffecté(s), %d en quarantaine.',
-                                $stats['reassigned'],
-                                $stats['quarantined'],
-                            ))
-                            ->success()
+                            ->title('Quarantaine mise à jour')
+                            ->body(sprintf('%d en quarantaine. Validez les propositions dans Quarantaine ateliers.', $stats['quarantined']))
+                            ->actions([
+                                Action::make('openQuarantine')
+                                    ->label('Ouvrir')
+                                    ->url(ManageRetreatAtelierQuarantine::getUrl()),
+                            ])
+                            ->warning()
                             ->send();
                     }),
                 EditAction::make()->modal()->modalWidth(Width::SevenExtraLarge)->modalAlignment(Alignment::Center),

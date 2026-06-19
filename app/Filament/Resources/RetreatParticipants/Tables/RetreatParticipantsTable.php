@@ -6,7 +6,8 @@ use App\Filament\Resources\RetreatParticipants\RetreatParticipantResource;
 use App\Models\RetreatParticipant;
 use App\Models\User;
 use App\Services\RetreatParticipantRegistrationService;
-use App\Services\RetreatAtelierQuarantineNotifier;
+use App\Filament\Support\QuarantinedAtelierAssignmentAction;
+use App\Services\RetreatAtelierProposalService;
 use App\Services\RetreatPlacementAssignmentService;
 use App\Support\AvatarFallback;
 use Filament\Actions\Action;
@@ -127,7 +128,9 @@ class RetreatParticipantsTable
                     ->falseIcon('heroicon-o-check-circle')
                     ->trueColor('warning')
                     ->falseColor('success')
-                    ->tooltip(fn (RetreatParticipant $record): ?string => $record->atelier_quarantine_at?->format('d/m/Y H:i')),
+                    ->tooltip(fn (RetreatParticipant $record): ?string => $record->atelier_quarantine
+                        ? app(RetreatAtelierProposalService::class)->summaryForParticipant($record)
+                        : ($record->atelier_quarantine_at?->format('d/m/Y H:i'))),
                 TextColumn::make('badge_status')
                     ->label('Badge physique')
                     ->badge()
@@ -445,7 +448,7 @@ class RetreatParticipantsTable
                     Action::make('integrer_atelier')
                         ->label('Integrer atelier')
                         ->icon('heroicon-o-wrench-screwdriver')
-                        ->visible(fn ($record): bool => blank($record->atelier_id))
+                        ->visible(fn (RetreatParticipant $record): bool => blank($record->atelier_id) && ! $record->atelier_quarantine)
                         ->requiresConfirmation()
                         ->modalHeading('Affectation automatique d\'atelier')
                         ->modalDescription('Le systeme choisit l\'atelier le plus equilibre selon l\'age et le sexe du participant.')
@@ -453,6 +456,9 @@ class RetreatParticipantsTable
                             $result = app(RetreatPlacementAssignmentService::class)->assignAtelierAutomatically($record);
                             self::notifyPlacementResult('Affectation atelier', $result);
                         }),
+                    QuarantinedAtelierAssignmentAction::make('validateAtelierQuarantine')
+                        ->label('Valider affectation (propositions)')
+                        ->visible(fn (RetreatParticipant $record): bool => (bool) $record->atelier_quarantine),
                     Action::make('desintegrer_atelier')
                         ->label('Desintegrer atelier')
                         ->icon('heroicon-o-arrow-right-circle')
@@ -572,7 +578,7 @@ class RetreatParticipantsTable
                         ->icon('heroicon-o-wrench-screwdriver')
                         ->requiresConfirmation()
                         ->modalHeading('Affectation automatique d\'atelier')
-                        ->modalDescription('Chaque participant sans atelier ou en quarantaine recevra un atelier compatible, sinon restera en quarantaine.')
+                        ->modalDescription('Participants sans atelier uniquement (hors quarantaine). Les personnes en quarantaine doivent être validées via « Quarantaine ateliers ».')
                         ->action(function ($records): void {
                             $placement = app(RetreatPlacementAssignmentService::class);
                             $success = 0;
@@ -584,9 +590,13 @@ class RetreatParticipantsTable
                                     continue;
                                 }
 
-                                $result = $record->atelier_quarantine || blank($record->atelier_id)
-                                    ? $placement->reassignParticipantAtelier($record)
-                                    : $placement->assignAtelierAutomatically($record);
+                                if ($record->atelier_quarantine) {
+                                    $failures[] = $record->full_name.': ouvrir « Quarantaine ateliers » pour valider les propositions';
+
+                                    continue;
+                                }
+
+                                $result = $placement->assignAtelierAutomatically($record);
 
                                 if ($result['success']) {
                                     $success++;
@@ -607,52 +617,9 @@ class RetreatParticipantsTable
                                 'Affectation atelier',
                                 $success,
                                 array_merge(
-                                    $quarantined > 0 ? [sprintf('%d participant(s) en quarantaine.', $quarantined)] : [],
+                                    $quarantined > 0 ? [sprintf('%d participant(s) en quarantaine (validation admin requise).', $quarantined)] : [],
                                     $failures,
                                 ),
-                            );
-                        }),
-                    BulkAction::make('reassign_atelier_quarantine')
-                        ->label('Réaffecter atelier (sélection)')
-                        ->icon('heroicon-o-arrow-path')
-                        ->color('warning')
-                        ->requiresConfirmation()
-                        ->modalHeading('Réaffectation atelier')
-                        ->modalDescription('Relance la répartition automatique pour chaque participant sélectionné.')
-                        ->action(function ($records): void {
-                            $placement = app(RetreatPlacementAssignmentService::class);
-                            $success = 0;
-                            $quarantined = 0;
-
-                            foreach ($records as $record) {
-                                if (! $record instanceof RetreatParticipant) {
-                                    continue;
-                                }
-
-                                $result = $placement->reassignParticipantAtelier($record);
-
-                                if ($result['success']) {
-                                    $success++;
-                                } else {
-                                    $quarantined++;
-                                }
-                            }
-
-                            if ($quarantined > 0) {
-                                app(RetreatAtelierQuarantineNotifier::class)->notifySuperAdminsReassignmentSummary(
-                                    [
-                                        'reassigned' => $success,
-                                        'quarantined' => $quarantined,
-                                        'skipped' => 0,
-                                    ],
-                                    'Réaffectation manuelle (sélection)',
-                                );
-                            }
-
-                            self::notifyBulkPlacementResult(
-                                'Réaffectation atelier',
-                                $success,
-                                $quarantined > 0 ? [sprintf('%d participant(s) toujours en quarantaine.', $quarantined)] : [],
                             );
                         }),
                     BulkAction::make('desintegrer_atelier')
