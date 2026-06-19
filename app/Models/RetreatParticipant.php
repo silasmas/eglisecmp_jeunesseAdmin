@@ -166,4 +166,38 @@ class RetreatParticipant extends Model implements HasAvatar, HasName
 
         return app(\App\Services\PublicStorageUrl::class)->fromPath($this->photo);
     }
+
+    /**
+     * Libellé chambre affiché sur billet, e-mail et portail public.
+     *
+     * @return string
+     */
+    public function placementChambreLabel(): string
+    {
+        if ($this->chambre && filled($this->chambre->nom)) {
+            return (string) $this->chambre->nom;
+        }
+
+        $type = strtolower(trim((string) $this->participant_type));
+
+        if (in_array($type, ['external', 'externe'], true)) {
+            return 'Non applicable (hébergement externe)';
+        }
+
+        return 'Non assignée';
+    }
+
+    /**
+     * Libellé atelier affiché sur billet, e-mail et portail public.
+     *
+     * @return string
+     */
+    public function placementAtelierLabel(): string
+    {
+        if ($this->atelier && filled($this->atelier->numero)) {
+            return 'Atelier '.$this->atelier->numero;
+        }
+
+        return 'Non assigné';
+    }
 }

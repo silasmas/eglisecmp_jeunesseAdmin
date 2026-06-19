@@ -239,6 +239,14 @@
             <span class="label">Canal de paiement</span>
             <span class="value">{{ $payment?->channel ? ucfirst(str_replace('_', ' ', $payment->channel)) : '—' }}</span>
           </div>
+          <div class="field">
+            <span class="label">Chambre</span>
+            <span class="value">{{ $participant->placementChambreLabel() }}</span>
+          </div>
+          <div class="field">
+            <span class="label">Atelier</span>
+            <span class="value">{{ $participant->placementAtelierLabel() }}</span>
+          </div>
         </div>
 
         <aside class="qr-box">

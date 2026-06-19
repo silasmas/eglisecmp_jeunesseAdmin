@@ -509,6 +509,8 @@
 
             <div id="badgeRecapMirrored" class="badge-recap-mirror"></div>
 
+            <div id="badgePlacementsMount" class="badge-placements-mount hidden"></div>
+
             <div class="badge-qr-strip">
               <div class="badge-qr-strip-inner">
                 <div id="badgeQrMount" class="badge-qr-mount" aria-hidden="true"></div>

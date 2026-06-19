@@ -6,13 +6,9 @@
 **{{ __('retraite.mail_label_reference') }}** : {{ $payment->reference }}  
 **{{ __('retraite.mail_label_amount') }}** : {{ $payment->amount_paid }} {{ $payment->currency }}
 
-@if($participant->chambre)
-**{{ __('retraite.mail_label_room') }}** : {{ $participant->chambre->nom }}
-@endif
+**{{ __('retraite.mail_label_room') }}** : {{ $participant->placementChambreLabel() }}
 
-@if($participant->atelier)
-**{{ __('retraite.mail_label_workshop') }}** : {{ __('retraite.mail_workshop_number', ['n' => $participant->atelier->numero]) }}
-@endif
+**{{ __('retraite.mail_label_workshop') }}** : {{ $participant->placementAtelierLabel() }}
 
 @include('emails.partials.cmp-mail-button', [
     'url' => $billetUrl,

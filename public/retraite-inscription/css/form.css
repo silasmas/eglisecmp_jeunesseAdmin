@@ -435,6 +435,62 @@ textarea.field-input { resize: vertical; min-height: 80px; }
   height: 72px;
 }
 
+.badge-placements-mount {
+  margin: 0.85rem 0 0.25rem;
+}
+
+.badge-placements-card {
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md, 10px);
+  background: #fff;
+}
+
+.badge-placements-title {
+  margin-bottom: 0.65rem;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--primary, #851c46);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.badge-placements-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.badge-placements-field {
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  background: var(--bg-soft, #fbf5f8);
+}
+
+.badge-placements-label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted, #6d5964);
+}
+
+.badge-placements-value {
+  display: block;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text, #171015);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 560px) {
+  .badge-placements-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .badge-download-wrapper {
   margin-top: 0.75rem;
   display: flex;

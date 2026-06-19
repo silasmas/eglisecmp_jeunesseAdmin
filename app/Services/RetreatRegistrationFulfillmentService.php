@@ -102,7 +102,7 @@ class RetreatRegistrationFulfillmentService
         RetreatPayment $payment,
         bool $forceResend = false,
     ): array {
-        $participant->loadMissing(['event']);
+        $participant->loadMissing(['event', 'chambre', 'atelier']);
         $payment->loadMissing(['event']);
         $event = $payment->event ?? $participant->event;
 

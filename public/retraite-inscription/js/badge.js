@@ -98,6 +98,55 @@ function renderBadgeRecapMirrored() {
   renderRecapSectionsIntoContainer(c, sections, { showEdit: false });
 }
 
+/**
+ * Affiche chambre et atelier sur la synthèse billet (après validation cash ou électronique).
+ *
+ * @param {object|null} status Statut participant (API /participants/{id}/status)
+ * @return {void}
+ */
+function renderBadgePlacementsSection(status) {
+  const mount = document.getElementById('badgePlacementsMount');
+  if (!mount) {
+    return;
+  }
+
+  const placements = status && status.placements;
+  const show =
+    isRetraiteTruthyFlag(status && status.paiement_valide) ||
+    (status && status.payment && status.payment.channel === 'cash' && status.payment.etat === 'payee');
+
+  if (!show || !placements) {
+    mount.innerHTML = '';
+    mount.classList.add('hidden');
+    return;
+  }
+
+  const esc = typeof escapeHtml === 'function' ? escapeHtml : (t => String(t));
+  const chambre = placements.chambre ? esc(String(placements.chambre)) : '—';
+  const atelier = placements.atelier ? esc(String(placements.atelier)) : '—';
+
+  mount.classList.remove('hidden');
+  mount.innerHTML = `
+    <div class="badge-placements-card">
+      <div class="badge-placements-title"><i class="bi bi-geo-alt"></i> Affectations</div>
+      <div class="badge-placements-grid">
+        <div class="badge-placements-field">
+          <span class="badge-placements-label">Chambre</span>
+          <span class="badge-placements-value">${chambre}</span>
+        </div>
+        <div class="badge-placements-field">
+          <span class="badge-placements-label">Atelier</span>
+          <span class="badge-placements-value">${atelier}</span>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function renderBadgePlacementsFromServer() {
+  const status = await fetchParticipantRegistrationStatus();
+  renderBadgePlacementsSection(status);
+}
+
 async function ensureBadgeQrRendered() {
   const url = await fetchParticipantVerificationUrlIfNeeded();
   renderBadgeQrCode(url);
@@ -380,6 +429,7 @@ async function finalizeBadgeUi(view, options) {
 
     fillBadgeFromForm();
     await ensureBadgeQrRendered();
+    await renderBadgePlacementsFromServer();
 
     const bannerOk = document.getElementById('badgeElectronicBanner');
     const bannerCash = document.getElementById('badgeCashPendingBanner');
@@ -435,6 +485,7 @@ async function captureBadgeExportCompositeCanvas() {
   if (!root) return null;
 
   await ensureBadgeQrRendered();
+  await renderBadgePlacementsFromServer();
 
   if (typeof html2canvas === 'undefined') {
     retraiteNotifyToast('Module d’export non chargé : actualisez la page.', 'warning');

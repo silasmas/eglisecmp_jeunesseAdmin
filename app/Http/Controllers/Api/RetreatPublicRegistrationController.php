@@ -1210,7 +1210,7 @@ class RetreatPublicRegistrationController extends Controller
 
     public function participantStatus(RetreatParticipant $participant): JsonResponse
     {
-        $participant->load(['payments.event']);
+        $participant->load(['payments.event', 'chambre', 'atelier']);
 
         $payment = RetreatRegistrationBadgeViewResolver::resolvePrimaryPayment($participant);
 
@@ -1225,6 +1225,10 @@ class RetreatPublicRegistrationController extends Controller
                 'registration_status' => $participant->registration_status,
                 'registration_confirmed' => (bool) $participant->paiement_valide,
                 'badge_view' => $this->resolveBadgeView($participant, $payment),
+                'placements' => [
+                    'chambre' => $participant->placementChambreLabel(),
+                    'atelier' => $participant->placementAtelierLabel(),
+                ],
                 'payment' => $payment ? [
                     'channel' => $payment->channel,
                     'etat' => $payment->etat,
