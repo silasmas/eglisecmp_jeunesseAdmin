@@ -1034,6 +1034,9 @@
                     </div>
 
                     <div id="verifyPanelAttendance" class="verify-tab-panel hidden" data-verify-panel="attendance">
+                        <p id="attendanceReadOnlyBanner" class="status-line hidden" style="margin-bottom:12px;padding:10px 12px;border-radius:8px;background:#fff7ed;color:#9a3412;font-weight:600;">
+                            Consultation seule — seuls le responsable et l'adjoint de chaque atelier peuvent enregistrer les présences.
+                        </p>
                         <div class="mb-6">
                             <label class="mb-1 block text-sm font-semibold" for="attendanceActivitySelect">Activité</label>
                             <select id="attendanceActivitySelect" class="fi-input block w-full max-w-2xl rounded-lg border-gray-300 text-sm">
@@ -1162,7 +1165,9 @@
             attendanceExcuse: @json(route('retraite.verification.attendance.excuse')),
         };
 
-        let canMarkAtelierAttendance = false;
+        let canViewAtelierAttendance = false;
+        let canManageAtelierAttendance = false;
+        let attendancePortalReadOnly = false;
         let canManageRegistrations = false;
         let activeVerifyTab = 'search';
         let attendanceActivityId = '';
@@ -1217,22 +1222,27 @@
         }
 
         function setVerifierAuthenticated(user, options = {}) {
-            canMarkAtelierAttendance = !!options.canMarkAtelierAttendance;
+            canViewAtelierAttendance = !!(options.canViewAtelierAttendance ?? options.canMarkAtelierAttendance);
+            canManageAtelierAttendance = !!options.canManageAtelierAttendance;
+            attendancePortalReadOnly = canViewAtelierAttendance && !canManageAtelierAttendance;
             canManageRegistrations = !!options.canManageRegistrations;
             otpStepEmail.classList.add('hidden');
             otpStepCode.classList.add('hidden');
             workspace.classList.remove('hidden');
             logoutButton.classList.remove('hidden');
             document.getElementById('verifyTabs')?.classList.remove('hidden');
-            document.getElementById('verifyTabAttendanceBtn')?.classList.toggle('hidden', !canMarkAtelierAttendance);
+            document.getElementById('verifyTabAttendanceBtn')?.classList.toggle('hidden', !canViewAtelierAttendance);
+            document.getElementById('attendanceReadOnlyBanner')?.classList.toggle('hidden', !attendancePortalReadOnly);
             searchStatus.textContent = user ? `Connecté : ${user.name || user.email}` : 'Connecté.';
-            if (canMarkAtelierAttendance) {
+            if (canViewAtelierAttendance) {
                 loadAttendanceContext();
             }
         }
 
         function setVerifierGuest(message = '') {
-            canMarkAtelierAttendance = false;
+            canViewAtelierAttendance = false;
+            canManageAtelierAttendance = false;
+            attendancePortalReadOnly = false;
             canManageRegistrations = false;
             activeVerifyTab = 'search';
             otpStepEmail.classList.remove('hidden');
@@ -1241,6 +1251,7 @@
             logoutButton.classList.add('hidden');
             document.getElementById('verifyTabs')?.classList.add('hidden');
             document.getElementById('verifyTabAttendanceBtn')?.classList.add('hidden');
+            document.getElementById('attendanceReadOnlyBanner')?.classList.add('hidden');
             document.getElementById('attendanceBlocks').innerHTML = '';
             searchStatus.textContent = message;
             searchResults.innerHTML = '';
@@ -1279,9 +1290,11 @@
 
         async function loadAttendanceContext() {
             const select = document.getElementById('attendanceActivitySelect');
-            if (!select || !canMarkAtelierAttendance) return;
+            if (!select || !canViewAtelierAttendance) return;
             try {
                 const payload = await getJson(endpoints.attendanceContext);
+                attendancePortalReadOnly = !!payload.read_only;
+                document.getElementById('attendanceReadOnlyBanner')?.classList.toggle('hidden', !attendancePortalReadOnly);
                 select.innerHTML = '<option value="">— Choisir une activité —</option>';
                 (payload.activities || []).forEach((activity) => {
                     const option = document.createElement('option');
@@ -1332,7 +1345,10 @@
             const statusEl = document.getElementById('attendanceStatus');
             if (!blocks.length) {
                 container.innerHTML = '';
-                setStatusMessage(statusEl, 'Aucun participant dans votre atelier pour cette activité.', 'warning');
+                const emptyMessage = attendancePortalReadOnly
+                    ? 'Aucun participant enregistré pour cette activité.'
+                    : 'Aucun participant dans votre atelier pour cette activité.';
+                setStatusMessage(statusEl, emptyMessage, 'warning');
                 return;
             }
             setStatusMessage(statusEl, '', 'info');
@@ -1344,7 +1360,7 @@
             const rows = (block.participants || []).map((participant) => {
                 const statusCells = Object.entries(attendanceStatusLabels).map(([key, label]) => {
                     const active = participant.status === key ? 'is-active' : '';
-                    const disabled = block.can_manage ? '' : 'disabled';
+                    const disabled = block.can_manage && canManageAtelierAttendance ? '' : 'disabled';
                     return `
                         <td class="cmp-status-cell">
                             <button type="button" class="cmp-status-check ${active}" style="--status-color: ${attendanceStatusColors[key]}"
@@ -1360,7 +1376,7 @@
                             <div class="cmp-excuse-field">
                                 <label class="cmp-excuse-label">Motif de l'excuse</label>
                                 <input type="text" class="cmp-excuse-input" data-excuse-note="${participant.id}"
-                                    value="${escapeHtml(participant.excuse_note || '')}" ${block.can_manage ? '' : 'readonly'}>
+                                    value="${escapeHtml(participant.excuse_note || '')}" ${block.can_manage && canManageAtelierAttendance ? '' : 'readonly'}>
                             </div>
                         </td>
                     </tr>` : '';
@@ -1379,7 +1395,7 @@
                 <article class="attendance-atelier-card">
                     <div class="attendance-atelier-head">
                         <h3>Atelier ${escapeHtml(String(block.atelier_numero))} · ${block.participants_count} membre(s) · ${block.present_count} présent(s)/retard</h3>
-                        <p>Responsable : ${escapeHtml(block.responsable || '—')}${block.adjoint ? ' · Adjoint : ' + escapeHtml(block.adjoint) : ''}</p>
+                        <p>Responsable : ${escapeHtml(block.responsable || '—')}${block.adjoint ? ' · Adjoint : ' + escapeHtml(block.adjoint) : ''}${!block.can_manage ? ' · <strong>Lecture seule</strong>' : ''}</p>
                     </div>
                     <div class="cmp-pointage-wrap">
                         <table class="cmp-pointage-table">
@@ -1400,6 +1416,9 @@
         }
 
         function bindAttendanceActions(container) {
+            if (!canManageAtelierAttendance) {
+                return;
+            }
             container.querySelectorAll('[data-attendance-set]').forEach((button) => {
                 button.addEventListener('click', async () => {
                     if (!attendanceActivityId) return;
@@ -1512,7 +1531,8 @@
                 setStatusMessage(otpModalStatus, 'Code validé.', 'success');
                 closeOtpModal();
                 setVerifierAuthenticated(payload.user, {
-                    canMarkAtelierAttendance: !!payload.can_mark_atelier_attendance,
+                    canViewAtelierAttendance: !!(payload.can_view_atelier_attendance ?? payload.can_mark_atelier_attendance),
+                    canManageAtelierAttendance: !!payload.can_manage_atelier_attendance,
                     canManageRegistrations: !!payload.can_manage_registrations,
                 });
             } catch (error) {
@@ -1964,7 +1984,8 @@
                 const payload = await response.json();
                 payload.authenticated
                     ? setVerifierAuthenticated(payload.user, {
-                        canMarkAtelierAttendance: !!payload.can_mark_atelier_attendance,
+                        canViewAtelierAttendance: !!(payload.can_view_atelier_attendance ?? payload.can_mark_atelier_attendance),
+                        canManageAtelierAttendance: !!payload.can_manage_atelier_attendance,
                         canManageRegistrations: !!payload.can_manage_registrations,
                     })
                     : setVerifierGuest();

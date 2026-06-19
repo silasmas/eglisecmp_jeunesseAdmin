@@ -39,8 +39,14 @@ class RetreatVerificationPortalController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
             ] : null,
+            'can_view_atelier_attendance' => $user
+                ? app(RetreatAtelierAuthorizationService::class)->canAccessAtelierAttendancePortal($user)
+                : false,
+            'can_manage_atelier_attendance' => $user
+                ? app(RetreatAtelierAuthorizationService::class)->canMarkAtelierAttendance($user)
+                : false,
             'can_mark_atelier_attendance' => $user
-                ? app(RetreatAtelierAuthorizationService::class)->managesAnyAtelier($user)
+                ? app(RetreatAtelierAuthorizationService::class)->canAccessAtelierAttendancePortal($user)
                 : false,
             'can_manage_registrations' => $user
                 ? $user->hasAnyRole(['super_admin', 'panel_user'])
@@ -131,7 +137,9 @@ class RetreatVerificationPortalController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
             ],
-            'can_mark_atelier_attendance' => app(RetreatAtelierAuthorizationService::class)->managesAnyAtelier($user),
+            'can_view_atelier_attendance' => app(RetreatAtelierAuthorizationService::class)->canAccessAtelierAttendancePortal($user),
+            'can_manage_atelier_attendance' => app(RetreatAtelierAuthorizationService::class)->canMarkAtelierAttendance($user),
+            'can_mark_atelier_attendance' => app(RetreatAtelierAuthorizationService::class)->canAccessAtelierAttendancePortal($user),
             'can_manage_registrations' => $user->hasAnyRole(['super_admin', 'panel_user']),
         ]);
     }
@@ -426,8 +434,8 @@ class RetreatVerificationPortalController extends Controller
         }
 
         $auth = app(RetreatAtelierAuthorizationService::class);
-        if (! $auth->managesAnyAtelier($user)) {
-            return response()->json(['message' => 'Réservé au responsable ou à l\'adjoint d\'atelier.'], 403);
+        if (! $auth->canAccessAtelierAttendancePortal($user)) {
+            return response()->json(['message' => 'Réservé au responsable, à l\'adjoint d\'atelier ou au super administrateur.'], 403);
         }
 
         $service = app(RetreatAtelierAttendancePanelService::class);
@@ -436,6 +444,7 @@ class RetreatVerificationPortalController extends Controller
             'activities' => collect($service->activityOptionsForUser($user))
                 ->map(fn (string $label, int $id): array => ['id' => $id, 'label' => $label])
                 ->values(),
+            'read_only' => $auth->isSuperAdmin($user) && ! $auth->canMarkAtelierAttendance($user),
         ]);
     }
 
@@ -450,8 +459,8 @@ class RetreatVerificationPortalController extends Controller
         }
 
         $auth = app(RetreatAtelierAuthorizationService::class);
-        if (! $auth->managesAnyAtelier($user)) {
-            return response()->json(['message' => 'Réservé au responsable ou à l\'adjoint d\'atelier.'], 403);
+        if (! $auth->canAccessAtelierAttendancePortal($user)) {
+            return response()->json(['message' => 'Réservé au responsable, à l\'adjoint d\'atelier ou au super administrateur.'], 403);
         }
 
         $validated = $request->validate([
@@ -463,6 +472,7 @@ class RetreatVerificationPortalController extends Controller
 
         return response()->json([
             'data' => $service->serializeBlocksForPortal($blocks),
+            'read_only' => $auth->isSuperAdmin($user) && ! $auth->canMarkAtelierAttendance($user),
         ]);
     }
 
@@ -591,6 +601,10 @@ class RetreatVerificationPortalController extends Controller
         }
 
         if ($user->hasAnyRole(['super_admin', 'panel_user', 'ouvrier', 'worker', 'staff'])) {
+            return true;
+        }
+
+        if (app(RetreatAtelierAuthorizationService::class)->isAtelierLead($user)) {
             return true;
         }
 

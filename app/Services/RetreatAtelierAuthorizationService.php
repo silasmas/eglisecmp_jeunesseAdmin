@@ -60,6 +60,14 @@ class RetreatAtelierAuthorizationService
      */
     public function managesAnyAtelier(?User $user): bool
     {
+        return $this->canAccessAtelierAttendancePortal($user);
+    }
+
+    /**
+     * Accès à l'écran de pointage (portail public) : super_admin en lecture seule ou responsable/adjoint.
+     */
+    public function canAccessAtelierAttendancePortal(?User $user): bool
+    {
         if (! $user) {
             return false;
         }
@@ -72,16 +80,20 @@ class RetreatAtelierAuthorizationService
     }
 
     /**
+     * Peut enregistrer des présences : uniquement responsable ou adjoint d'atelier (pas super_admin).
+     */
+    public function canMarkAtelierAttendance(?User $user): bool
+    {
+        return $this->isAtelierLead($user);
+    }
+
+    /**
      * Indique si l'utilisateur peut gérer l'atelier (pointage, mouvements, rapport).
      */
     public function canManageAtelier(?User $user, ?RetreatAtelier $atelier): bool
     {
         if (! $user || ! $atelier) {
             return false;
-        }
-
-        if ($this->isSuperAdmin($user)) {
-            return true;
         }
 
         return (int) $atelier->responsable_user_id === (int) $user->id
@@ -95,10 +107,6 @@ class RetreatAtelierAuthorizationService
     {
         if (! $user || ! $participant) {
             return false;
-        }
-
-        if ($this->isSuperAdmin($user)) {
-            return true;
         }
 
         return $this->canManageAtelier($user, $participant->atelier);
