@@ -21,6 +21,7 @@ Route::get('/', function () {
     $portalRetreatEvent = ChurchEvent::query()
         ->where('type', 'retraite')
         ->where('is_active', true)
+        ->where('is_publicly_closed', false)
         ->whereNotNull('start_at')
         ->orderBy('start_at')
         ->first();
@@ -28,9 +29,17 @@ Route::get('/', function () {
     $portalProgrammeLocked = ! $portalRetreatEvent
         || now()->lt($portalRetreatEvent->start_at);
 
+    $portalPublicClosed = ChurchEvent::query()
+        ->where('type', 'retraite')
+        ->where('is_active', true)
+        ->where('is_publicly_closed', true)
+        ->orderByDesc('end_at')
+        ->first();
+
     return view('welcome', [
         'portalRetreatEvent' => $portalRetreatEvent,
         'portalProgrammeLocked' => $portalProgrammeLocked,
+        'portalPublicClosed' => $portalPublicClosed,
     ]);
 });
 

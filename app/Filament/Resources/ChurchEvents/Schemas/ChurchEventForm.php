@@ -46,6 +46,12 @@ class ChurchEventForm
                                 'Un seul événement actif à la fois. Les inscriptions en ligne restent ouvertes jusqu’à la date de fin (pas la date de début). Sans date de fin, elles restent ouvertes tant que l’événement est actif.'
                             )
                             ->required(),
+                        Toggle::make('is_publicly_closed')
+                            ->label('Fermer l\'accès public (retraite clôturée)')
+                            ->helperText(
+                                'À activer après la retraite : bloque inscription, don, billet, justificatif, QR et détails chambre/atelier côté site public. Les ouvriers peuvent encore consulter l\'historique.'
+                            )
+                            ->default(false),
                     ])
                     ->columns(2),
                 Section::make('Inscriptions publiques en ligne')
@@ -58,6 +64,7 @@ class ChurchEventForm
                                 .'<li><strong>Type</strong> = <code>retraite</code></li>'
                                 .'<li><strong>Actif (événement courant)</strong> = oui (un seul à la fois)</li>'
                                 .'<li><strong>Date de fin</strong> non dépassée (ou laisser vide pour garder ouvert tant que l\'événement est actif)</li>'
+                                .'<li><strong>Fermer l\'accès public</strong> = non (tant que la retraite n\'est pas clôturée)</li>'
                                 .'</ol>'
                                 .'<p style="margin:0.75rem 0 0;">La <strong>date de début</strong> sert au planning de l\'événement ; elle ne bloque pas l\'ouverture du formulaire.</p>'
                             ))

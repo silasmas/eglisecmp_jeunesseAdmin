@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\RetreatParticipant;
+use App\Support\RetreatPublicPortalGate;
 use App\Support\RetreatVerifierSession;
 use Illuminate\Contracts\View\View;
 
@@ -22,6 +23,10 @@ class RetreatInscriptionAccessController extends Controller
             ->where('download_token', $token)
             ->where('is_active', true)
             ->firstOrFail();
+
+        if (RetreatPublicPortalGate::isEventPubliclyClosed($participant->event)) {
+            return RetreatPublicPortalGate::participantEventClosedView($participant);
+        }
 
         $payment = $participant->payments->sortByDesc('id')->first();
         $accessGranted = (bool) $participant->paiement_valide

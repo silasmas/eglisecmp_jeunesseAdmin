@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\RetreatAtelierAttendancePanelService;
 use App\Services\RetreatAtelierAuthorizationService;
 use App\Services\RetreatParticipantRegistrationService;
+use App\Support\RetreatPublicPortalGate;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -155,47 +156,50 @@ class RetreatVerificationPortalController extends Controller
 
         $query = trim((string) $validated['query']);
         $mode = $validated['mode'] ?? 'auto';
-        $token = $mode === 'qr' ? $this->extractQrToken($query) : null;
+
+        if ($mode === 'qr') {
+            return $this->searchByQrCode($query, $this->currentVerifier($request));
+        }
 
         $participants = RetreatParticipant::query()
             ->with(['event', 'chambre', 'atelier', 'payments.event'])
-            ->when($token, fn (Builder $builder): Builder => $builder->where('download_token', $token))
-            ->when(! $token, function (Builder $builder) use ($query, $mode): void {
-                $builder->where(function (Builder $builder) use ($query, $mode): void {
-                    if (in_array($mode, ['auto', 'reference'], true)) {
-                        $builder->orWhereHas('payments', function (Builder $paymentQuery) use ($query): void {
-                            $paymentQuery
-                                ->where('reference', $query)
-                                ->orWhere('provider_reference', $query);
-                        });
-                    }
+            ->whereHas('event', function (Builder $eventQuery): void {
+                $eventQuery->where('is_publicly_closed', false);
+            })
+            ->where(function (Builder $builder) use ($query, $mode): void {
+                if (in_array($mode, ['auto', 'reference'], true)) {
+                    $builder->orWhereHas('payments', function (Builder $paymentQuery) use ($query): void {
+                        $paymentQuery
+                            ->where('reference', $query)
+                            ->orWhere('provider_reference', $query);
+                    });
+                }
 
-                    if (in_array($mode, ['auto', 'phone'], true)) {
-                        $digits = preg_replace('/\D+/', '', $query) ?: '';
-                        if (strlen($digits) >= 6) {
-                            $builder
-                                ->orWhere('telephone', 'like', "%{$digits}%")
-                                ->orWhere('telephone_urgence', 'like', "%{$digits}%")
-                                ->orWhere('guardian_phone', 'like', "%{$digits}%");
-                        }
+                if (in_array($mode, ['auto', 'phone'], true)) {
+                    $digits = preg_replace('/\D+/', '', $query) ?: '';
+                    if (strlen($digits) >= 6) {
+                        $builder
+                            ->orWhere('telephone', 'like', "%{$digits}%")
+                            ->orWhere('telephone_urgence', 'like', "%{$digits}%")
+                            ->orWhere('guardian_phone', 'like', "%{$digits}%");
                     }
+                }
 
-                    if (in_array($mode, ['auto', 'email'], true) && filter_var($query, FILTER_VALIDATE_EMAIL)) {
-                        $email = Str::lower($query);
-                        $builder->orWhereRaw('LOWER(TRIM(email)) = ?', [$email]);
-                    }
+                if (in_array($mode, ['auto', 'email'], true) && filter_var($query, FILTER_VALIDATE_EMAIL)) {
+                    $email = Str::lower($query);
+                    $builder->orWhereRaw('LOWER(TRIM(email)) = ?', [$email]);
+                }
 
-                    if (in_array($mode, ['auto', 'name'], true)) {
-                        $name = preg_replace('/\s+/u', ' ', Str::lower($query));
-                        if (is_string($name) && mb_strlen($name, 'UTF-8') >= 3) {
-                            $builder->orWhereRaw("LOWER(TRIM(CONCAT_WS(' ', prenom, nom, postnom))) LIKE ?", ["%{$name}%"])
-                                ->orWhereRaw("LOWER(TRIM(CONCAT_WS(' ', nom, postnom, prenom))) LIKE ?", ["%{$name}%"])
-                                ->orWhere('nom', 'like', "%{$query}%")
-                                ->orWhere('prenom', 'like', "%{$query}%")
-                                ->orWhere('postnom', 'like', "%{$query}%");
-                        }
+                if (in_array($mode, ['auto', 'name'], true)) {
+                    $name = preg_replace('/\s+/u', ' ', Str::lower($query));
+                    if (is_string($name) && mb_strlen($name, 'UTF-8') >= 3) {
+                        $builder->orWhereRaw("LOWER(TRIM(CONCAT_WS(' ', prenom, nom, postnom))) LIKE ?", ["%{$name}%"])
+                            ->orWhereRaw("LOWER(TRIM(CONCAT_WS(' ', nom, postnom, prenom))) LIKE ?", ["%{$name}%"])
+                            ->orWhere('nom', 'like', "%{$query}%")
+                            ->orWhere('prenom', 'like', "%{$query}%")
+                            ->orWhere('postnom', 'like', "%{$query}%");
                     }
-                });
+                }
             })
             ->latest('id')
             ->limit(25)
@@ -206,6 +210,59 @@ class RetreatVerificationPortalController extends Controller
                 $participant,
                 $this->currentVerifier($request),
             ))->values(),
+        ]);
+    }
+
+    /**
+     * Recherche ouvrier par scan QR (token billet / justificatif / accès).
+     *
+     * @param string $query Contenu scanné
+     * @param User|null $verifier Ouvrier connecté
+     * @return JsonResponse
+     */
+    protected function searchByQrCode(string $query, ?User $verifier): JsonResponse
+    {
+        $token = $this->extractQrToken($query);
+
+        if ($token === null) {
+            return response()->json([
+                'message' => 'QR code non reconnu. Scannez le QR du billet ou du justificatif d\'inscription retraite.',
+                'data' => [],
+                'qr_rejected' => true,
+            ], 422);
+        }
+
+        $participant = RetreatParticipant::query()
+            ->with(['event', 'chambre', 'atelier', 'payments.event'])
+            ->where('download_token', $token)
+            ->first();
+
+        if (! $participant) {
+            return response()->json([
+                'message' => 'Aucune inscription retraite ne correspond à ce QR code.',
+                'data' => [],
+                'qr_rejected' => true,
+            ], 404);
+        }
+
+        if (RetreatPublicPortalGate::isEventPubliclyClosed($participant->event)) {
+            $eventName = $participant->event?->name ?? 'Retraite';
+
+            return response()->json([
+                'message' => "Ce QR code concernait « {$eventName} » — cette retraite est clôturée côté public.",
+                'data' => [],
+                'qr_rejected' => true,
+                'closed_event' => [
+                    'name' => $eventName,
+                    'end_at' => $participant->event?->end_at?->toISOString(),
+                ],
+            ], 403);
+        }
+
+        return response()->json([
+            'data' => [
+                $this->participantPayload($participant, $verifier),
+            ],
         ]);
     }
 
@@ -222,6 +279,9 @@ class RetreatVerificationPortalController extends Controller
         $participants = RetreatParticipant::query()
             ->with(['event', 'payments.event'])
             ->where('is_active', true)
+            ->whereHas('event', function (Builder $eventQuery): void {
+                $eventQuery->where('is_publicly_closed', false);
+            })
             ->where(function (Builder $builder) use ($query, $mode): void {
                 if (in_array($mode, ['auto', 'reference'], true)) {
                     $builder->orWhereHas('payments', function (Builder $paymentQuery) use ($query): void {

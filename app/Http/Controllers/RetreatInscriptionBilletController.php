@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\RetreatParticipant;
+use App\Support\RetreatPublicPortalGate;
 use Illuminate\Contracts\View\View;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
@@ -18,6 +19,10 @@ class RetreatInscriptionBilletController extends Controller
     public function __invoke(string $token): View
     {
         $participant = $this->resolveParticipant($token);
+
+        if (RetreatPublicPortalGate::isEventPubliclyClosed($participant->event)) {
+            return RetreatPublicPortalGate::participantEventClosedView($participant);
+        }
 
         if (! $participant->paiement_valide) {
             throw new AccessDeniedHttpException('Le billet est disponible uniquement après validation du paiement.');

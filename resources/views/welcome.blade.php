@@ -536,13 +536,52 @@
         }
 
         .participant-card.worker-result {
-            padding-bottom: 82px;
+            padding-bottom: 16px;
+        }
+
+        .participant-card-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+            gap: 8px;
+            margin-top: 14px;
+        }
+
+        .participant-card-actions .mini-action {
+            width: 100%;
+            white-space: normal;
+            text-align: center;
+            line-height: 1.25;
+            padding: 8px 10px;
+            min-height: 40px;
+        }
+
+        .worker-actions {
+            display: contents;
         }
 
         .participant-identity {
             display: flex;
             gap: 12px;
             align-items: flex-start;
+        }
+
+        .mini-action {
+            min-height: 36px;
+            padding: 0 10px;
+            border: 0;
+            border-radius: 8px;
+            color: var(--white);
+            background: var(--brand);
+            cursor: pointer;
+            font-weight: 800;
+        }
+
+        .mini-action.warning {
+            background: #9b5a09;
+        }
+
+        .mini-action.danger {
+            background: #b42318;
         }
 
         .participant-avatar {
@@ -594,35 +633,6 @@
         .badge.danger {
             color: #b42318;
             background: #fee4e2;
-        }
-
-        .worker-actions {
-            position: absolute;
-            right: 14px;
-            bottom: 14px;
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: flex-end;
-            gap: 8px;
-        }
-
-        .mini-action {
-            min-height: 36px;
-            padding: 0 10px;
-            border: 0;
-            border-radius: 8px;
-            color: var(--white);
-            background: var(--brand);
-            cursor: pointer;
-            font-weight: 800;
-        }
-
-        .mini-action.warning {
-            background: #9b5a09;
-        }
-
-        .mini-action.danger {
-            background: #b42318;
         }
 
         .verify-tabs {
@@ -817,14 +827,31 @@
             </div>
 
             <section class="options" id="portalOptions" aria-label="Options du portail">
-                <a class="option" href="{{ route('retraite.inscription') }}">
-                    <span class="option-index">1</span>
-                    <span>
-                        <h2>Inscription</h2>
-                        <p>Remplir le formulaire public et lancer la validation de participation.</p>
-                    </span>
-                    <span class="option-action">Commencer <span aria-hidden="true">→</span></span>
-                </a>
+                @if($portalRetreatEvent)
+                    <a class="option" href="{{ route('retraite.inscription') }}">
+                        <span class="option-index">1</span>
+                        <span>
+                            <h2>Inscription</h2>
+                            <p>Remplir le formulaire public et lancer la validation de participation.</p>
+                        </span>
+                        <span class="option-action">Commencer <span aria-hidden="true">→</span></span>
+                    </a>
+                @else
+                    <div class="option option--disabled" role="group" aria-disabled="true">
+                        <span class="option-index">1</span>
+                        <span>
+                            <h2>Inscription</h2>
+                            <p>
+                                @if($portalPublicClosed ?? null)
+                                    « {{ $portalPublicClosed->name }} » est clôturée — les inscriptions en ligne ne sont plus disponibles.
+                                @else
+                                    Aucune retraite ouverte aux inscriptions pour le moment.
+                                @endif
+                            </p>
+                        </span>
+                        <span class="option-action">Fermé <span aria-hidden="true">—</span></span>
+                    </div>
+                @endif
 
                 <a class="option portal-option-anchor" href="#verification-inscription">
                     <span class="option-index">2</span>
@@ -862,17 +889,28 @@
                     </a>
                 @endif
 
-                <a class="option" href="{{ route('retraite.don') }}">
-                    <span class="option-index">5</span>
-                    <span>
-                        <h2>Faire un don</h2>
-                        <p>Soutenir la retraite par un don en nature ou en espèces (sponsoriser des jeunes).</p>
-                    </span>
-                    <span class="option-action">Donner <span aria-hidden="true">→</span></span>
-                </a>
+                @if($portalRetreatEvent)
+                    <a class="option" href="{{ route('retraite.don') }}">
+                        <span class="option-index">4</span>
+                        <span>
+                            <h2>Faire un don</h2>
+                            <p>Soutenir la retraite par un don en nature ou en espèces (sponsoriser des jeunes).</p>
+                        </span>
+                        <span class="option-action">Donner <span aria-hidden="true">→</span></span>
+                    </a>
+                @else
+                    <div class="option option--disabled" role="group" aria-disabled="true">
+                        <span class="option-index">4</span>
+                        <span>
+                            <h2>Faire un don</h2>
+                            <p>Les dons en ligne ne sont pas disponibles tant qu'aucune retraite active n'est ouverte.</p>
+                        </span>
+                        <span class="option-action">Fermé <span aria-hidden="true">—</span></span>
+                    </div>
+                @endif
 
                 <a class="option portal-option-anchor" href="#assistant-retraite">
-                    <span class="option-index">4</span>
+                    <span class="option-index">5</span>
                     <span>
                         <h2>Assistant Retraite</h2>
                         <p>Poser une question rapide sur l'inscription, le paiement ou les consignes.</p>
@@ -1493,7 +1531,12 @@
                 renderParticipants(participants);
                 return participants;
             } catch (error) {
-                searchStatus.textContent = error.message;
+                searchResults.innerHTML = '';
+                searchStatus.textContent = error.message || 'Recherche impossible.';
+                searchStatus.classList.add('error');
+                if (mode === 'qr') {
+                    document.getElementById('qrStatus').textContent = error.message || 'QR code refusé.';
+                }
                 if (String(error.message).includes('Connexion ouvrier')) {
                     setVerifierGuest('Session expirée. Reconnectez-vous avec votre e-mail ouvrier.');
                 }
@@ -1520,24 +1563,39 @@
             `;
         }
 
-        function renderAdminRegistrationActions(participant) {
+        function renderParticipantActionButtons(participant) {
+            const paid = participant.paiement_valide;
+            const enabled = !!participant.actions_enabled;
             const canAdmin = canManageRegistrations || participant.can_manage_registrations;
+            const buttons = [];
+
+            if (canAdmin) {
+                const needsValidation = !participant.registration_validated;
+                const canSendBillet = !!participant.paiement_valide;
+                const badgePending = participant.paiement_valide && !participant.badge_received;
+                const badgeDisabled = badgePending ? '' : (participant.badge_received ? 'disabled' : '');
+                buttons.push(`<button class="mini-action" data-worker-action="validate_registration" data-participant-id="${participant.id}" ${needsValidation ? '' : 'disabled'}>Valider inscription</button>`);
+                buttons.push(`<button class="mini-action" data-worker-action="send_billet" data-participant-id="${participant.id}" ${canSendBillet ? '' : 'disabled'}>${participant.billet_envoye ? 'Renvoyer billet' : 'Envoyer billet'}</button>`);
+                buttons.push(`<button class="mini-action" data-worker-action="mark_badge_received" data-participant-id="${participant.id}" ${badgeDisabled}>${participant.badge_received ? 'Badge remis' : 'Marquer badge'}</button>`);
+            }
+
+            buttons.push(`<button class="mini-action" data-worker-action="retreat_access" data-participant-id="${participant.id}" ${enabled ? '' : 'disabled'}>Accès retraite</button>`);
+            buttons.push(`<button class="mini-action" data-worker-action="activity_access" data-participant-id="${participant.id}" ${enabled ? '' : 'disabled'}>Accès activité</button>`);
+            buttons.push(`<button class="mini-action warning" data-worker-action="exit_permission" data-participant-id="${participant.id}" ${enabled ? '' : 'disabled'}>Sortie</button>`);
             if (!canAdmin) {
+                buttons.push(`<button class="mini-action" data-worker-action="mark_badge_received" data-participant-id="${participant.id}" ${paid && !participant.badge_received ? '' : 'disabled'}>Badge remis</button>`);
+            }
+            buttons.push(`<button class="mini-action danger" data-worker-action="exclude_retreat" data-participant-id="${participant.id}" ${enabled ? '' : 'disabled'}>Exclure</button>`);
+
+            if (!buttons.length) {
                 return '';
             }
 
-            const needsValidation = !participant.registration_validated;
-            const canSendBillet = !!participant.paiement_valide;
-            const badgePending = participant.paiement_valide && !participant.badge_received;
-            const badgeDisabled = badgePending ? '' : (participant.badge_received ? 'disabled' : '');
+            return `<div class="participant-card-actions">${buttons.join('')}</div>`;
+        }
 
-            return `
-                <div class="worker-actions admin-registration-actions">
-                    <button class="mini-action" data-worker-action="validate_registration" data-participant-id="${participant.id}" ${needsValidation ? '' : 'disabled'}>Valider inscription</button>
-                    <button class="mini-action" data-worker-action="send_billet" data-participant-id="${participant.id}" ${canSendBillet ? '' : 'disabled'}>${participant.billet_envoye ? 'Renvoyer billet' : 'Envoyer billet'}</button>
-                    <button class="mini-action" data-worker-action="mark_badge_received" data-participant-id="${participant.id}" ${badgeDisabled}>${participant.badge_received ? 'Badge remis' : 'Marquer badge'}</button>
-                </div>
-            `;
+        function renderAdminRegistrationActions(participant) {
+            return '';
         }
 
         function renderWorkerParticipantModalContent(participant) {
@@ -1734,14 +1792,7 @@
                         ${renderRegistrationBadges(participant)}
                         ${participant.justificatif_url ? `<p class="status-line"><a href="${participant.justificatif_url}" target="_blank" rel="noopener">Ouvrir le justificatif</a></p>` : ''}
                         ${!enabled && countdown ? `<p class="countdown-note" data-countdown-to="${escapeHtml(participant.actions_available_at)}">${escapeHtml(countdown)}</p>` : ''}
-                        ${renderAdminRegistrationActions(participant)}
-                        <div class="worker-actions">
-                            <button class="mini-action" data-worker-action="retreat_access" data-participant-id="${participant.id}" ${enabled ? '' : 'disabled'}>Accès retraite</button>
-                            <button class="mini-action" data-worker-action="activity_access" data-participant-id="${participant.id}" ${enabled ? '' : 'disabled'}>Accès activité</button>
-                            <button class="mini-action warning" data-worker-action="exit_permission" data-participant-id="${participant.id}" ${enabled ? '' : 'disabled'}>Sortie</button>
-                            <button class="mini-action" data-worker-action="mark_badge_received" data-participant-id="${participant.id}" ${paid && !participant.badge_received ? '' : 'disabled'}>Badge remis</button>
-                            <button class="mini-action danger" data-worker-action="exclude_retreat" data-participant-id="${participant.id}" ${enabled ? '' : 'disabled'}>Exclure</button>
-                        </div>
+                        ${renderParticipantActionButtons(participant)}
                     </article>
                 `;
             }).join('');

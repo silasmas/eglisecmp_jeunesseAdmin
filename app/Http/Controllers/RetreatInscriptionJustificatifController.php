@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\RetreatParticipant;
+use App\Support\RetreatPublicPortalGate;
 use Illuminate\Contracts\View\View;
 
 class RetreatInscriptionJustificatifController extends Controller
@@ -14,6 +15,10 @@ class RetreatInscriptionJustificatifController extends Controller
             ->where('download_token', $token)
             ->where('is_active', true)
             ->firstOrFail();
+
+        if (RetreatPublicPortalGate::isEventPubliclyClosed($participant->event)) {
+            return RetreatPublicPortalGate::participantEventClosedView($participant);
+        }
 
         return view('retraite-inscription.justificatif', [
             'participant' => $participant,

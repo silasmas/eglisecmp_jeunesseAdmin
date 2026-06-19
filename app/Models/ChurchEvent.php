@@ -55,6 +55,26 @@ class ChurchEvent extends Model
     }
 
     /**
+     * Retraite terminée selon le planning (date de fin dépassée).
+     */
+    public function isSchedulePast(): bool
+    {
+        if ($this->end_at === null) {
+            return false;
+        }
+
+        return $this->end_at->isPast();
+    }
+
+    /**
+     * Accès public fermé manuellement par l'administration.
+     */
+    public function isPublicPortalClosed(): bool
+    {
+        return (bool) $this->is_publicly_closed;
+    }
+
+    /**
      * Inscriptions publiques closes : date de fin dépassée (pas la date de début).
      */
     public function isPublicRegistrationClosedBySchedule(): bool
@@ -73,6 +93,7 @@ class ChurchEvent extends Model
     {
         return $this->type === 'retraite'
             && $this->is_active
+            && ! $this->isPublicPortalClosed()
             && ! $this->isPublicRegistrationClosedBySchedule();
     }
 
@@ -87,6 +108,7 @@ class ChurchEvent extends Model
         return $query
             ->where('type', 'retraite')
             ->where('is_active', true)
+            ->where('is_publicly_closed', false)
             ->where(function (Builder $q): void {
                 $q->whereNull('end_at')->orWhere('end_at', '>', now());
             });
@@ -108,6 +130,7 @@ class ChurchEvent extends Model
         'access_auth_mode',
         'access_otp_channel',
         'is_active',
+        'is_publicly_closed',
     ];
 
     public function setAccessAuthModeAttribute(mixed $value): void
@@ -138,6 +161,7 @@ class ChurchEvent extends Model
             'capacity' => 'integer',
             'price_to_pay' => 'decimal:2',
             'is_active' => 'boolean',
+            'is_publicly_closed' => 'boolean',
             'access_auth_mode' => EventAccessAuthMode::class,
             'access_otp_channel' => EventAccessOtpChannel::class,
         ];

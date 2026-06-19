@@ -117,6 +117,13 @@ class ChurchEventsTable
                 IconColumn::make('is_active')
                     ->label('Actif')
                     ->boolean(),
+                IconColumn::make('is_publicly_closed')
+                    ->label('Public fermé')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-lock-closed')
+                    ->falseIcon('heroicon-o-lock-open')
+                    ->trueColor('danger')
+                    ->falseColor('success'),
                 TextColumn::make('created_at')
                     ->label('Cree le')
                     ->dateTime()
