@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Enums\EventAccessOtpChannel;
 use App\Mail\RetreatRegistrationConfirmedMail;
-use App\Support\RetreatMailUrl;
 use App\Models\RetreatParticipant;
 use App\Models\RetreatPayment;
 use App\Support\RetreatMailUrl;
