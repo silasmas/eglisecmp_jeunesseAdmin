@@ -2,15 +2,56 @@
 
 namespace App\Observers;
 
+use App\Models\RetreatAtelier;
 use App\Models\RetreatParticipant;
 use App\Models\User;
 use App\Services\PanelNotificationDispatcher;
+use App\Services\RetreatPlacementAssignmentService;
+use Illuminate\Validation\ValidationException;
 
 class RetreatParticipantObserver
 {
     public function __construct(
         protected PanelNotificationDispatcher $dispatcher,
     ) {}
+
+    /**
+     * Empêche l'affectation manuelle à un atelier hors tranche d'âge.
+     *
+     * @param RetreatParticipant $participant Participant en cours de sauvegarde
+     * @return void
+     * @throws ValidationException Si l'atelier ne correspond pas à l'âge
+     */
+    public function saving(RetreatParticipant $participant): void
+    {
+        if (! $participant->isDirty('atelier_id') || blank($participant->atelier_id)) {
+            return;
+        }
+
+        $atelier = RetreatAtelier::query()->find($participant->atelier_id);
+
+        if (! $atelier) {
+            return;
+        }
+
+        $placement = app(RetreatPlacementAssignmentService::class);
+
+        if ($placement->isParticipantEligibleForAtelier($participant, $atelier)) {
+            $participant->atelier_quarantine = false;
+            $participant->atelier_quarantine_at = null;
+
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'atelier_id' => sprintf(
+                'L\'âge du participant (%s ans) ne correspond pas à la tranche de l\'atelier n°%s (%s).',
+                $participant->age,
+                $atelier->numero,
+                $placement->describeAtelierAgeRange($atelier)
+            ),
+        ]);
+    }
 
     public function created(RetreatParticipant $participant): void
     {

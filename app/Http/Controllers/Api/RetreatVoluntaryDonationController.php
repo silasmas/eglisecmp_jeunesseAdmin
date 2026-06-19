@@ -524,7 +524,11 @@ class RetreatVoluntaryDonationController extends Controller
                 ->first();
         }
 
-        return $query->orderByDesc('start_at')->orderByDesc('id')->first();
+        return $query
+            ->orderByDesc('is_active')
+            ->orderByDesc('start_at')
+            ->orderByDesc('id')
+            ->first();
     }
 
     /**

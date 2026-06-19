@@ -7,14 +7,20 @@ use App\Models\RetreatChambre;
 use App\Models\RetreatParticipant;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 /**
  * Affectation chambres (internes) et ateliers (équilibrés par sexe et tranche d'âge).
  */
 class RetreatPlacementAssignmentService
 {
+    public function __construct(
+        protected RetreatAtelierQuarantineNotifier $quarantineNotifier,
+    ) {}
+
     /**
      * Affecte chambre (si interne) et atelier selon les règles métier.
+     * L'inscription n'est jamais bloquée : en cas d'échec atelier → quarantaine.
      *
      * @param RetreatParticipant $participant Participant à placer
      * @return void
@@ -29,7 +35,7 @@ class RetreatPlacementAssignmentService
             $this->assignChambreAutomatically($participant);
         }
 
-        if (! $participant->atelier_id) {
+        if (! $participant->atelier_id || $participant->atelier_quarantine) {
             $this->assignAtelierAutomatically($participant);
         }
     }
@@ -85,7 +91,7 @@ class RetreatPlacementAssignmentService
     {
         $participant->refresh();
 
-        if ($participant->atelier_id) {
+        if ($participant->atelier_id && ! $participant->atelier_quarantine) {
             return [
                 'success' => false,
                 'message' => 'Un atelier est déjà assigné à ce participant.',
@@ -95,18 +101,188 @@ class RetreatPlacementAssignmentService
         $atelier = $this->chooseAtelierFor($participant);
 
         if (! $atelier) {
+            $this->placeInAtelierQuarantine(
+                $participant,
+                'Aucun atelier disponible pour l\'âge ou la configuration actuelle.'
+            );
+
             return [
                 'success' => false,
-                'message' => 'Aucun atelier disponible pour l\'âge ou la configuration actuelle.',
+                'message' => 'Participant placé en quarantaine atelier en attente de réaffectation.',
+                'quarantined' => true,
             ];
         }
 
-        $participant->update(['atelier_id' => $atelier->id]);
+        $participant->update([
+            'atelier_id' => $atelier->id,
+            'atelier_quarantine' => false,
+            'atelier_quarantine_at' => null,
+        ]);
 
         return [
             'success' => true,
             'message' => sprintf('Atelier n°%s affecté automatiquement.', $atelier->numero),
+            'quarantined' => false,
         ];
+    }
+
+    /**
+     * Met le participant en quarantaine atelier (inscription non bloquée).
+     *
+     * @param RetreatParticipant $participant Participant
+     * @param string|null $reason Motif affiché aux super_admin
+     * @return void
+     */
+    public function placeInAtelierQuarantine(RetreatParticipant $participant, ?string $reason = null): void
+    {
+        $participant->refresh();
+
+        $wasQuarantined = (bool) $participant->atelier_quarantine;
+
+        $participant->update([
+            'atelier_id' => null,
+            'atelier_quarantine' => true,
+            'atelier_quarantine_at' => now(),
+        ]);
+
+        if (! $wasQuarantined) {
+            $this->quarantineNotifier->notifySuperAdminsNewQuarantine($participant, $reason);
+        }
+    }
+
+    /**
+     * Tente de réaffecter un participant à un atelier compatible.
+     *
+     * @param RetreatParticipant $participant Participant
+     * @param bool $releaseFromIneligibleAtelier Retirer d'un atelier hors tranche avant réaffectation
+     * @return array{success: bool, message: string, quarantined: bool, atelier_numero: int|null}
+     */
+    public function reassignParticipantAtelier(
+        RetreatParticipant $participant,
+        bool $releaseFromIneligibleAtelier = true,
+    ): array {
+        $participant->refresh();
+
+        if ($releaseFromIneligibleAtelier && filled($participant->atelier_id)) {
+            $currentAtelier = RetreatAtelier::query()->find($participant->atelier_id);
+
+            if ($currentAtelier && ! $this->isParticipantEligibleForAtelier($participant, $currentAtelier)) {
+                $participant->update(['atelier_id' => null]);
+                $participant->refresh();
+            }
+        }
+
+        $atelier = $this->chooseAtelierFor($participant);
+
+        if ($atelier) {
+            $participant->update([
+                'atelier_id' => $atelier->id,
+                'atelier_quarantine' => false,
+                'atelier_quarantine_at' => null,
+            ]);
+
+            return [
+                'success' => true,
+                'message' => sprintf('Atelier n°%s affecté.', $atelier->numero),
+                'quarantined' => false,
+                'atelier_numero' => (int) $atelier->numero,
+            ];
+        }
+
+        $this->placeInAtelierQuarantine(
+            $participant,
+            'Réaffectation automatique impossible : aucun atelier compatible.'
+        );
+
+        return [
+            'success' => false,
+            'message' => 'Aucun atelier compatible — participant maintenu en quarantaine.',
+            'quarantined' => true,
+            'atelier_numero' => null,
+        ];
+    }
+
+    /**
+     * Réaffecte les participants hors tranche d'un atelier donné.
+     *
+     * @param RetreatAtelier $atelier Atelier source
+     * @return array{reassigned: int, quarantined: int, skipped: int}
+     */
+    public function reassignMismatchedAtelierParticipants(RetreatAtelier $atelier): array
+    {
+        $stats = [
+            'reassigned' => 0,
+            'quarantined' => 0,
+            'skipped' => 0,
+        ];
+
+        $atelier->loadMissing('participants');
+
+        foreach ($atelier->participants as $participant) {
+            if ($this->isParticipantEligibleForAtelier($participant, $atelier)) {
+                $stats['skipped']++;
+
+                continue;
+            }
+
+            $result = $this->reassignParticipantAtelier($participant);
+
+            if ($result['success']) {
+                $stats['reassigned']++;
+            } else {
+                $stats['quarantined']++;
+            }
+        }
+
+        return $stats;
+    }
+
+    /**
+     * Tente de réaffecter tous les participants en quarantaine atelier.
+     *
+     * @param int|null $eventId Filtrer par événement
+     * @return array{reassigned: int, quarantined: int, skipped: int}
+     */
+    public function reassignAllQuarantinedParticipants(?int $eventId = null): array
+    {
+        $stats = [
+            'reassigned' => 0,
+            'quarantined' => 0,
+            'skipped' => 0,
+        ];
+
+        $query = RetreatParticipant::query()->where('atelier_quarantine', true);
+
+        if ($eventId !== null) {
+            $query->where('event_id', $eventId);
+        }
+
+        foreach ($query->get() as $participant) {
+            $result = $this->reassignParticipantAtelier($participant, true);
+
+            if ($result['success']) {
+                $stats['reassigned']++;
+            } else {
+                $stats['quarantined']++;
+            }
+        }
+
+        return $stats;
+    }
+
+    /**
+     * Compte les participants d'un atelier dont l'âge ne correspond pas à la tranche.
+     *
+     * @param RetreatAtelier $atelier Atelier
+     * @return int Nombre de participants hors tranche
+     */
+    public function countMismatchedParticipantsForAtelier(RetreatAtelier $atelier): int
+    {
+        $atelier->loadMissing('participants');
+
+        return $atelier->participants
+            ->filter(fn (RetreatParticipant $participant): bool => ! $this->isParticipantEligibleForAtelier($participant, $atelier))
+            ->count();
     }
 
     /**
@@ -206,41 +382,82 @@ class RetreatPlacementAssignmentService
      */
     public function chooseAtelierFor(RetreatParticipant $participant): ?RetreatAtelier
     {
-        $age = (int) $participant->age;
         $eventId = $participant->event_id;
-
         $all = $this->loadAtelierPool(null, $eventId);
+
         if ($all->isEmpty()) {
             return null;
         }
 
-        $eligible = $all->filter(fn (RetreatAtelier $atelier): bool => $this->matchesAtelierAgeRange($atelier, $age));
+        if (! $this->shouldEnforceAtelierAgeRange($participant)) {
+            return $this->chooseBalancedAtelierFromPool($all, $participant);
+        }
 
-        $withExplicitRange = $eligible->filter(fn (RetreatAtelier $atelier): bool => $this->hasAgeRangeDefined($atelier));
+        $pool = $this->eligibleAteliersForAge($all, (int) $participant->age);
 
-        if ($withExplicitRange->isNotEmpty()) {
-            $pool = $withExplicitRange;
-        } elseif ($eligible->isNotEmpty()) {
-            $pool = $eligible;
-        } else {
-            $preferredNumbers = $this->atelierNumbersForAge($age);
-            $pool = $all->filter(fn (RetreatAtelier $atelier): bool => in_array((int) $atelier->numero, $preferredNumbers, true));
+        if ($pool->isEmpty()) {
+            return null;
+        }
 
-            if ($pool->isEmpty()) {
-                $pool = $all;
+        return $this->chooseBalancedAtelierFromPool($pool, $participant);
+    }
+
+    /**
+     * Indique si le participant peut être affecté à l'atelier (tranche d'âge ou numéros legacy).
+     *
+     * @param RetreatParticipant $participant Participant
+     * @param RetreatAtelier $atelier Atelier cible
+     * @return bool Vrai si l'affectation est autorisée
+     */
+    public function isParticipantEligibleForAtelier(RetreatParticipant $participant, RetreatAtelier $atelier): bool
+    {
+        if (! $this->shouldEnforceAtelierAgeRange($participant)) {
+            return true;
+        }
+
+        return $this->atelierMatchesParticipantAge($atelier, (int) $participant->age);
+    }
+
+    /**
+     * Libellé lisible de la tranche d'âge configurée sur l'atelier.
+     *
+     * @param RetreatAtelier $atelier Atelier
+     * @return string Ex. « 16 – 19 ans » ou « non définie »
+     */
+    public function describeAtelierAgeRange(RetreatAtelier $atelier): string
+    {
+        if ($this->hasAgeRangeDefined($atelier)) {
+            $min = filled($atelier->age_min) ? (int) $atelier->age_min : null;
+            $max = filled($atelier->age_max) ? (int) $atelier->age_max : null;
+
+            return match (true) {
+                $min !== null && $max !== null => sprintf('%d – %d ans', $min, $max),
+                $min !== null => sprintf('à partir de %d ans', $min),
+                $max !== null => sprintf('jusqu\'à %d ans', $max),
+                default => 'non définie',
+            };
+        }
+
+        return 'selon numéro d\'atelier (modèle legacy)';
+    }
+
+    /**
+     * Les rôles encadrement (ouvrier, responsable…) ne sont pas filtrés par tranche d'âge.
+     *
+     * @param RetreatParticipant $participant Participant
+     * @return bool Vrai si la tranche d'âge doit être appliquée
+     */
+    public function shouldEnforceAtelierAgeRange(RetreatParticipant $participant): bool
+    {
+        $role = Str::lower(trim((string) $participant->role_participant));
+
+        foreach (['ouvrier', 'worker', 'encadreur', 'staff', 'responsable', 'volontaire'] as $exemptRole) {
+            if (str_contains($role, $exemptRole)) {
+                return false;
             }
         }
 
-        $participantSexe = $this->normalizeSexe($participant->sexe);
-        $participantBand = $this->ageBand($age);
-
-        return $pool
-            ->sortBy(fn (RetreatAtelier $atelier): float => $this->atelierImbalanceScore(
-                $atelier,
-                $participantSexe,
-                $participantBand
-            ))
-            ->first();
+        return true;
     }
 
     /**
@@ -313,6 +530,53 @@ class RetreatPlacementAssignmentService
         }
 
         return true;
+    }
+
+    /**
+     * @param RetreatAtelier $atelier Atelier
+     * @param int $age Âge du participant
+     * @return bool Vrai si l'atelier accepte cet âge
+     */
+    public function atelierMatchesParticipantAge(RetreatAtelier $atelier, int $age): bool
+    {
+        if ($this->hasAgeRangeDefined($atelier)) {
+            return $this->matchesAtelierAgeRange($atelier, $age);
+        }
+
+        return in_array((int) $atelier->numero, $this->atelierNumbersForAge($age), true);
+    }
+
+    /**
+     * @param Collection<int, RetreatAtelier> $all Ateliers actifs
+     * @param int $age Âge du participant
+     * @return Collection<int, RetreatAtelier> Ateliers éligibles (peut être vide)
+     */
+    private function eligibleAteliersForAge(Collection $all, int $age): Collection
+    {
+        return $all->filter(fn (RetreatAtelier $atelier): bool => $this->atelierMatchesParticipantAge($atelier, $age));
+    }
+
+    /**
+     * @param Collection<int, RetreatAtelier> $pool Ateliers candidats
+     * @param RetreatParticipant $participant Participant à placer
+     * @return RetreatAtelier|null Atelier le plus équilibré
+     */
+    private function chooseBalancedAtelierFromPool(Collection $pool, RetreatParticipant $participant): ?RetreatAtelier
+    {
+        if ($pool->isEmpty()) {
+            return null;
+        }
+
+        $participantSexe = $this->normalizeSexe($participant->sexe);
+        $participantBand = $this->ageBand((int) $participant->age);
+
+        return $pool
+            ->sortBy(fn (RetreatAtelier $atelier): float => $this->atelierImbalanceScore(
+                $atelier,
+                $participantSexe,
+                $participantBand
+            ))
+            ->first();
     }
 
     /**

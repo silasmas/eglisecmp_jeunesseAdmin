@@ -36,13 +36,26 @@ Route::get('/', function () {
         ->orderByDesc('end_at')
         ->first();
 
-    $portalDonEvent = $portalRetreatEvent ?? $portalPublicClosed;
+    $portalDonEvent = ChurchEvent::query()
+        ->where('type', 'retraite')
+        ->orderByDesc('is_active')
+        ->orderByDesc('start_at')
+        ->orderByDesc('id')
+        ->first();
+
+    $portalInactiveEvent = ChurchEvent::query()
+        ->where('type', 'retraite')
+        ->where('is_active', false)
+        ->orderByDesc('start_at')
+        ->orderByDesc('id')
+        ->first();
 
     return view('welcome', [
         'portalRetreatEvent' => $portalRetreatEvent,
         'portalProgrammeLocked' => $portalProgrammeLocked,
         'portalPublicClosed' => $portalPublicClosed,
         'portalDonEvent' => $portalDonEvent,
+        'portalInactiveEvent' => $portalInactiveEvent,
     ]);
 });
 

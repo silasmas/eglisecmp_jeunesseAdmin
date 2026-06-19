@@ -3,10 +3,14 @@
 namespace App\Filament\Resources\RetreatAteliers\Tables;
 
 use App\Filament\Tables\Columns\UserStackedColumn;
+use App\Services\RetreatAtelierQuarantineNotifier;
+use App\Services\RetreatPlacementAssignmentService;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Notifications\Notification;
 use Filament\Support\Enums\Alignment;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\IconColumn;
@@ -75,6 +79,32 @@ class RetreatAteliersTable
             ])
             ->recordActions([
                 ViewAction::make()->modal()->modalWidth(Width::FiveExtraLarge)->modalAlignment(Alignment::Center),
+                Action::make('reassignMismatched')
+                    ->label('Réaffecter hors tranche')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('warning')
+                    ->visible(fn ($record): bool => app(RetreatPlacementAssignmentService::class)
+                        ->countMismatchedParticipantsForAtelier($record) > 0)
+                    ->requiresConfirmation()
+                    ->action(function ($record): void {
+                        $placement = app(RetreatPlacementAssignmentService::class);
+                        $stats = $placement->reassignMismatchedAtelierParticipants($record);
+
+                        app(RetreatAtelierQuarantineNotifier::class)->notifySuperAdminsReassignmentSummary(
+                            $stats,
+                            sprintf('Atelier n°%s', $record->numero),
+                        );
+
+                        Notification::make()
+                            ->title('Réaffectation terminée')
+                            ->body(sprintf(
+                                '%d réaffecté(s), %d en quarantaine.',
+                                $stats['reassigned'],
+                                $stats['quarantined'],
+                            ))
+                            ->success()
+                            ->send();
+                    }),
                 EditAction::make()->modal()->modalWidth(Width::SevenExtraLarge)->modalAlignment(Alignment::Center),
             ])
             ->toolbarActions([

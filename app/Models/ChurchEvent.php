@@ -122,9 +122,22 @@ class ChurchEvent extends Model
      */
     public function scopeAvailableForDonations(Builder $query): Builder
     {
-        return $query
-            ->where('type', 'retraite')
-            ->where('is_active', true);
+        return $query->where('type', 'retraite');
+    }
+
+    /**
+     * Retraite utilisée pour le portail don (active en priorité, sinon dernière retraite).
+     *
+     * @return ChurchEvent|null
+     */
+    public static function resolveForDonPortal(): ?self
+    {
+        return self::query()
+            ->availableForDonations()
+            ->orderByDesc('is_active')
+            ->orderByDesc('start_at')
+            ->orderByDesc('id')
+            ->first();
     }
 
     /**

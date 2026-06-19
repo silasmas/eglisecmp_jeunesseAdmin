@@ -9,6 +9,7 @@ use App\Models\RetreatAtelier;
 use App\Models\RetreatChambre;
 use App\Models\User;
 use App\Notifications\ParticipantAssignmentMailNotification;
+use App\Services\RetreatAtelierQuarantineNotifier;
 use App\Services\PanelNotificationDispatcher;
 use App\Services\RetreatPlacementAssignmentService;
 use App\Support\AvatarFallback;
@@ -34,6 +35,40 @@ class ListRetreatParticipants extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('reassignAtelierQuarantine')
+                ->label('Réaffecter quarantaine atelier')
+                ->icon('heroicon-o-arrow-path')
+                ->color('warning')
+                ->visible(fn (): bool => RetreatParticipant::query()->where('atelier_quarantine', true)->exists())
+                ->requiresConfirmation()
+                ->modalHeading('Réaffecter la quarantaine atelier')
+                ->modalDescription(function (): string {
+                    $count = RetreatParticipant::query()->where('atelier_quarantine', true)->count();
+
+                    return sprintf(
+                        '%d participant(s) en attente d\'affectation atelier. Relancer la répartition automatique ?',
+                        $count,
+                    );
+                })
+                ->action(function (): void {
+                    $placement = app(RetreatPlacementAssignmentService::class);
+                    $stats = $placement->reassignAllQuarantinedParticipants();
+
+                    app(RetreatAtelierQuarantineNotifier::class)->notifySuperAdminsReassignmentSummary(
+                        $stats,
+                        'Quarantaine atelier (participants)',
+                    );
+
+                    FilamentNotification::make()
+                        ->title('Réaffectation terminée')
+                        ->body(sprintf(
+                            '%d réaffecté(s), %d toujours en quarantaine.',
+                            $stats['reassigned'],
+                            $stats['quarantined'],
+                        ))
+                        ->success()
+                        ->send();
+                }),
             Action::make('affectations')
                 ->label('Affectations')
                 ->icon('heroicon-o-arrows-right-left')
@@ -181,6 +216,10 @@ class ListRetreatParticipants extends ListRecords
                 ->modifyQueryUsing(fn (Builder $query): Builder => $query
                     ->where('paiement_valide', true)
                     ->where('badge_received', false)),
+            'atelier_quarantine' => Tab::make('Quarantaine atelier')
+                ->badge(fn (): int => RetreatParticipant::query()->where('atelier_quarantine', true)->count())
+                ->badgeColor('warning')
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('atelier_quarantine', true)),
         ];
     }
 
@@ -194,7 +233,10 @@ class ListRetreatParticipants extends ListRecords
             'assign_chambre' => app(RetreatPlacementAssignmentService::class)
                 ->scopeEligibleForChambreAssignment($query->whereNull('chambre_id')),
             'remove_chambre' => $query->whereNotNull('chambre_id'),
-            'integrate_atelier' => $query->whereNull('atelier_id'),
+            'integrate_atelier' => $query->where(function (Builder $inner): void {
+                $inner->whereNull('atelier_id')
+                    ->orWhere('atelier_quarantine', true);
+            }),
             'remove_atelier' => $query->whereNotNull('atelier_id'),
             default => $query,
         };
@@ -284,9 +326,7 @@ class ListRetreatParticipants extends ListRecords
 
     protected function participantMatchesAtelier(RetreatParticipant $participant, RetreatAtelier $atelier): bool
     {
-        $numbers = app(RetreatPlacementAssignmentService::class)->atelierNumbersForAge((int) $participant->age);
-
-        return in_array((int) $atelier->numero, $numbers, true);
+        return app(RetreatPlacementAssignmentService::class)->isParticipantEligibleForAtelier($participant, $atelier);
     }
 
     protected function assignmentOptionLabel(string $title, ?string $subtitle, ?User $responsable): string

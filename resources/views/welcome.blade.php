@@ -844,6 +844,8 @@
                             <p>
                                 @if($portalPublicClosed ?? null)
                                     « {{ $portalPublicClosed->name }} » est clôturée — les inscriptions en ligne ne sont plus disponibles.
+                                @elseif($portalInactiveEvent ?? null)
+                                    « {{ $portalInactiveEvent->name }} » — événement désactivé, les inscriptions sont suspendues.
                                 @else
                                     Aucune retraite ouverte aux inscriptions pour le moment.
                                 @endif
@@ -853,16 +855,7 @@
                     </div>
                 @endif
 
-                @if($portalPublicClosed ?? null)
-                    <div class="option option--disabled" role="group" aria-disabled="true">
-                        <span class="option-index">2</span>
-                        <span>
-                            <h2>Vérifier une inscription</h2>
-                            <p>« {{ $portalPublicClosed->name }} » est clôturée — la vérification ouvrier n'est plus disponible sur le portail public.</p>
-                        </span>
-                        <span class="option-action">Fermé <span aria-hidden="true">—</span></span>
-                    </div>
-                @else
+                @if($portalRetreatEvent)
                     <a class="option portal-option-anchor" href="#verification-inscription">
                         <span class="option-index">2</span>
                         <span>
@@ -871,6 +864,23 @@
                         </span>
                         <span class="option-action">Accéder <span aria-hidden="true">→</span></span>
                     </a>
+                @else
+                    <div class="option option--disabled" role="group" aria-disabled="true">
+                        <span class="option-index">2</span>
+                        <span>
+                            <h2>Vérifier une inscription</h2>
+                            <p>
+                                @if($portalPublicClosed ?? null)
+                                    « {{ $portalPublicClosed->name }} » est clôturée — la vérification ouvrier n'est plus disponible sur le portail public.
+                                @elseif($portalInactiveEvent ?? null)
+                                    « {{ $portalInactiveEvent->name }} » — événement désactivé, la vérification ouvrier n'est plus disponible.
+                                @else
+                                    Aucune retraite active pour la vérification ouvrier.
+                                @endif
+                            </p>
+                        </span>
+                        <span class="option-action">Fermé <span aria-hidden="true">—</span></span>
+                    </div>
                 @endif
 
                 @if($portalProgrammeLocked)
@@ -882,6 +892,8 @@
                             <p>
                                 @if($portalPublicClosed ?? null)
                                     « {{ $portalPublicClosed->name }} » est clôturée — le programme n'est plus accessible en ligne.
+                                @elseif($portalInactiveEvent ?? null)
+                                    « {{ $portalInactiveEvent->name }} » — événement désactivé, le programme n'est plus accessible.
                                 @elseif($portalRetreatEvent?->start_at)
                                     Ouverture le {{ $portalRetreatEvent->start_at->format('d/m/Y') }} (heure locale).
                                 @else
@@ -910,6 +922,8 @@
                             <p>
                                 @if($portalPublicClosed ?? null)
                                     Soutenir « {{ $portalPublicClosed->name }} » par un don en nature ou en espèces (bon fonctionnement).
+                                @elseif($portalDonEvent && ! $portalDonEvent->is_active)
+                                    Soutenir « {{ $portalDonEvent->name }} » — inscriptions suspendues, les dons restent possibles.
                                 @else
                                     Soutenir la retraite par un don en nature ou en espèces (sponsoriser des jeunes).
                                 @endif
@@ -928,16 +942,7 @@
                     </div>
                 @endif
 
-                @if($portalPublicClosed ?? null)
-                    <div class="option option--disabled" role="group" aria-disabled="true">
-                        <span class="option-index">5</span>
-                        <span>
-                            <h2>Assistant Retraite</h2>
-                            <p>« {{ $portalPublicClosed->name }} » est clôturée — l'assistant n'est plus disponible.</p>
-                        </span>
-                        <span class="option-action">Fermé <span aria-hidden="true">—</span></span>
-                    </div>
-                @else
+                @if($portalRetreatEvent)
                     <a class="option portal-option-anchor" href="#assistant-retraite">
                         <span class="option-index">5</span>
                         <span>
@@ -946,6 +951,23 @@
                         </span>
                         <span class="option-action">Discuter <span aria-hidden="true">→</span></span>
                     </a>
+                @else
+                    <div class="option option--disabled" role="group" aria-disabled="true">
+                        <span class="option-index">5</span>
+                        <span>
+                            <h2>Assistant Retraite</h2>
+                            <p>
+                                @if($portalPublicClosed ?? null)
+                                    « {{ $portalPublicClosed->name }} » est clôturée — l'assistant n'est plus disponible.
+                                @elseif($portalInactiveEvent ?? null)
+                                    « {{ $portalInactiveEvent->name }} » — événement désactivé, l'assistant n'est plus disponible.
+                                @else
+                                    L'assistant n'est pas disponible tant qu'aucune retraite active n'est configurée.
+                                @endif
+                            </p>
+                        </span>
+                        <span class="option-action">Fermé <span aria-hidden="true">—</span></span>
+                    </div>
                 @endif
             </section>
 

@@ -41,6 +41,8 @@ class RetreatParticipant extends Model implements HasAvatar, HasName
             'registration_otp_expires_at' => 'datetime',
             'registration_otp_verified_at' => 'datetime',
             'inscription_funnel_at' => 'datetime',
+            'atelier_quarantine' => 'boolean',
+            'atelier_quarantine_at' => 'datetime',
         ];
     }
 
