@@ -853,30 +853,43 @@
                     </div>
                 @endif
 
-                <a class="option portal-option-anchor" href="#verification-inscription">
-                    <span class="option-index">2</span>
-                    <span>
-                        <h2>Vérifier une inscription</h2>
-                        <p>Accès réservé aux ouvriers avec code OTP envoyé par e-mail.</p>
-                    </span>
-                    <span class="option-action">Accéder <span aria-hidden="true">→</span></span>
-                </a>
+                @if($portalPublicClosed ?? null)
+                    <div class="option option--disabled" role="group" aria-disabled="true">
+                        <span class="option-index">2</span>
+                        <span>
+                            <h2>Vérifier une inscription</h2>
+                            <p>« {{ $portalPublicClosed->name }} » est clôturée — la vérification ouvrier n'est plus disponible sur le portail public.</p>
+                        </span>
+                        <span class="option-action">Fermé <span aria-hidden="true">—</span></span>
+                    </div>
+                @else
+                    <a class="option portal-option-anchor" href="#verification-inscription">
+                        <span class="option-index">2</span>
+                        <span>
+                            <h2>Vérifier une inscription</h2>
+                            <p>Accès réservé aux ouvriers avec code OTP envoyé par e-mail.</p>
+                        </span>
+                        <span class="option-action">Accéder <span aria-hidden="true">→</span></span>
+                    </a>
+                @endif
 
                 @if($portalProgrammeLocked)
                     <div class="option option--disabled" role="group" aria-disabled="true"
-                         title="{{ $portalRetreatEvent?->start_at ? 'Disponible à partir du '.$portalRetreatEvent->start_at->format('d/m/Y') : 'Bientôt disponible' }}">
+                         title="{{ $portalRetreatEvent?->start_at ? 'Disponible à partir du '.$portalRetreatEvent->start_at->format('d/m/Y') : ($portalPublicClosed ? 'Retraite clôturée' : 'Bientôt disponible') }}">
                         <span class="option-index">3</span>
                         <span>
                             <h2>Programme & consignes</h2>
                             <p>
-                                @if($portalRetreatEvent?->start_at)
+                                @if($portalPublicClosed ?? null)
+                                    « {{ $portalPublicClosed->name }} » est clôturée — le programme n'est plus accessible en ligne.
+                                @elseif($portalRetreatEvent?->start_at)
                                     Ouverture le {{ $portalRetreatEvent->start_at->format('d/m/Y') }} (heure locale).
                                 @else
                                     Les informations seront publiées prochainement.
                                 @endif
                             </p>
                         </span>
-                        <span class="option-action">Bientôt <span aria-hidden="true">—</span></span>
+                        <span class="option-action">{{ ($portalPublicClosed ?? null) ? 'Fermé' : 'Bientôt' }} <span aria-hidden="true">—</span></span>
                     </div>
                 @else
                     <a class="option portal-option-anchor" href="#programme-consignes">
@@ -889,12 +902,18 @@
                     </a>
                 @endif
 
-                @if($portalRetreatEvent)
+                @if($portalDonEvent ?? null)
                     <a class="option" href="{{ route('retraite.don') }}">
                         <span class="option-index">4</span>
                         <span>
                             <h2>Faire un don</h2>
-                            <p>Soutenir la retraite par un don en nature ou en espèces (sponsoriser des jeunes).</p>
+                            <p>
+                                @if($portalPublicClosed ?? null)
+                                    Soutenir « {{ $portalPublicClosed->name }} » par un don en nature ou en espèces (bon fonctionnement).
+                                @else
+                                    Soutenir la retraite par un don en nature ou en espèces (sponsoriser des jeunes).
+                                @endif
+                            </p>
                         </span>
                         <span class="option-action">Donner <span aria-hidden="true">→</span></span>
                     </a>
@@ -903,20 +922,31 @@
                         <span class="option-index">4</span>
                         <span>
                             <h2>Faire un don</h2>
-                            <p>Les dons en ligne ne sont pas disponibles tant qu'aucune retraite active n'est ouverte.</p>
+                            <p>Les dons en ligne ne sont pas disponibles tant qu'aucune retraite active n'est configurée.</p>
                         </span>
                         <span class="option-action">Fermé <span aria-hidden="true">—</span></span>
                     </div>
                 @endif
 
-                <a class="option portal-option-anchor" href="#assistant-retraite">
-                    <span class="option-index">5</span>
-                    <span>
-                        <h2>Assistant Retraite</h2>
-                        <p>Poser une question rapide sur l'inscription, le paiement ou les consignes.</p>
-                    </span>
-                    <span class="option-action">Discuter <span aria-hidden="true">→</span></span>
-                </a>
+                @if($portalPublicClosed ?? null)
+                    <div class="option option--disabled" role="group" aria-disabled="true">
+                        <span class="option-index">5</span>
+                        <span>
+                            <h2>Assistant Retraite</h2>
+                            <p>« {{ $portalPublicClosed->name }} » est clôturée — l'assistant n'est plus disponible.</p>
+                        </span>
+                        <span class="option-action">Fermé <span aria-hidden="true">—</span></span>
+                    </div>
+                @else
+                    <a class="option portal-option-anchor" href="#assistant-retraite">
+                        <span class="option-index">5</span>
+                        <span>
+                            <h2>Assistant Retraite</h2>
+                            <p>Poser une question rapide sur l'inscription, le paiement ou les consignes.</p>
+                        </span>
+                        <span class="option-action">Discuter <span aria-hidden="true">→</span></span>
+                    </a>
+                @endif
             </section>
 
             <section id="verification-inscription" class="panel hidden portal-panel" aria-labelledby="verify-title">

@@ -71,3 +71,23 @@
 .hidden {
   display: none !important;
 }
+
+.participation-inline-option.is-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: #f3eef0;
+  border-color: #e0d4da;
+}
+
+.participation-inline-option.is-disabled input {
+  pointer-events: none;
+}
+
+.sponsor-closed-hint {
+  margin-top: 0.65rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  background: #fff8e6;
+  color: #7a5c00;
+  line-height: 1.5;
+}

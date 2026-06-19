@@ -114,6 +114,36 @@ class ChurchEvent extends Model
             });
     }
 
+    /**
+     * Événements retraite actifs ouverts aux dons (y compris retraite clôturée côté public).
+     *
+     * @param Builder<ChurchEvent> $query
+     * @return Builder<ChurchEvent>
+     */
+    public function scopeAvailableForDonations(Builder $query): Builder
+    {
+        return $query
+            ->where('type', 'retraite')
+            ->where('is_active', true);
+    }
+
+    /**
+     * Message affiché lorsque la prise en charge jeunes est indisponible.
+     *
+     * @return string|null Null si la prise en charge reste possible
+     */
+    public function sponsorshipDonDisabledReason(): ?string
+    {
+        if (! $this->isPublicPortalClosed()) {
+            return null;
+        }
+
+        return sprintf(
+            'La prise en charge de jeunes n\'est plus disponible : la retraite « %s » est clôturée. Les inscriptions étant terminées, les codes parrainage ne peuvent plus être utilisés. Vous pouvez toujours faire un don pour le bon fonctionnement.',
+            $this->name
+        );
+    }
+
     protected $table = 'events_event';
 
     protected $fillable = [

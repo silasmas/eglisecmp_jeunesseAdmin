@@ -54,6 +54,9 @@ class RetreatVoluntaryDonationController extends Controller
                 'event_name' => $event->name,
                 'price_to_pay' => (float) ($event->price_to_pay ?? 0),
                 'currency' => (string) ($event->currency ?? 'USD'),
+                'is_publicly_closed' => $event->isPublicPortalClosed(),
+                'sponsorship_disabled' => $event->isPublicPortalClosed(),
+                'sponsorship_disabled_reason' => $event->sponsorshipDonDisabledReason(),
                 'flexpay_mobile_providers' => $this->formConfigService->resolvedMobileProvidersForEvent($event),
                 'card_payment' => [
                     'mode' => filled(config('retraite.card_external_form_url')) ? 'external' : 'flexpay_redirect',
@@ -117,6 +120,15 @@ class RetreatVoluntaryDonationController extends Controller
         $event = $this->resolveEvent($request);
         if (! $event) {
             return response()->json(['message' => 'Aucune retraite active.'], 422);
+        }
+
+        if (
+            $validated['cash_purpose'] === RetreatVoluntaryDonation::PURPOSE_SPONSOR_YOUTH
+            && $event->isPublicPortalClosed()
+        ) {
+            return response()->json([
+                'message' => $event->sponsorshipDonDisabledReason(),
+            ], 422);
         }
 
         try {
@@ -503,7 +515,7 @@ class RetreatVoluntaryDonationController extends Controller
     protected function resolveEvent(Request $request): ?ChurchEvent
     {
         $query = ChurchEvent::query()
-            ->openForPublicRegistration()
+            ->availableForDonations()
             ->with(['retreatDetail']);
 
         if ($request->filled('event_id')) {

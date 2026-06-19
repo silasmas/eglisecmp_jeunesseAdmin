@@ -36,10 +36,13 @@ Route::get('/', function () {
         ->orderByDesc('end_at')
         ->first();
 
+    $portalDonEvent = $portalRetreatEvent ?? $portalPublicClosed;
+
     return view('welcome', [
         'portalRetreatEvent' => $portalRetreatEvent,
         'portalProgrammeLocked' => $portalProgrammeLocked,
         'portalPublicClosed' => $portalPublicClosed,
+        'portalDonEvent' => $portalDonEvent,
     ]);
 });
 

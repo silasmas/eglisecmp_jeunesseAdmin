@@ -49,7 +49,7 @@ class ChurchEventForm
                         Toggle::make('is_publicly_closed')
                             ->label('Fermer l\'accès public (retraite clôturée)')
                             ->helperText(
-                                'À activer après la retraite : bloque inscription, don, billet, justificatif, QR et détails chambre/atelier côté site public. Les ouvriers peuvent encore consulter l\'historique.'
+                                'À activer après la retraite : ferme inscription, vérification, programme, assistant, billet et QR. Seul le menu « Faire un don » reste actif (sans prise en charge jeunes).'
                             )
                             ->default(false),
                     ])

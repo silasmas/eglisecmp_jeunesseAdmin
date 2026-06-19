@@ -77,6 +77,9 @@ class RetreatVoluntaryDonationService
         $currency = (string) ($event->currency ?? 'USD');
 
         if ($purpose === RetreatVoluntaryDonation::PURPOSE_SPONSOR_YOUTH) {
+            if ($event->isPublicPortalClosed()) {
+                throw new \InvalidArgumentException($event->sponsorshipDonDisabledReason() ?? 'Prise en charge jeunes indisponible.');
+            }
             $slots = max(1, (int) $data['youth_slots_count']);
             $capacityError = $this->capacityService->sponsorSlotsError($event, $slots);
             if ($capacityError !== null) {

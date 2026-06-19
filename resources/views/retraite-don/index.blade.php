@@ -4,7 +4,7 @@
 @section('meta_description', 'Faire un don en nature ou en espèces pour soutenir la Grande Retraite de la jeunesse CMP.')
 
 @push('styles')
-  <link rel="stylesheet" href="{{ asset('retraite-don/css/don.css') }}?v=4">
+  <link rel="stylesheet" href="{{ asset('retraite-don/css/don.css') }}?v=5">
 @endpush
 
 @section('content')
@@ -66,11 +66,12 @@
                     <input type="radio" name="cashPurpose" value="general" checked>
                     <span>Bon fonctionnement</span>
                   </label>
-                  <label class="participation-inline-option">
-                    <input type="radio" name="cashPurpose" value="sponsor_youth">
-                    <span>Sponsor jeunes</span>
+                  <label class="participation-inline-option" id="sponsorYouthOption">
+                    <input type="radio" name="cashPurpose" value="sponsor_youth" id="cashPurposeSponsorYouth">
+                    <span>Prise en charge jeunes</span>
                   </label>
                 </div>
+                <p id="sponsorClosedHint" class="field-hint sponsor-closed-hint hidden" role="note"></p>
               </div>
 
               <div class="field full" id="generalAmountField">
@@ -208,5 +209,5 @@
 @push('scripts')
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <meta name="retraite-don-api-base" content="{{ url('/api/v1/retreat/donations') }}">
-  <script src="{{ asset('retraite-don/js/don-form.js') }}?v=6"></script>
+  <script src="{{ asset('retraite-don/js/don-form.js') }}?v=7"></script>
 @endpush

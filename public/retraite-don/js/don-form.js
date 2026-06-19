@@ -64,6 +64,46 @@ function updateCapacityUi() {
   updateYouthTotal();
 }
 
+/**
+ * Désactive l'option « prise en charge jeunes » si la retraite est clôturée.
+ *
+ * @return {void}
+ */
+function applySponsorshipClosedState() {
+  const ctx = DonApp.context;
+  const option = document.getElementById('sponsorYouthOption');
+  const input = document.getElementById('cashPurposeSponsorYouth');
+  const hint = document.getElementById('sponsorClosedHint');
+  const generalRadio = document.querySelector('input[name="cashPurpose"][value="general"]');
+
+  if (!ctx || !ctx.sponsorship_disabled) {
+    option?.classList.remove('is-disabled');
+    if (input) {
+      input.disabled = false;
+    }
+    if (hint) {
+      hint.textContent = '';
+      hint.classList.add('hidden');
+    }
+    return;
+  }
+
+  option?.classList.add('is-disabled');
+  if (input) {
+    input.disabled = true;
+    if (input.checked && generalRadio) {
+      generalRadio.checked = true;
+    }
+  }
+  if (hint) {
+    hint.textContent =
+      ctx.sponsorship_disabled_reason ||
+      'La prise en charge de jeunes n\'est plus disponible pour cette retraite clôturée.';
+    hint.classList.remove('hidden');
+  }
+  toggleCashPurposeFields();
+}
+
 async function loadDonContext() {
   const res = await fetch(`${getDonApiBase()}/context`, {
     headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
@@ -82,6 +122,7 @@ async function loadDonContext() {
     unit.textContent = `${DonApp.context.price_to_pay} ${DonApp.context.currency}`;
   }
   updateCapacityUi();
+  applySponsorshipClosedState();
 }
 
 function updateYouthTotal() {
@@ -500,6 +541,14 @@ async function submitDonForm(e) {
     }
 
     payload.cash_purpose = getCashPurpose();
+    if (payload.cash_purpose === 'sponsor_youth' && DonApp.context?.sponsorship_disabled) {
+      retraiteNotifyToast(
+        DonApp.context.sponsorship_disabled_reason ||
+          'La prise en charge de jeunes n\'est plus disponible pour cette retraite clôturée.',
+        'warning'
+      );
+      return;
+    }
     if (payload.cash_purpose === 'general') {
       payload.amount = document.getElementById('cashAmount').value;
     } else {
