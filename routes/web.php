@@ -119,6 +119,7 @@ Route::prefix('verification-retraite')
         Route::get('attendance/blocks', 'attendanceBlocks')->name('attendance.blocks');
         Route::post('attendance/set', 'attendanceSet')->middleware('throttle:120,1')->name('attendance.set');
         Route::post('attendance/excuse', 'attendanceExcuse')->middleware('throttle:120,1')->name('attendance.excuse');
+        Route::post('attendance/report/submit', 'attendanceReportSubmit')->middleware('throttle:30,1')->name('attendance.report.submit');
         Route::post('public-lookup', 'publicLookup')->middleware('throttle:30,1')->name('public.lookup');
         Route::get('chatbot/context', 'chatbotContext')->name('chatbot.context');
     });

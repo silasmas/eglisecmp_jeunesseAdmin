@@ -1163,7 +1163,10 @@
             attendanceBlocks: @json(route('retraite.verification.attendance.blocks')),
             attendanceSet: @json(route('retraite.verification.attendance.set')),
             attendanceExcuse: @json(route('retraite.verification.attendance.excuse')),
+            attendanceReportSubmit: @json(route('retraite.verification.attendance.report.submit')),
         };
+
+        let attendanceBlocksCache = [];
 
         let canViewAtelierAttendance = false;
         let canManageAtelierAttendance = false;
@@ -1343,6 +1346,7 @@
         function renderAttendanceBlocks(blocks) {
             const container = document.getElementById('attendanceBlocks');
             const statusEl = document.getElementById('attendanceStatus');
+            attendanceBlocksCache = blocks || [];
             if (!blocks.length) {
                 container.innerHTML = '';
                 const emptyMessage = attendancePortalReadOnly
@@ -1354,47 +1358,142 @@
             setStatusMessage(statusEl, '', 'info');
             container.innerHTML = blocks.map((block) => renderAttendanceBlock(block)).join('');
             bindAttendanceActions(container);
+            bindReportActions(container);
+        }
+
+        function renderParticipantStatusCells(participant, block) {
+            return Object.entries(attendanceStatusLabels).map(([key, label]) => {
+                const active = participant.status === key ? 'is-active' : '';
+                const disabled = block.can_manage && canManageAtelierAttendance ? '' : 'disabled';
+                return `
+                    <td class="cmp-status-cell">
+                        <button type="button" class="cmp-status-check ${active}" style="--status-color: ${attendanceStatusColors[key]}"
+                            data-attendance-set="${participant.id}" data-status="${key}" ${disabled}>
+                            <span class="cmp-check-box">${participant.status === key ? '✓' : ''}</span>
+                            ${label}
+                        </button>
+                    </td>`;
+            }).join('');
+        }
+
+        function renderParticipantExcuseRow(participant, block) {
+            if (participant.status !== 'excused') {
+                return '';
+            }
+
+            return `
+                <tr class="cmp-excuse-row cmp-pointage-row" data-excuse-row="${participant.id}">
+                    <td colspan="6">
+                        <div class="cmp-excuse-field">
+                            <label class="cmp-excuse-label">Motif de l'excuse</label>
+                            <input type="text" class="cmp-excuse-input" data-excuse-note="${participant.id}"
+                                value="${escapeHtml(participant.excuse_note || '')}" placeholder="Indiquez la raison de l'absence excusée"
+                                ${block.can_manage && canManageAtelierAttendance ? '' : 'readonly'}>
+                        </div>
+                    </td>
+                </tr>`;
+        }
+
+        function renderParticipantRow(participant, block) {
+            const meta = participant.recorded_by
+                ? `<div class="cmp-pointage-meta">Par ${escapeHtml(participant.recorded_by)}${participant.recorded_at ? ' · ' + escapeHtml(participant.recorded_at) : ''}</div>`
+                : '';
+
+            return `
+                <tr class="cmp-pointage-row" data-participant-row="${participant.id}">
+                    <td style="text-align:center"><span class="cmp-pointage-num">${participant.number}</span></td>
+                    <td>
+                        <div class="cmp-pointage-name">${escapeHtml(participant.full_name)}</div>
+                        ${meta}
+                    </td>
+                    ${renderParticipantStatusCells(participant, block)}
+                </tr>
+                ${renderParticipantExcuseRow(participant, block)}`;
+        }
+
+        function renderMultiSelectOptions(options, selectedValues) {
+            const selected = new Set((selectedValues || []).map(String));
+            return (options || []).map((option) => {
+                const value = String(option.id ?? option.key);
+                const label = option.name ?? option.label;
+                const isSelected = selected.has(value) ? 'selected' : '';
+                return `<option value="${escapeHtml(value)}" ${isSelected}>${escapeHtml(label)}</option>`;
+            }).join('');
+        }
+
+        function renderAttendanceReportSection(block) {
+            const report = block.report || {};
+            const canEditReport = block.can_manage && canManageAtelierAttendance && !report.locked;
+
+            if (!block.can_manage && !report.sujet && !report.locked) {
+                return '';
+            }
+
+            const lockedBanner = report.locked ? `
+                <div class="cmp-report-locked">
+                    <span>🔒</span>
+                    <span>Compte-rendu soumis${report.submitted_at ? ' le ' + escapeHtml(report.submitted_at) : ''}${report.submitted_by ? ' par ' + escapeHtml(report.submitted_by) : ''} — modification impossible.</span>
+                </div>` : '';
+
+            const field = (id, label, color, content) => `
+                <div class="cmp-report-field cmp-report-field--full" style="--field-color: ${color}">
+                    <label class="cmp-report-label" for="${id}">${label}</label>
+                    ${content}
+                </div>`;
+
+            const textInput = (name, value, placeholder, rows = null) => {
+                if (!canEditReport) {
+                    return `<div class="cmp-report-input" readonly>${escapeHtml(value || '—')}</div>`;
+                }
+                if (rows) {
+                    return `<textarea class="cmp-report-input" data-report-field="${name}" rows="${rows}" placeholder="${escapeHtml(placeholder)}">${escapeHtml(value || '')}</textarea>`;
+                }
+                return `<input type="text" class="cmp-report-input" data-report-field="${name}" value="${escapeHtml(value || '')}" placeholder="${escapeHtml(placeholder)}">`;
+            };
+
+            const multiSelect = (name, options, selected, minHeight) => {
+                if (!canEditReport) {
+                    const labels = (options || [])
+                        .filter((option) => (selected || []).map(String).includes(String(option.id ?? option.key)))
+                        .map((option) => option.name ?? option.label)
+                        .join(', ');
+                    return `<div class="cmp-report-input" readonly>${escapeHtml(labels || '—')}</div>`;
+                }
+                return `<select class="cmp-report-input" data-report-field="${name}" multiple style="min-height: ${minHeight}">${renderMultiSelectOptions(options, selected)}</select>`;
+            };
+
+            return `
+                <div class="cmp-report-section" data-report-section="${block.atelier_id}">
+                    <h4 class="mb-3 text-sm font-bold" style="margin:0 0 .75rem">Compte-rendu de l'activité</h4>
+                    ${lockedBanner}
+                    <div class="cmp-report-grid">
+                        ${field(`report-sujet-${block.atelier_id}`, 'Sujet', '#7b1d3e', textInput('sujet', report.sujet, 'Sujet de l\'activité dans cet atelier'))}
+                        ${field(`report-bib-${block.atelier_id}`, 'Texte biblique', '#2563eb', textInput('texte_biblique', report.texte_biblique, 'Références et passages', 2))}
+                        <div class="cmp-report-field" style="--field-color: #7c3aed">
+                            <label class="cmp-report-label">Conducteur(s) — ouvriers</label>
+                            ${multiSelect('conducteur_user_ids', block.worker_options, report.conducteur_user_ids, '5.5rem')}
+                        </div>
+                        <div class="cmp-report-field" style="--field-color: #ea580c">
+                            <label class="cmp-report-label">Conducteur(s) — participants</label>
+                            ${multiSelect('conducteur_participant_ids', block.participant_options, report.conducteur_participant_ids, '5.5rem')}
+                        </div>
+                        ${field(`report-debat-${block.atelier_id}`, 'Conducteur(s) du débat', '#0891b2', multiSelect('conducteur_debat_keys', block.debat_options, report.conducteur_debat_keys, '5.5rem'))}
+                        ${field(`report-resume-${block.atelier_id}`, 'Résumé', '#16a34a', textInput('resume', report.resume, 'Résumé de l\'activité de l\'atelier', 3))}
+                    </div>
+                    ${canEditReport ? `
+                        <div class="cmp-report-actions">
+                            <button type="button" class="button" data-report-submit="${block.atelier_id}">Soumettre le compte-rendu</button>
+                        </div>` : ''}
+                </div>`;
         }
 
         function renderAttendanceBlock(block) {
-            const rows = (block.participants || []).map((participant) => {
-                const statusCells = Object.entries(attendanceStatusLabels).map(([key, label]) => {
-                    const active = participant.status === key ? 'is-active' : '';
-                    const disabled = block.can_manage && canManageAtelierAttendance ? '' : 'disabled';
-                    return `
-                        <td class="cmp-status-cell">
-                            <button type="button" class="cmp-status-check ${active}" style="--status-color: ${attendanceStatusColors[key]}"
-                                data-attendance-set="${participant.id}" data-status="${key}" ${disabled}>
-                                <span class="cmp-check-box">${participant.status === key ? '✓' : ''}</span>
-                                ${label}
-                            </button>
-                        </td>`;
-                }).join('');
-                const excuseRow = participant.status === 'excused' ? `
-                    <tr class="cmp-excuse-row cmp-pointage-row">
-                        <td colspan="6">
-                            <div class="cmp-excuse-field">
-                                <label class="cmp-excuse-label">Motif de l'excuse</label>
-                                <input type="text" class="cmp-excuse-input" data-excuse-note="${participant.id}"
-                                    value="${escapeHtml(participant.excuse_note || '')}" ${block.can_manage && canManageAtelierAttendance ? '' : 'readonly'}>
-                            </div>
-                        </td>
-                    </tr>` : '';
-                return `
-                    <tr class="cmp-pointage-row">
-                        <td style="text-align:center"><span class="cmp-pointage-num">${participant.number}</span></td>
-                        <td>
-                            <div class="cmp-pointage-name">${escapeHtml(participant.full_name)}</div>
-                            ${participant.recorded_by ? `<div class="cmp-pointage-meta">Par ${escapeHtml(participant.recorded_by)}${participant.recorded_at ? ' · ' + escapeHtml(participant.recorded_at) : ''}</div>` : ''}
-                        </td>
-                        ${statusCells}
-                    </tr>${excuseRow}`;
-            }).join('');
+            const rows = (block.participants || []).map((participant) => renderParticipantRow(participant, block)).join('');
 
             return `
-                <article class="attendance-atelier-card">
+                <article class="attendance-atelier-card" data-atelier-id="${block.atelier_id}">
                     <div class="attendance-atelier-head">
-                        <h3>Atelier ${escapeHtml(String(block.atelier_numero))} · ${block.participants_count} membre(s) · ${block.present_count} présent(s)/retard</h3>
+                        <h3 data-atelier-head-count="${block.atelier_id}">Atelier ${escapeHtml(String(block.atelier_numero))} · ${block.participants_count} membre(s) · ${block.present_count} présent(s)/retard</h3>
                         <p>Responsable : ${escapeHtml(block.responsable || '—')}${block.adjoint ? ' · Adjoint : ' + escapeHtml(block.adjoint) : ''}${!block.can_manage ? ' · <strong>Lecture seule</strong>' : ''}</p>
                     </div>
                     <div class="cmp-pointage-wrap">
@@ -1412,7 +1511,190 @@
                             <tbody>${rows}</tbody>
                         </table>
                     </div>
+                    ${renderAttendanceReportSection(block)}
                 </article>`;
+        }
+
+        function updateAtelierPresentCount(atelierId, presentCount) {
+            const head = document.querySelector(`[data-atelier-head-count="${atelierId}"]`);
+            if (!head || presentCount === undefined) {
+                return;
+            }
+            head.textContent = head.textContent.replace(/· \d+ présent\(s\)\/retard/, `· ${presentCount} présent(s)/retard`);
+        }
+
+        function refreshReportSection(atelierId) {
+            const block = attendanceBlocksCache.find((item) => Number(item.atelier_id) === Number(atelierId));
+            const card = document.querySelector(`[data-atelier-id="${atelierId}"]`);
+            const section = card?.querySelector(`[data-report-section="${atelierId}"]`);
+            if (!block || !card) {
+                return;
+            }
+            const html = renderAttendanceReportSection(block);
+            if (section) {
+                section.outerHTML = html;
+            } else if (html.trim()) {
+                card.insertAdjacentHTML('beforeend', html);
+            }
+            bindReportActions(card);
+        }
+
+        function applyAttendanceStatusUpdate(data) {
+            if (!data?.participant_id) {
+                return;
+            }
+
+            const card = document.querySelector(`[data-atelier-id="${data.atelier_id}"]`);
+            if (!card) {
+                return;
+            }
+
+            updateAtelierPresentCount(data.atelier_id, data.present_count);
+
+            const tbody = card.querySelector('tbody');
+            const mainRow = card.querySelector(`[data-participant-row="${data.participant_id}"]`);
+            if (!mainRow || !tbody) {
+                return;
+            }
+
+            const block = attendanceBlocksCache.find((item) => Number(item.atelier_id) === Number(data.atelier_id));
+            const participant = block?.participants?.find((item) => Number(item.id) === Number(data.participant_id));
+            if (!participant) {
+                return;
+            }
+
+            participant.status = data.status;
+            participant.excuse_note = data.excuse_note ?? participant.excuse_note;
+            participant.recorded_by = data.recorded_by ?? participant.recorded_by;
+            participant.recorded_at = data.recorded_at ?? participant.recorded_at;
+
+            mainRow.querySelectorAll('[data-attendance-set]').forEach((button) => {
+                const isActive = button.dataset.status === data.status;
+                button.classList.toggle('is-active', isActive);
+                const box = button.querySelector('.cmp-check-box');
+                if (box) {
+                    box.textContent = isActive ? '✓' : '';
+                }
+            });
+
+            const metaHost = mainRow.querySelector('td:nth-child(2)');
+            const nameEl = metaHost?.querySelector('.cmp-pointage-name');
+            if (metaHost && nameEl) {
+                metaHost.innerHTML = `<div class="cmp-pointage-name">${escapeHtml(participant.full_name)}</div>`;
+                if (participant.recorded_by) {
+                    metaHost.insertAdjacentHTML('beforeend', `<div class="cmp-pointage-meta">Par ${escapeHtml(participant.recorded_by)}${participant.recorded_at ? ' · ' + escapeHtml(participant.recorded_at) : ''}</div>`);
+                }
+            }
+
+            let excuseRow = card.querySelector(`[data-excuse-row="${data.participant_id}"]`);
+            if (data.status === 'excused') {
+                if (!excuseRow) {
+                    mainRow.insertAdjacentHTML('afterend', renderParticipantExcuseRow(participant, block || { can_manage: true }));
+                    excuseRow = card.querySelector(`[data-excuse-row="${data.participant_id}"]`);
+                    const excuseInput = excuseRow?.querySelector('[data-excuse-note]');
+                    if (excuseInput) {
+                        bindExcuseInput(excuseInput);
+                    }
+                }
+            } else if (excuseRow) {
+                excuseRow.remove();
+            }
+        }
+
+        function bindExcuseInput(input) {
+            if (input.dataset.boundExcuse === '1') {
+                return;
+            }
+            input.dataset.boundExcuse = '1';
+            input.addEventListener('blur', async () => {
+                if (!attendanceActivityId || !canManageAtelierAttendance) {
+                    return;
+                }
+                const participantId = Number(input.dataset.excuseNote);
+                try {
+                    const payload = await postJson(endpoints.attendanceExcuse, {
+                        activity_plan_id: Number(attendanceActivityId),
+                        participant_id: participantId,
+                        note: input.value,
+                    });
+                    if (payload.data) {
+                        applyAttendanceStatusUpdate(payload.data);
+                    }
+                } catch (error) {
+                    setStatusMessage(document.getElementById('attendanceStatus'), error.message, 'error');
+                }
+            });
+        }
+
+        function collectReportFormData(section) {
+            const data = {
+                sujet: '',
+                texte_biblique: '',
+                resume: '',
+                conducteur_user_ids: [],
+                conducteur_participant_ids: [],
+                conducteur_debat_keys: [],
+            };
+
+            section.querySelectorAll('[data-report-field]').forEach((field) => {
+                const name = field.dataset.reportField;
+                if (!name) {
+                    return;
+                }
+                if (field.tagName === 'SELECT' && field.multiple) {
+                    data[name] = Array.from(field.selectedOptions).map((option) => {
+                        return name === 'conducteur_debat_keys' ? option.value : Number(option.value);
+                    });
+                    return;
+                }
+                data[name] = field.value;
+            });
+
+            return data;
+        }
+
+        function bindReportActions(container) {
+            container.querySelectorAll('[data-report-submit]').forEach((button) => {
+                if (button.dataset.boundReport === '1') {
+                    return;
+                }
+                button.dataset.boundReport = '1';
+                button.addEventListener('click', async () => {
+                    if (!attendanceActivityId || !canManageAtelierAttendance) {
+                        return;
+                    }
+                    const atelierId = Number(button.dataset.reportSubmit);
+                    const section = container.querySelector(`[data-report-section="${atelierId}"]`);
+                    if (!section) {
+                        return;
+                    }
+                    const formData = collectReportFormData(section);
+                    if (!formData.sujet?.trim()) {
+                        setStatusMessage(document.getElementById('attendanceStatus'), 'Le sujet est obligatoire avant la soumission.', 'warning');
+                        return;
+                    }
+                    if (!window.confirm('Soumettre définitivement ce compte-rendu ? Vous ne pourrez plus le modifier.')) {
+                        return;
+                    }
+                    button.disabled = true;
+                    try {
+                        const payload = await postJson(endpoints.attendanceReportSubmit, {
+                            activity_plan_id: Number(attendanceActivityId),
+                            atelier_id: atelierId,
+                            ...formData,
+                        });
+                        const block = attendanceBlocksCache.find((item) => Number(item.atelier_id) === atelierId);
+                        if (block && payload.report) {
+                            block.report = payload.report;
+                            refreshReportSection(atelierId);
+                        }
+                        setStatusMessage(document.getElementById('attendanceStatus'), payload.message, 'success');
+                    } catch (error) {
+                        setStatusMessage(document.getElementById('attendanceStatus'), error.message, 'error');
+                        button.disabled = false;
+                    }
+                });
+            });
         }
 
         function bindAttendanceActions(container) {
@@ -1420,42 +1702,38 @@
                 return;
             }
             container.querySelectorAll('[data-attendance-set]').forEach((button) => {
+                if (button.dataset.boundAttendance === '1') {
+                    return;
+                }
+                button.dataset.boundAttendance = '1';
                 button.addEventListener('click', async () => {
-                    if (!attendanceActivityId) return;
+                    if (!attendanceActivityId || button.disabled) {
+                        return;
+                    }
                     const participantId = Number(button.dataset.attendanceSet);
                     const status = button.dataset.status;
-                    const excuseInput = container.querySelector(`[data-excuse-note="${participantId}"]`);
+                    const card = button.closest('[data-atelier-id]');
+                    const excuseInput = card?.querySelector(`[data-excuse-note="${participantId}"]`);
+                    button.disabled = true;
                     try {
-                        await postJson(endpoints.attendanceSet, {
+                        const payload = await postJson(endpoints.attendanceSet, {
                             activity_plan_id: Number(attendanceActivityId),
                             participant_id: participantId,
                             status,
                             excuse_note: excuseInput?.value || null,
                         });
-                        await loadAttendanceBlocks();
-                        setStatusMessage(document.getElementById('attendanceStatus'), 'Présence enregistrée.', 'success');
+                        if (payload.data) {
+                            applyAttendanceStatusUpdate(payload.data);
+                        }
                     } catch (error) {
                         setStatusMessage(document.getElementById('attendanceStatus'), error.message, 'error');
+                    } finally {
+                        button.disabled = false;
                     }
                 });
             });
 
-            container.querySelectorAll('[data-excuse-note]').forEach((input) => {
-                input.addEventListener('blur', async () => {
-                    if (!attendanceActivityId) return;
-                    const participantId = Number(input.dataset.excuseNote);
-                    try {
-                        await postJson(endpoints.attendanceExcuse, {
-                            activity_plan_id: Number(attendanceActivityId),
-                            participant_id: participantId,
-                            note: input.value,
-                        });
-                        setStatusMessage(document.getElementById('attendanceStatus'), 'Motif enregistré.', 'success');
-                    } catch (error) {
-                        setStatusMessage(document.getElementById('attendanceStatus'), error.message, 'error');
-                    }
-                });
-            });
+            container.querySelectorAll('[data-excuse-note]').forEach((input) => bindExcuseInput(input));
         }
 
         function setButtonLoading(button, loading, labelWhenLoading = 'Traitement...') {

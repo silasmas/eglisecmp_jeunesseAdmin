@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\RetreatActivityAttendance;
+use App\Models\RetreatActivityAtelierReport;
 use App\Models\RetreatActivityPlan;
 use App\Models\RetreatAtelier;
 use App\Models\RetreatParticipant;
@@ -17,6 +18,7 @@ class RetreatAtelierAttendancePanelService
     public function __construct(
         protected RetreatAtelierAuthorizationService $auth,
         protected RetreatActivityPlanScheduleService $scheduleService,
+        protected RetreatActivityAtelierReportService $reportService,
     ) {}
 
     /**
@@ -76,11 +78,19 @@ class RetreatAtelierAttendancePanelService
                 ->get()
                 ->keyBy('participant_id');
 
+            $report = RetreatActivityAtelierReport::query()
+                ->where('activity_plan_id', $activityPlanId)
+                ->where('atelier_id', $atelier->id)
+                ->with('recorder')
+                ->first();
+
             $blocks[] = [
                 'atelier' => $atelier,
                 'can_manage' => $this->auth->canManageAtelier($user, $atelier),
                 'participants' => $participants,
                 'attendances' => $attendances,
+                'report' => $report,
+                'debat_options' => $this->reportService->buildDebatOptions($atelier, $participants),
             ];
         }
 
@@ -96,6 +106,7 @@ class RetreatAtelierAttendancePanelService
     public function serializeBlocksForPortal(array $blocks): array
     {
         $payload = [];
+        $workerOptions = $this->reportService->workerOptionsForPortal();
 
         foreach ($blocks as $block) {
             /** @var RetreatAtelier $atelier */
@@ -104,6 +115,8 @@ class RetreatAtelierAttendancePanelService
             $participants = $block['participants'];
             /** @var Collection<int, RetreatActivityAttendance> $attendances */
             $attendances = $block['attendances'];
+            /** @var RetreatActivityAtelierReport|null $report */
+            $report = $block['report'] ?? null;
 
             $participantRows = [];
 
@@ -124,19 +137,49 @@ class RetreatAtelierAttendancePanelService
                 ->filter(fn (array $row): bool => in_array($row['status'], ['present', 'late'], true))
                 ->count();
 
+            $canManage = (bool) ($block['can_manage'] ?? false);
+
             $payload[] = [
                 'atelier_id' => $atelier->id,
                 'atelier_numero' => $atelier->numero,
                 'responsable' => $atelier->responsable?->name,
                 'adjoint' => $atelier->adjoint?->name,
-                'can_manage' => (bool) ($block['can_manage'] ?? false),
+                'can_manage' => $canManage,
                 'participants_count' => count($participantRows),
                 'present_count' => $presentCount,
                 'participants' => $participantRows,
+                'participant_options' => $participants->map(fn (RetreatParticipant $participant): array => [
+                    'id' => (int) $participant->id,
+                    'name' => $participant->full_name,
+                ])->values()->all(),
+                'debat_options' => $block['debat_options'] ?? [],
+                'worker_options' => $workerOptions,
+                'report' => $this->reportService->serializeReportForm($report),
             ];
         }
 
         return $payload;
+    }
+
+    /**
+     * Compte les présents/retards pour un atelier et une activité.
+     */
+    public function countPresentForAtelier(int $activityPlanId, int $atelierId): int
+    {
+        $participantIds = RetreatParticipant::query()
+            ->where('atelier_id', $atelierId)
+            ->where('is_active', true)
+            ->pluck('id');
+
+        if ($participantIds->isEmpty()) {
+            return 0;
+        }
+
+        return RetreatActivityAttendance::query()
+            ->where('activity_plan_id', $activityPlanId)
+            ->whereIn('participant_id', $participantIds)
+            ->whereIn('status', ['present', 'late'])
+            ->count();
     }
 
     /**
@@ -204,9 +247,26 @@ class RetreatAtelierAttendancePanelService
             ]);
         }
 
+        $attendance = RetreatActivityAttendance::query()
+            ->where('activity_plan_id', $activityPlanId)
+            ->where('participant_id', $participantId)
+            ->with('recorder')
+            ->first();
+
         return [
             'success' => true,
             'message' => "Statut « {$status} » enregistré pour {$participant->full_name}.",
+            'data' => [
+                'participant_id' => (int) $participantId,
+                'atelier_id' => (int) ($participant->atelier_id ?? 0),
+                'status' => $status,
+                'excuse_note' => $attendance?->note,
+                'recorded_by' => $attendance?->recorder?->name ?? $user?->name,
+                'recorded_at' => $attendance?->updated_at?->format('d/m H:i'),
+                'present_count' => $participant->atelier_id
+                    ? $this->countPresentForAtelier($activityPlanId, (int) $participant->atelier_id)
+                    : 0,
+            ],
         ];
     }
 
@@ -258,9 +318,19 @@ class RetreatAtelierAttendancePanelService
             'recorded_by' => $user?->id,
         ]);
 
+        $attendance->load('recorder');
+
         return [
             'success' => true,
             'message' => "Motif d'excuse enregistré pour {$participant->full_name}.",
+            'data' => [
+                'participant_id' => (int) $participantId,
+                'atelier_id' => (int) ($participant->atelier_id ?? 0),
+                'status' => 'excused',
+                'excuse_note' => $trimmedNote,
+                'recorded_by' => $attendance->recorder?->name ?? $user?->name,
+                'recorded_at' => $attendance->updated_at?->format('d/m H:i'),
+            ],
         ];
     }
 

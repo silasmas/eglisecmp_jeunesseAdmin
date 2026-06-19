@@ -10,6 +10,7 @@ use App\Models\RetreatParticipant;
 use App\Models\RetreatPayment;
 use App\Models\RetreatPolicy;
 use App\Models\User;
+use App\Services\RetreatActivityAtelierReportService;
 use App\Services\RetreatAtelierAttendancePanelService;
 use App\Services\RetreatAtelierAuthorizationService;
 use App\Services\RetreatParticipantRegistrationService;
@@ -505,7 +506,51 @@ class RetreatVerificationPortalController extends Controller
             return response()->json(['message' => $result['message']], 403);
         }
 
-        return response()->json(['message' => $result['message']]);
+        return response()->json([
+            'message' => $result['message'],
+            'data' => $result['data'] ?? null,
+        ]);
+    }
+
+    /**
+     * Soumet le compte-rendu d'activité pour un atelier (portail ouvrier).
+     */
+    public function attendanceReportSubmit(Request $request): JsonResponse
+    {
+        $user = $this->currentVerifier($request);
+        if (! $user) {
+            return response()->json(['message' => 'Connexion ouvrier requise.'], 401);
+        }
+
+        $validated = $request->validate([
+            'activity_plan_id' => ['required', 'integer', 'exists:retreat_activity_plans,id'],
+            'atelier_id' => ['required', 'integer', 'exists:retreat_atelier,id'],
+            'sujet' => ['required', 'string', 'max:500'],
+            'texte_biblique' => ['nullable', 'string', 'max:2000'],
+            'resume' => ['nullable', 'string', 'max:5000'],
+            'conducteur_user_ids' => ['nullable', 'array'],
+            'conducteur_user_ids.*' => ['integer', 'exists:users,id'],
+            'conducteur_participant_ids' => ['nullable', 'array'],
+            'conducteur_participant_ids.*' => ['integer', 'exists:retreat_participant,id'],
+            'conducteur_debat_keys' => ['nullable', 'array'],
+            'conducteur_debat_keys.*' => ['string', 'max:100'],
+        ]);
+
+        $result = app(RetreatActivityAtelierReportService::class)->submitReport(
+            $user,
+            (int) $validated['activity_plan_id'],
+            (int) $validated['atelier_id'],
+            $validated,
+        );
+
+        if (! $result['success']) {
+            return response()->json(['message' => $result['message']], 422);
+        }
+
+        return response()->json([
+            'message' => $result['message'],
+            'report' => $result['report'] ?? null,
+        ]);
     }
 
     /**
@@ -535,7 +580,10 @@ class RetreatVerificationPortalController extends Controller
             return response()->json(['message' => $result['message']], 422);
         }
 
-        return response()->json(['message' => $result['message']]);
+        return response()->json([
+            'message' => $result['message'],
+            'data' => $result['data'] ?? null,
+        ]);
     }
 
     public function chatbotContext(): JsonResponse
