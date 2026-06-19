@@ -8,4 +8,9 @@
 ]) }}
 
 {{ __('retraite.mail_attendance_overdue_action') }}
+
+@include('emails.partials.cmp-mail-button', [
+    'url' => $portalUrl,
+    'label' => 'Ouvrir l\'administration',
+])
 </x-mail::message>

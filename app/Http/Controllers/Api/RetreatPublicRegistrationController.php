@@ -695,10 +695,24 @@ class RetreatPublicRegistrationController extends Controller
             }
         }
 
-        $mainCanon = $this->normalizePhone($validated['indicatif'], $validated['telephone']);
-        $tutorCanon = $this->canonicalEmergencyPhoneDigits((string) ($validated['tel_urgence'] ?? ''), $validated['indicatif']);
+        $phoneResolution = $this->resolveRegistrationMainPhone(
+            $validated,
+            $parentGroupMode,
+            $parentContactPhone,
+        );
 
-        if ($tutorCanon !== null && $tutorCanon !== '' && $tutorCanon === $mainCanon) {
+        if ($phoneResolution['error'] !== null) {
+            return response()->json(['message' => $phoneResolution['error']], 422);
+        }
+
+        $mainCanon = $phoneResolution['canon'];
+        $mainIndicatif = $phoneResolution['indicatif'] ?? trim((string) ($validated['indicatif'] ?? ''));
+        $tutorCanon = $this->canonicalEmergencyPhoneDigits(
+            (string) ($validated['tel_urgence'] ?? ''),
+            $mainIndicatif !== '' ? $mainIndicatif : '243',
+        );
+
+        if ($mainCanon !== null && $mainCanon !== '' && $tutorCanon !== null && $tutorCanon !== '' && $tutorCanon === $mainCanon) {
             return response()->json([
                 'message' => 'Le téléphone d’urgence ne peut pas être identique au numéro principal (WhatsApp).',
             ], 422);
@@ -706,7 +720,10 @@ class RetreatPublicRegistrationController extends Controller
 
         $rawGuardianPhone = isset($validated['guardian_phone']) ? trim((string) $validated['guardian_phone']) : '';
         $guardianCanon = $rawGuardianPhone !== ''
-            ? $this->canonicalEmergencyPhoneDigits($rawGuardianPhone, $validated['indicatif'])
+            ? $this->canonicalEmergencyPhoneDigits(
+                $rawGuardianPhone,
+                $mainIndicatif !== '' ? $mainIndicatif : '243',
+            )
             : null;
 
         $guardianNameNorm = isset($validated['guardian_name']) ? trim((string) $validated['guardian_name']) : '';
@@ -719,7 +736,7 @@ class RetreatPublicRegistrationController extends Controller
                 ], 422);
             }
 
-            if ($guardianCanon === $mainCanon) {
+            if ($guardianCanon === $mainCanon && $mainCanon !== null && $mainCanon !== '') {
                 return response()->json([
                     'message' => 'Le téléphone du parent ou tuteur ne peut pas être identique au numéro principal (WhatsApp).',
                 ], 422);
@@ -757,7 +774,7 @@ class RetreatPublicRegistrationController extends Controller
             ], 409);
         }
 
-        if (! $parentGroupMode && $this->participantMainPhoneExists($mainCanon, $event->id)) {
+        if (! $parentGroupMode && $mainCanon !== null && $mainCanon !== '' && $this->participantMainPhoneExists($mainCanon, $event->id)) {
             return response()->json([
                 'message' => 'Ce numéro principal est déjà utilisé par une autre inscription pour cette retraite.',
                 'code' => 'duplicate_main_phone',
@@ -772,6 +789,7 @@ class RetreatPublicRegistrationController extends Controller
                 $event,
                 $acceptedIds,
                 $mainCanon,
+                $mainIndicatif,
                 $tutorCanon,
                 $guardianCanon,
                 $guardianCanonStored,
@@ -794,7 +812,7 @@ class RetreatPublicRegistrationController extends Controller
 
                 $familyGroupId = $this->resolveFamilyGroupIdFromLinkedPhones(
                     $event->id,
-                    $mainCanon,
+                    $mainCanon ?? '',
                     (bool) ($validated['same_family_emergency_confirm'] ?? false) || $parentGroupMode,
                     $tutorCanon,
                     $guardianCanon,
@@ -829,7 +847,7 @@ class RetreatPublicRegistrationController extends Controller
                     'sexe' => $this->normalizeSexe($validated['sexe']),
                     'email' => $validated['email'],
                     'telephone' => $mainCanon,
-                    'indicatif_telephone' => $validated['indicatif'],
+                    'indicatif_telephone' => $mainIndicatif !== '' ? $mainIndicatif : null,
                     'telephone_urgence' => $validated['tel_urgence'] ?? null,
                     'guardian_name' => $parentGroupMode ? $parentFullName : $guardianNameNorm,
                     'guardian_phone' => $parentGroupMode && $parentContactPhone ? Str::limit($parentContactPhone, 20, '') : $guardianCanonStored,
@@ -2194,10 +2212,80 @@ class RetreatPublicRegistrationController extends Controller
         return $label !== '' ? $label : 'Inscription #'.(int) $p->id;
     }
 
-    protected function normalizePhone(string $indicatif, string $telephone): string
+    /**
+     * Résout le téléphone principal normalisé pour une inscription publique.
+     *
+     * @param array<string, mixed> $validated Données validées
+     * @param bool $parentGroupMode Mode regroupement familial activé
+     * @param string|null $parentContactPhone Téléphone parent vérifié (OTP)
+     * @return array{canon: string|null, indicatif: string|null, error: string|null}
+     */
+    protected function resolveRegistrationMainPhone(
+        array $validated,
+        bool $parentGroupMode,
+        ?string $parentContactPhone,
+    ): array {
+        $rawTelephone = trim((string) ($validated['telephone'] ?? ''));
+        $indicatif = trim((string) ($validated['indicatif'] ?? ''));
+
+        if ($rawTelephone !== '') {
+            if ($indicatif === '') {
+                return [
+                    'canon' => null,
+                    'indicatif' => null,
+                    'error' => 'L\'indicatif téléphonique est obligatoire lorsque vous renseignez un numéro principal.',
+                ];
+            }
+
+            $canon = $this->normalizePhone($indicatif, $rawTelephone);
+
+            if (strlen($canon) < 10) {
+                return [
+                    'canon' => null,
+                    'indicatif' => null,
+                    'error' => 'Le numéro de téléphone principal est incomplet ou invalide.',
+                ];
+            }
+
+            return [
+                'canon' => $canon,
+                'indicatif' => $indicatif,
+                'error' => null,
+            ];
+        }
+
+        if ($parentGroupMode && filled($parentContactPhone) && strlen((string) $parentContactPhone) >= 10) {
+            return [
+                'canon' => (string) $parentContactPhone,
+                'indicatif' => str_starts_with((string) $parentContactPhone, '243') ? '243' : $indicatif,
+                'error' => null,
+            ];
+        }
+
+        if ($parentGroupMode) {
+            return [
+                'canon' => null,
+                'indicatif' => $indicatif !== '' ? $indicatif : null,
+                'error' => null,
+            ];
+        }
+
+        return [
+            'canon' => null,
+            'indicatif' => null,
+            'error' => 'Le numéro de téléphone principal est obligatoire.',
+        ];
+    }
+
+    /**
+     * @param string $indicatif Indicatif international sans « + »
+     * @param string|null $telephone Numéro saisi (sans indicatif)
+     * @return string Chiffres concaténés (indicatif + numéro)
+     */
+    protected function normalizePhone(string $indicatif, ?string $telephone): string
     {
         $ind = ltrim(trim($indicatif), '+');
-        $num = preg_replace('/\D+/', '', $telephone);
+        $num = preg_replace('/\D+/', '', (string) ($telephone ?? ''));
 
         return $ind.$num;
     }

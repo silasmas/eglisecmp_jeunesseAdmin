@@ -5,6 +5,7 @@ namespace App\Mail;
 use App\Models\ChurchEvent;
 use App\Models\RetreatParticipant;
 use App\Models\RetreatPayment;
+use App\Support\RetreatMailUrl;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Address;
@@ -42,9 +43,10 @@ class RetreatRegistrationConfirmedMail extends Mailable
                 'participant' => $this->participant,
                 'payment' => $this->payment,
                 'event' => $this->event,
-                'billetUrl' => $this->billetUrl ?? route('retraite.inscription.billet', [
+                'billetUrl' => $this->billetUrl ?? RetreatMailUrl::route('retraite.inscription.billet', [
                     'token' => $this->participant->download_token,
-                ], absolute: true),
+                ]),
+                'portalUrl' => RetreatMailUrl::portal(),
             ],
         );
     }

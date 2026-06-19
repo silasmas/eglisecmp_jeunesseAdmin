@@ -13,9 +13,10 @@
 
 {{ __('retraite.mail_staff_assignment_body') }}
 
-<x-mail::button :url="$adminUrl">
-{{ __('retraite.mail_staff_assignment_button') }}
-</x-mail::button>
+@include('emails.partials.cmp-mail-button', [
+    'url' => $adminUrl,
+    'label' => __('retraite.mail_staff_assignment_button'),
+])
 
 {{ __('retraite.mail_footer') }}
 </x-mail::message>

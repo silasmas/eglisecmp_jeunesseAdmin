@@ -14,15 +14,17 @@
 **{{ __('retraite.mail_label_workshop') }}** : {{ __('retraite.mail_workshop_number', ['n' => $participant->atelier->numero]) }}
 @endif
 
-<x-mail::button :url="$billetUrl">
-{{ __('retraite.mail_button_billet') }}
-</x-mail::button>
+@include('emails.partials.cmp-mail-button', [
+    'url' => $billetUrl,
+    'label' => __('retraite.mail_button_billet'),
+])
 
 <p>Conservez ce billet : le QR code permettra de vérifier votre inscription à l'accueil.</p>
 
-<x-mail::button :url="config('app.url')">
-{{ __('retraite.mail_button_portal') }}
-</x-mail::button>
+@include('emails.partials.cmp-mail-button', [
+    'url' => $portalUrl,
+    'label' => __('retraite.mail_button_portal'),
+])
 
 {{ __('retraite.mail_footer') }}
 

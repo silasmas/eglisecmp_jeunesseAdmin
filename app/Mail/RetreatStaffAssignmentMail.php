@@ -5,6 +5,7 @@ namespace App\Mail;
 use App\Models\RetreatAtelier;
 use App\Models\RetreatChambre;
 use App\Models\User;
+use App\Support\RetreatMailUrl;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Address;
@@ -58,7 +59,7 @@ class RetreatStaffAssignmentMail extends Mailable
         'assignmentType' => $this->assignmentType,
         'roleLabel' => $this->roleLabelForMail(),
         'assignment' => $this->assignment,
-        'adminUrl' => url('/admin'),
+        'adminUrl' => RetreatMailUrl::admin(),
       ],
     );
   }

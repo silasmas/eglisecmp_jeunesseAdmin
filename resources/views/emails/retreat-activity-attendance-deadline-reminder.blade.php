@@ -8,4 +8,9 @@
 ]) }}
 
 {{ __('retraite.mail_attendance_reminder_action') }}
+
+@include('emails.partials.cmp-mail-button', [
+    'url' => $portalUrl,
+    'label' => 'Ouvrir le portail de pointage',
+])
 </x-mail::message>

@@ -4,9 +4,10 @@ namespace App\Services;
 
 use App\Enums\EventAccessOtpChannel;
 use App\Mail\RetreatRegistrationConfirmedMail;
-use App\Models\ChurchEvent;
+use App\Support\RetreatMailUrl;
 use App\Models\RetreatParticipant;
 use App\Models\RetreatPayment;
+use App\Support\RetreatMailUrl;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -80,9 +81,9 @@ class RetreatRegistrationFulfillmentService
             ];
         }
 
-        $billetUrl = route('retraite.inscription.billet', [
+        $billetUrl = RetreatMailUrl::route('retraite.inscription.billet', [
             'token' => $participant->download_token,
-        ], absolute: true);
+        ]);
 
         $channel = $this->resolveConfirmationChannel($event, $participant);
 

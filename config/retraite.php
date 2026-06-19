@@ -3,6 +3,13 @@
 return [
 
     /*
+    | URL publique absolue du site (e-mails, billets, liens portail).
+    | Sur un hébergement type …/public/jeunesse, incluez le chemin complet :
+    | https://jeunesse.eglisecmp.com/public
+    */
+    'public_base_url' => env('RETRAITE_PUBLIC_BASE_URL', env('APP_URL')),
+
+    /*
     |--------------------------------------------------------------------------
     | Paiements Mobile Money — opérateurs affichés + type API FlexPay
     |--------------------------------------------------------------------------

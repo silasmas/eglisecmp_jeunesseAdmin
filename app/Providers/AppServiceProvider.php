@@ -11,9 +11,11 @@ use App\Observers\RetreatChambreObserver;
 use App\Observers\RetreatParticipantObserver;
 use App\Observers\RetreatPaymentObserver;
 use App\Services\StoragePathService;
+use App\Support\RetreatMailUrl;
 use Filament\Forms\Components\FileUpload;
 use Filament\Support\Facades\FilamentView;
 use Filament\View\PanelsRenderHook;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -31,6 +33,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $publicBaseUrl = RetreatMailUrl::base();
+        if ($publicBaseUrl !== '') {
+            URL::forceRootUrl($publicBaseUrl);
+        }
+
         $this->configureS3DiskUrls();
 
         $storagePaths = app(StoragePathService::class);

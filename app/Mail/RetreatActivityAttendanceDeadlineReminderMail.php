@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Models\RetreatActivityPlan;
+use App\Support\RetreatMailUrl;
 use Carbon\CarbonInterface;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
@@ -43,6 +44,7 @@ class RetreatActivityAttendanceDeadlineReminderMail extends Mailable
             with: [
                 'activityPlan' => $this->activityPlan,
                 'deadline' => $this->deadline,
+                'portalUrl' => RetreatMailUrl::portal(),
             ],
         );
     }

@@ -11,7 +11,7 @@
   };
   $displayAmount = (float) ($donation->amount_paid > 0 ? $donation->amount_paid : $donation->amount_expected);
   $vouchers = $donation->relationLoaded('vouchers') ? $donation->vouchers : collect();
-  $portalUrl = rtrim((string) config('app.url'), '/').'/inscription-retraite';
+  $portalUrl = \App\Support\RetreatMailUrl::inscription();
 @endphp
 
 <x-mail::message>
@@ -51,9 +51,10 @@ Chaque jeune doit saisir **un code distinct** lors de l'étape **Paiement** sur 
 @endforeach
 </x-mail::panel>
 
-<x-mail::button :url="$portalUrl">
-Ouvrir le portail d'inscription
-</x-mail::button>
+@include('emails.partials.cmp-mail-button', [
+    'url' => $portalUrl,
+    'label' => 'Ouvrir le portail d\'inscription',
+])
 
 Le code couvre les frais d'inscription pour **une place**. Conservez une copie de ces codes pour les transmettre aux jeunes concernés.
 @else
