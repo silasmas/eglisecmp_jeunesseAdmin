@@ -339,6 +339,8 @@ function wireParentMultiChildVerification() {
       setStatus('');
       return;
     }
+    App.mainPhoneDuplicateRegistered = false;
+    App.emailDuplicateRegistered = false;
     setStatus('Renseignez vos contacts puis lancez l’envoi des OTP.', 'info');
   });
 
@@ -442,6 +444,8 @@ function wireParentMultiChildVerification() {
         ? String(json.data.known_parent_full_name)
         : '';
       if (App.parentContactVerified) {
+        App.mainPhoneDuplicateRegistered = false;
+        App.emailDuplicateRegistered = false;
         showParentVerifiedState(knownParentName);
       }
       setStatus(channel === 'sms'
@@ -457,6 +461,14 @@ function wireParentMultiChildVerification() {
       verifyBtn.innerHTML = verifyOriginalHtml;
     }
   });
+
+  window.restoreParentVerifiedUi = (knownParentFullName) => {
+    if (!check.checked || App.parentContactVerified !== true) {
+      return;
+    }
+    showParentVerifiedState(knownParentFullName || val('parentFullName'));
+    setStatus('Contact parent/tuteur déjà vérifié pour cette session.', 'success');
+  };
 }
 
 async function wireWorkerPrefill() {

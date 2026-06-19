@@ -6,7 +6,7 @@ function saveState() {
   const fields = [
     'nom', 'prenom', 'sexe', 'dateNaissance',
     'indicatif', 'telephone', 'telUrgence', 'guardianName', 'guardianPhone',
-    'email', 'adresse', 'commune', 'ville', 'parentContactEmail', 'parentContactPhone', 'parentEmailOtp', 'parentSmsOtp',
+    'email', 'adresse', 'commune', 'ville', 'parentContactEmail', 'parentContactPhone', 'parentFullName', 'parentEmailOtp', 'parentSmsOtp',
     'eglise', 'departement', 'observations'
   ];
   const data = {};
@@ -265,13 +265,17 @@ function restoreState() {
       updateStepper();
     }
     const familyMultiChildCheck = document.getElementById('familyMultiChildCheck');
-    if (familyMultiChildCheck && data.familyMultiChildCheck) {
-      familyMultiChildCheck.checked = true;
-      familyMultiChildCheck.dispatchEvent(new Event('change'));
-    }
     App.parentVerifiedToken = data.parentVerifiedToken || null;
     App.parentContactVerified = data.parentContactVerified === true;
     App.parentOtpVerificationId = data.parentOtpVerificationId || null;
+
+    if (familyMultiChildCheck && data.familyMultiChildCheck) {
+      familyMultiChildCheck.checked = true;
+      familyMultiChildCheck.dispatchEvent(new Event('change'));
+      if (App.parentContactVerified && typeof window.restoreParentVerifiedUi === 'function') {
+        window.restoreParentVerifiedUi(data.parentFullName || '');
+      }
+    }
 
     try {
       if (typeof refreshEmailLiveFeedback === 'function') refreshEmailLiveFeedback();

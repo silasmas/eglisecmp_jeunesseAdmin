@@ -286,13 +286,26 @@ function generateRecap() {
 function recapUpdateSubmitGate() {
   const confirmCheck = document.getElementById('confirmCheck');
   const submitBtn = document.getElementById('submitBtn');
+  const policiesHint = document.getElementById('policiesRecapHint');
 
   const policiesOk =
     !(App.policiesGateRequired === true) || App.policiesModalAccepted === true;
 
   if (confirmCheck) {
     confirmCheck.disabled = !policiesOk;
-    if (!policiesOk) confirmCheck.checked = false;
+    if (!policiesOk) {
+      confirmCheck.checked = false;
+    }
+  }
+
+  if (policiesHint) {
+    if (App.policiesGateRequired === true && !App.policiesModalAccepted) {
+      policiesHint.textContent = 'Ouvrez le règlement, faites défiler jusqu’en bas, acceptez-le, puis cochez la confirmation.';
+      policiesHint.classList.remove('hidden');
+    } else {
+      policiesHint.textContent = '';
+      policiesHint.classList.add('hidden');
+    }
   }
 
   if (submitBtn) {

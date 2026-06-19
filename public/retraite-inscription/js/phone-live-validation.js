@@ -571,72 +571,131 @@ function telephoneMarkInvalid(show) {
   }
 }
 
+function isFamilyMultiChildMode() {
+  const chk = document.getElementById('familyMultiChildCheck');
+  return !!(chk && chk.checked);
+}
+
+function isRegFieldDomVisible(fieldKey) {
+  const wrapper = document.querySelector(`[data-reg-field="${fieldKey}"]`);
+  if (!wrapper) {
+    return true;
+  }
+  return !wrapper.classList.contains('hidden');
+}
+
 /**
- * À appeler depuis validateStep lors de l’étape coordonnées.
+ * À appeler depuis validateStep lors des étapes identité / coordonnées.
+ * @param {number|null} stepIndex Étape courante (0 = identité, 1 = coordonnées)
  * @returns {boolean}
  */
-function validateContactStepPhones() {
+function validateContactStepPhones(stepIndex = null) {
   const indicatifEl = document.getElementById('indicatif');
   const telInput = document.getElementById('telephone');
   const telUrgEl = document.getElementById('telUrgence');
   const guardianEl = document.getElementById('guardianPhone');
   const emailEl = document.getElementById('email');
   const indicatif = indicatifEl ? indicatifEl.value : '+243';
+  const familyMode = isFamilyMultiChildMode();
+  const telVisible = isRegFieldDomVisible('telephone');
+  const emailVisible = isRegFieldDomVisible('email');
+  const validateStep0Contacts = stepIndex === null || stepIndex === 0;
+  const validateStep1Contacts = stepIndex === null || stepIndex === 1;
 
   let valid = true;
 
-  const telRequired = telInput && telInput.hasAttribute('data-required');
-  const emailRequired = emailEl && emailEl.hasAttribute('data-required');
+  let telRequired = !!(telInput && telInput.hasAttribute('data-required') && telVisible);
+  if (familyMode) {
+    telRequired = false;
+  }
+  const emailRequired = !!(emailEl && emailEl.hasAttribute('data-required') && emailVisible);
 
-  if (telInput && telRequired) {
+  if (validateStep0Contacts && telInput && telVisible) {
+    const telRaw = (telInput.value || '').trim();
     const mainCanon = normalizeMainPhoneCanon(indicatif, telInput.value);
-    if (!(telInput.value || '').trim()) {
+
+    if (telRequired) {
+      if (!telRaw) {
+        telephoneMarkInvalid(true);
+        setLiveHint(
+          'telephoneLiveFeedback',
+          '<i class="bi bi-exclamation-circle"></i> Le numéro de téléphone est obligatoire.',
+          'danger'
+        );
+        valid = false;
+      } else if (!digitsLookLikeE164(mainCanon)) {
+        telephoneMarkInvalid(true);
+        valid = false;
+      } else {
+        telephoneMarkInvalid(false);
+      }
+    } else if (telRaw && !digitsLookLikeE164(mainCanon)) {
       telephoneMarkInvalid(true);
       setLiveHint(
         'telephoneLiveFeedback',
-        '<i class="bi bi-exclamation-circle"></i> Le numéro de téléphone est obligatoire.',
+        '<i class="bi bi-exclamation-circle"></i> Complétez ou corrigez le numéro principal, ou laissez le champ vide.',
         'danger'
       );
       valid = false;
-    } else if (!digitsLookLikeE164(mainCanon)) {
+    } else if (!telRaw) {
+      telephoneMarkInvalid(false);
+      setLiveHint('telephoneLiveFeedback', '');
+    }
+
+    if (telRequired && !familyMode && App.mainPhoneDuplicateRegistered) {
+      setLiveHint(
+        'telephoneLiveFeedback',
+        '<i class="bi bi-telephone-x"></i> Ce numéro est déjà utilisé pour une autre inscription à cette retraite.',
+        'danger'
+      );
       telephoneMarkInvalid(true);
       valid = false;
-    } else {
-      telephoneMarkInvalid(false);
     }
   }
 
   const emailRaw = emailEl ? (emailEl.value || '').trim() : '';
-  if (emailEl && emailRequired) {
-    if (!emailRaw) {
-      showFieldError(emailEl);
+  if (validateStep0Contacts && emailEl && emailVisible) {
+    if (emailRequired) {
+      if (!emailRaw) {
+        showFieldError(emailEl);
+        setLiveHint(
+          'emailLiveFeedback',
+          '<i class="bi bi-exclamation-circle"></i> L’adresse e-mail est obligatoire.',
+          'danger'
+        );
+        valid = false;
+      } else if (!retraiteLiveEmailLooksValid(emailRaw)) {
+        showFieldError(emailEl, 'Adresse e-mail invalide');
+        valid = false;
+      }
+    }
+
+    if (
+      emailRaw &&
+      retraiteLiveEmailLooksValid(emailRaw) &&
+      !familyMode &&
+      App.emailDuplicateRegistered
+    ) {
       setLiveHint(
         'emailLiveFeedback',
-        '<i class="bi bi-exclamation-circle"></i> L’adresse e-mail est obligatoire.',
+        '<i class="bi bi-envelope-x"></i> Cette adresse e-mail est déjà utilisée pour une autre inscription à cette retraite.',
         'danger'
       );
+      emailEl.classList.add('is-error');
+      emailEl.classList.remove('is-valid');
       valid = false;
-    } else if (!retraiteLiveEmailLooksValid(emailRaw)) {
-      showFieldError(emailEl, 'Adresse e-mail invalide');
-      valid = false;
+    } else if (emailRaw && retraiteLiveEmailLooksValid(emailRaw)) {
+      markFieldValid(emailEl);
     }
   }
 
-  if (!telInput) {
+  if (!validateStep1Contacts || familyMode) {
     return valid;
   }
 
-  const mainCanon = normalizeMainPhoneCanon(indicatif, telInput.value);
-
-  if (telRequired && App.mainPhoneDuplicateRegistered) {
-    setLiveHint(
-      'telephoneLiveFeedback',
-      '<i class="bi bi-telephone-x"></i> Ce numéro est déjà utilisé pour une autre inscription à cette retraite.',
-      'danger'
-    );
-    telephoneMarkInvalid(true);
-    valid = false;
-  }
+  const mainCanon = telInput
+    ? normalizeMainPhoneCanon(indicatif, telInput.value)
+    : '';
 
   const tutorCanon = telUrgEl
     ? canonicalEmergencyDigitsClient((telUrgEl.value || '').trim(), indicatif)
@@ -721,21 +780,6 @@ function validateContactStepPhones() {
       'danger'
     );
     valid = false;
-  }
-
-  if (emailEl && emailRaw && retraiteLiveEmailLooksValid(emailRaw) && !emailRequired) {
-    if (App.emailDuplicateRegistered) {
-      setLiveHint(
-        'emailLiveFeedback',
-        '<i class="bi bi-envelope-x"></i> Cette adresse e-mail est déjà utilisée pour une autre inscription à cette retraite.',
-        'danger'
-      );
-      emailEl.classList.add('is-error');
-      emailEl.classList.remove('is-valid');
-      valid = false;
-    } else {
-      markFieldValid(emailEl);
-    }
   }
 
   return valid;

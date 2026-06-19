@@ -123,7 +123,7 @@ function validateStep(step) {
   });
 
   if ((step === 0 || step === 1) && typeof validateContactStepPhones === 'function') {
-    const okPhones = validateContactStepPhones();
+    const okPhones = validateContactStepPhones(step);
     if (!okPhones) {
       valid = false;
     }

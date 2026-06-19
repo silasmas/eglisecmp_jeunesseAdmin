@@ -311,6 +311,7 @@
         </div>
 
         <div class="recap-confirm-box" id="confirmBox">
+          <p id="policiesRecapHint" class="field-hint hidden" style="margin-bottom:0.75rem;color:#b45309;"></p>
           <label>
             <input type="checkbox" id="confirmCheck">
             <span>Je confirme que les informations ci-dessus sont exactes avant de passer à l’étape de paiement.</span>
