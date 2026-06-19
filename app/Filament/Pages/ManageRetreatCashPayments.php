@@ -149,11 +149,22 @@ class ManageRetreatCashPayments extends Page implements HasTable
                             return;
                         }
 
-                        app(RetreatParticipantRegistrationService::class)->approveCashPayment($record, $admin);
+                        $result = app(RetreatParticipantRegistrationService::class)->approveCashPayment($record, $admin);
+
+                        if ($result['success']) {
+                            Notification::make()
+                                ->title('Paiement cash validé')
+                                ->body($result['message'])
+                                ->success()
+                                ->send();
+
+                            return;
+                        }
 
                         Notification::make()
-                            ->title('Paiement cash validé')
-                            ->success()
+                            ->title('Paiement validé — billet non envoyé')
+                            ->body($result['message'])
+                            ->warning()
                             ->send();
                     }),
                 Action::make('rejeter_cash')

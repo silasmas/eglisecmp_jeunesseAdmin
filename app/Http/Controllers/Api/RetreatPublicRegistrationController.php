@@ -1671,10 +1671,95 @@ class RetreatPublicRegistrationController extends Controller
 
     public function flexpayWebhook(Request $request): JsonResponse
     {
-        // Point d’entrée pour callbacks FlexPay (journalisation uniquement pour l’instant).
-        Log::channel('daily')->info('FlexPay webhook inscription', ['body' => $request->all()]);
+        $payload = $request->all();
+        Log::channel('daily')->info('FlexPay webhook inscription', ['body' => $payload]);
+
+        $reference = $this->resolveFlexpayWebhookReference($payload);
+        if ($reference === null || $reference === '') {
+            return response()->json(['ok' => false, 'message' => 'Référence de transaction absente.'], 422);
+        }
+
+        $payment = RetreatPayment::query()
+            ->where('reference', $reference)
+            ->orWhere('provider_reference', $reference)
+            ->first();
+
+        if (! $payment) {
+            Log::channel('daily')->warning('FlexPay webhook : paiement introuvable', ['reference' => $reference]);
+
+            return response()->json(['ok' => false, 'message' => 'Paiement introuvable.'], 404);
+        }
+
+        $this->logPaymentTransaction($payment, 'callback', $payload, $payload);
+
+        $mergedPayload = is_array($payload) && isset($payload['data']) && is_array($payload['data'])
+            ? array_merge($payload, $payload['data'])
+            : $payload;
+
+        $statusRaw = $this->extractFlexPayMobileTransactionStatus(is_array($mergedPayload) ? $mergedPayload : []);
+
+        if ($statusRaw === null || $statusRaw === '' || ! is_numeric($statusRaw)) {
+            return response()->json(['ok' => true, 'message' => 'Webhook reçu — statut non numérique, confirmation via polling.']);
+        }
+
+        $status = (int) $statusRaw;
+
+        switch ($status) {
+            case 0:
+                if ($payment->etat !== 'payee') {
+                    $this->paymentCompletion->markElectronicPaid($payment, 'FlexPay confirmé via webhook.');
+                    if ($payment->participant) {
+                        $this->inscriptionFunnel->record(
+                            $payment->participant,
+                            RetreatInscriptionFunnelService::STAGE_PAYMENT_MOBILE_CONFIRMED,
+                            'Encaissement confirmé par callback FlexPay.',
+                            ['payment_reference' => $payment->reference, 'channel' => $payment->channel]
+                        );
+                    }
+                }
+                break;
+            case 1:
+                if ($payment->etat === 'en_cours') {
+                    $payment->update([
+                        'etat' => 'annulee',
+                        'provider_message' => 'Transaction annulée côté opérateur (webhook FlexPay).',
+                    ]);
+                }
+                break;
+            case 2:
+                if ($payment->etat !== 'payee') {
+                    $payment->update(['etat' => 'en_cours']);
+                }
+                break;
+        }
 
         return response()->json(['ok' => true]);
+    }
+
+    /**
+     * Extrait la référence marchand depuis un callback FlexPay (formats variables).
+     *
+     * @param array<string, mixed> $payload Corps du webhook
+     * @return string|null Référence ou null
+     */
+    protected function resolveFlexpayWebhookReference(array $payload): ?string
+    {
+        $candidates = [
+            data_get($payload, 'reference'),
+            data_get($payload, 'Reference'),
+            data_get($payload, 'transaction.reference'),
+            data_get($payload, 'transaction.Reference'),
+            data_get($payload, 'data.reference'),
+            data_get($payload, 'data.transaction.reference'),
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (is_string($candidate) && trim($candidate) !== '') {
+                return trim($candidate);
+            }
+        }
+
+        return null;
     }
 
     protected function validateRegistration(Request $request): array

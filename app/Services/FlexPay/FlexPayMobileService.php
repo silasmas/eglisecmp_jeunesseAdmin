@@ -2,6 +2,7 @@
 
 namespace App\Services\FlexPay;
 
+use App\Support\RetreatMailUrl;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -34,7 +35,7 @@ class FlexPayMobileService
             'reference' => $reference,
             'amount' => $amount,
             'currency' => $currency,
-            'callbackUrl' => url('/api/v1/retreat/inscription/webhooks/flexpay-callback'),
+            'callbackUrl' => RetreatMailUrl::flexpayInscriptionWebhook(),
         ];
 
         $response = Http::withHeaders([

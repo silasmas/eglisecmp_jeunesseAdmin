@@ -21,9 +21,9 @@ class RetreatParticipantRegistrationService
      *
      * @param RetreatPayment $payment Paiement cash
      * @param User $admin Administrateur
-     * @return void
+     * @return array{success: bool, message: string, channel: string|null} Résultat envoi billet
      */
-    public function approveCashPayment(RetreatPayment $payment, User $admin): void
+    public function approveCashPayment(RetreatPayment $payment, User $admin): array
     {
         if ($payment->channel !== 'cash') {
             throw new \InvalidArgumentException('Seuls les paiements cash peuvent être validés depuis cette file.');
@@ -38,6 +38,56 @@ class RetreatParticipantRegistrationService
             'amount_paid' => (float) ($payment->amount_paid ?: $payment->amount_expected),
             'provider_message' => 'Paiement cash validé par '.$admin->name,
         ]);
+
+        return $this->finalizeCashRegistration($payment->fresh(['participant', 'event']));
+    }
+
+    /**
+     * Marque le participant payé et envoie le billet (e-mail ou SMS).
+     *
+     * @param RetreatPayment $payment Paiement cash validé
+     * @return array{success: bool, message: string, channel: string|null}
+     */
+    protected function finalizeCashRegistration(RetreatPayment $payment): array
+    {
+        $participant = $payment->participant;
+
+        if (! $participant) {
+            return [
+                'success' => false,
+                'message' => 'Participant introuvable pour ce paiement.',
+                'channel' => null,
+            ];
+        }
+
+        $participant->update([
+            'paiement_valide' => true,
+            'registration_status' => 'completed',
+            'preuve_paiement' => $participant->preuve_paiement
+                ?: ($payment->provider_reference ?? $payment->reference),
+        ]);
+
+        $this->fulfillment->fulfillIfNeeded($payment->fresh(['participant', 'event']));
+
+        $participant->refresh();
+
+        if ($participant->billet_envoye_email || $participant->billet_envoye_whatsapp) {
+            $channel = $participant->billet_envoye_email ? 'email' : 'sms';
+
+            return [
+                'success' => true,
+                'message' => $channel === 'email'
+                    ? 'Billet envoyé par e-mail au participant.'
+                    : 'Billet envoyé par SMS au participant.',
+                'channel' => $channel,
+            ];
+        }
+
+        return [
+            'success' => false,
+            'message' => 'Paiement validé, mais le billet n’a pas pu être envoyé. Vérifiez l’e-mail ou le téléphone du participant et la configuration SMTP du serveur.',
+            'channel' => null,
+        ];
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Services\FlexPay;
 
+use App\Support\RetreatMailUrl;
 use Illuminate\Support\Facades\Http;
 
 class FlexPayCardService
@@ -15,13 +16,13 @@ class FlexPayCardService
         $merchant = config('services.flexpay.merchant');
         $token = config('services.flexpay.token');
         $gateway = config('services.flexpay.gateway_card');
-        $appUrl = rtrim((string) config('app.url'), '/');
+        $publicBase = RetreatMailUrl::base();
 
         if (empty($token) || empty($gateway) || empty($merchant)) {
             return ['rep' => false, 'message' => 'FlexPay (carte) n’est pas configuré.'];
         }
 
-        $baseRedirectUrl = "{$appUrl}/inscription-retraite/paiement-carte/{$reference}/{$amount}/{$currency}";
+        $baseRedirectUrl = "{$publicBase}/inscription-retraite/paiement-carte/{$reference}/{$amount}/{$currency}";
 
         $body = [
             'authorization' => 'Bearer '.$token,
@@ -30,11 +31,11 @@ class FlexPayCardService
             'amount' => $amount,
             'currency' => $currency,
             'description' => $description,
-            'callback_url' => "{$appUrl}/api/v1/retreat/inscription/webhooks/flexpay-callback",
+            'callback_url' => RetreatMailUrl::flexpayInscriptionWebhook(),
             'approve_url' => "{$baseRedirectUrl}/success",
             'cancel_url' => "{$baseRedirectUrl}/cancel",
             'decline_url' => "{$baseRedirectUrl}/decline",
-            'home_url' => "{$appUrl}/",
+            'home_url' => RetreatMailUrl::portal(),
         ];
 
         $response = Http::withHeaders([

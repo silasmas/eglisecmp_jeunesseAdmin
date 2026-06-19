@@ -4,12 +4,13 @@ namespace App\Services;
 
 use App\Enums\EventAccessOtpChannel;
 use App\Mail\RetreatRegistrationConfirmedMail;
+use App\Models\ChurchEvent;
 use App\Models\RetreatParticipant;
 use App\Models\RetreatPayment;
 use App\Support\RetreatMailUrl;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 /**
  * Après paiement validé : affectations, puis envoi billet (e-mail ou SMS selon l'événement).
@@ -32,27 +33,35 @@ class RetreatRegistrationFulfillmentService
             return;
         }
 
-        DB::transaction(function () use ($payment): void {
-            $payment->loadMissing(['participant', 'event']);
+        $payment->loadMissing(['participant', 'event']);
 
-            $participant = $payment->participant;
-            $event = $payment->event;
+        $participant = $payment->participant;
+        $event = $payment->event;
 
-            if (! $participant || ! $event) {
-                return;
-            }
+        if (! $participant || ! $event) {
+            return;
+        }
 
+        if (blank($participant->download_token)) {
+            $participant->update(['download_token' => Str::random(32)]);
+            $participant->refresh();
+        }
+
+        try {
             $this->placementAssignment->assignBalancedPlacements($participant);
             $participant->refresh();
+        } catch (\Throwable $e) {
+            report($e);
+            Log::channel('daily')->warning('Affectation auto ignorée — envoi billet maintenu', [
+                'participant_id' => $participant->id,
+                'payment_id' => $payment->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
-            if (blank($participant->download_token)) {
-                return;
-            }
+        $participant->load(['chambre', 'atelier']);
 
-            $participant->load(['chambre', 'atelier']);
-
-            $this->sendBilletNotification($participant, $payment, false);
-        });
+        $this->sendBilletNotification($participant, $payment, false);
     }
 
     /**

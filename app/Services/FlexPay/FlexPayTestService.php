@@ -2,6 +2,7 @@
 
 namespace App\Services\FlexPay;
 
+use App\Support\RetreatMailUrl;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -31,7 +32,7 @@ class FlexPayTestService
             'gateway_mobile' => (string) config('services.flexpay.gateway_mobile'),
             'gateway_card' => (string) config('services.flexpay.gateway_card'),
             'gateway_check' => (string) config('services.flexpay.gateway_check'),
-            'callback_url' => url('/api/v1/retreat/inscription/webhooks/flexpay-callback'),
+            'callback_url' => RetreatMailUrl::flexpayInscriptionWebhook(),
             'app_url' => (string) config('app.url'),
             'mobile_providers' => config('retraite.flexpay_mobile_providers', []),
         ];
@@ -91,7 +92,7 @@ class FlexPayTestService
             'reference' => $reference,
             'amount' => $amount,
             'currency' => $currency,
-            'callbackUrl' => url('/api/v1/retreat/inscription/webhooks/flexpay-callback'),
+            'callbackUrl' => RetreatMailUrl::flexpayInscriptionWebhook(),
         ];
 
         $result = $this->executeRequest(
@@ -151,7 +152,7 @@ class FlexPayTestService
             'amount' => $amount,
             'currency' => $currency,
             'description' => $description,
-            'callback_url' => url('/api/v1/retreat/inscription/webhooks/flexpay-callback'),
+            'callback_url' => RetreatMailUrl::flexpayInscriptionWebhook(),
             'approve_url' => "{$baseRedirectUrl}/success",
             'cancel_url' => "{$baseRedirectUrl}/cancel",
             'decline_url' => "{$baseRedirectUrl}/decline",

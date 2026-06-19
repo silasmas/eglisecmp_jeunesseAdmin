@@ -66,4 +66,25 @@ class RetreatMailUrl
 
         return self::base().'/'.ltrim($path, '/');
     }
+
+    /**
+     * URL absolue d'une route API publique (webhooks FlexPay, etc.).
+     *
+     * @param string $path Chemin relatif après /api/ (ex. v1/retreat/inscription/webhooks/flexpay-callback)
+     * @return string
+     */
+    public static function api(string $path): string
+    {
+        return self::base().'/api/'.ltrim($path, '/');
+    }
+
+    /**
+     * Webhook FlexPay pour les paiements inscription retraite.
+     *
+     * @return string
+     */
+    public static function flexpayInscriptionWebhook(): string
+    {
+        return self::api('v1/retreat/inscription/webhooks/flexpay-callback');
+    }
 }
