@@ -88,17 +88,16 @@ class ChurchEvent extends Model
 
     /**
      * Vrai si l’événement peut ouvrir le formulaire d’inscription publique (API / portail).
+     * Seule la date de fin compte : pas de blocage is_active, clôture manuelle ou quota.
      */
     public function isOpenForPublicRetreatRegistration(): bool
     {
         return $this->type === 'retraite'
-            && $this->is_active
-            && ! $this->isPublicPortalClosed()
             && ! $this->isPublicRegistrationClosedBySchedule();
     }
 
     /**
-     * Événements retraite actifs dont les inscriptions en ligne sont encore ouvertes.
+     * Événements retraite dont les inscriptions en ligne sont encore ouvertes (date de fin non dépassée).
      *
      * @param Builder<ChurchEvent> $query
      * @return Builder<ChurchEvent>
@@ -107,8 +106,6 @@ class ChurchEvent extends Model
     {
         return $query
             ->where('type', 'retraite')
-            ->where('is_active', true)
-            ->where('is_publicly_closed', false)
             ->where(function (Builder $q): void {
                 $q->whereNull('end_at')->orWhere('end_at', '>', now());
             });

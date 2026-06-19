@@ -771,16 +771,6 @@ async function confirmRecapAndProceed() {
     return;
   }
 
-  if (
-    App.activeEvent &&
-    App.activeEvent.is_sold_out &&
-    typeof isOuvrierRegistrationRole === 'function' &&
-    !isOuvrierRegistrationRole()
-  ) {
-    retraiteNotifyToast('Les inscriptions en ligne sont closes : nombre de places maximal atteint.', 'warning');
-    return;
-  }
-
   const btn = document.getElementById('submitBtn');
   if (btn) {
     btn.disabled = true;

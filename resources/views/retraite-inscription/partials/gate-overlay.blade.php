@@ -7,7 +7,7 @@
       <div class="retraite-gate-icon"><i class="bi bi-calendar-x"></i></div>
       <h2 id="retraiteGateClosedTitle" class="retraite-gate-heading">Inscriptions non disponibles</h2>
       <p id="retraiteGateClosedText" class="retraite-gate-msg">
-        Aucun événement retraite ouvert aux inscriptions en ligne pour le moment. Réessayez plus tard ou contactez le département de la jeunesse.
+        Aucune retraite n’est ouverte aux inscriptions : la date de fin est dépassée ou aucun événement retraite n’est configuré. Contactez le département de la jeunesse si besoin.
       </p>
     </div>
   </div>

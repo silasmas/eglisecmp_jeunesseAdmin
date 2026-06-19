@@ -48,15 +48,6 @@ function goToStep(n) {
 function nextStep() {
   if (App.registrationOpen !== true) return;
   if (!validateStep(App.currentStep)) return;
-  if (
-    App.activeEvent &&
-    App.activeEvent.is_sold_out &&
-    typeof isOuvrierRegistrationRole === 'function' &&
-    !isOuvrierRegistrationRole()
-  ) {
-    retraiteNotifyToast('Les inscriptions en ligne sont closes : nombre de places maximal atteint.', 'warning');
-    return;
-  }
   if (App.currentStep === 3) return;
   if (App.currentStep === 4) return;
   goToStep(App.currentStep + 1);

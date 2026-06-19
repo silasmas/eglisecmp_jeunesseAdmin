@@ -136,7 +136,7 @@ class RetreatPublicRegistrationController extends Controller
 
         if (! $event) {
             return response()->json([
-                'message' => 'Aucun événement retraite actif avec inscriptions ouvertes (vérifiez : type « retraite », actif, date de fin non dépassée).',
+                'message' => 'Aucun événement retraite ouvert aux inscriptions (vérifiez la date de fin).',
             ], 404);
         }
 
@@ -759,7 +759,7 @@ class RetreatPublicRegistrationController extends Controller
             return $response;
         }
 
-        if (! $this->isOuvrierRegistration($validated['role']) && ($message = $this->eventRegistrationClosedMessage($event))) {
+        if ($message = $this->eventRegistrationClosedMessage($event)) {
             return response()->json(['message' => $message], 422);
         }
 
@@ -1819,7 +1819,7 @@ class RetreatPublicRegistrationController extends Controller
                 ->first();
         }
 
-        return $query->orderByDesc('start_at')->orderByDesc('id')->first();
+        return $query->orderByDesc('is_active')->orderByDesc('start_at')->orderByDesc('id')->first();
     }
 
     protected function publicEventPayload(ChurchEvent $event): array
@@ -2100,9 +2100,19 @@ class RetreatPublicRegistrationController extends Controller
         return $this->normalizeRole($role, null) === 'ouvrier';
     }
 
+    /**
+     * Message affiché lorsque les inscriptions publiques sont closes (date de fin uniquement).
+     *
+     * @param ChurchEvent $event Événement cible
+     * @return string|null
+     */
     protected function eventRegistrationClosedMessage(ChurchEvent $event): ?string
     {
-        return app(RetreatEventCapacityService::class)->registrationClosedMessage($event);
+        if ($event->isPublicRegistrationClosedBySchedule()) {
+            return 'Les inscriptions en ligne sont closes : la date de fin de la retraite est dépassée.';
+        }
+
+        return null;
     }
 
     protected function assertParticipantMatchesEvent(RetreatParticipant $participant, ChurchEvent $event): ?JsonResponse
