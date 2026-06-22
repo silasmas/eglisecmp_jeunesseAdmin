@@ -7,21 +7,24 @@ use App\Models\ChurchEvent;
 use App\Models\RetreatParticipant;
 use App\Models\RetreatPayment;
 use App\Models\User;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 /**
- * Prévient les administrateurs (e-mail, SMS, cloche Filament) lors d'une preuve de paiement cash.
+ * Prévient les super_admin par e-mail et cloche Filament lors d'une preuve de paiement cash.
  */
 class RetreatCashPaymentAdminNotifier
 {
     public function __construct(
-        protected KeccelSmsService $sms,
         protected PanelNotificationDispatcher $panelNotifications,
     ) {}
 
     /**
-     * Envoie les notifications aux administrateurs actifs.
+     * Envoie e-mail + notification Filament à chaque super_admin actif possédant une adresse e-mail.
+     *
+     * @param RetreatParticipant $participant Participant ayant soumis la preuve
+     * @param RetreatPayment $payment Paiement cash en attente
+     * @param ChurchEvent $event Événement retraite
+     * @return void
      */
     public function notify(RetreatParticipant $participant, RetreatPayment $payment, ChurchEvent $event): void
     {
@@ -36,31 +39,31 @@ class RetreatCashPaymentAdminNotifier
         );
         $link = $this->participantAdminUrl($participant);
 
-        if ($admins->isNotEmpty()) {
-            $this->panelNotifications->notify(
-                $admins,
-                $title,
-                $message,
-                $link,
-                'payment',
-                $participant
-            );
-
-            foreach ($admins as $admin) {
-                if (! filled($admin->email)) {
-                    continue;
-                }
-                try {
-                    Mail::to($admin->email)->send(
-                        new RetreatCashPaymentAdminMail($participant, $payment, $event)
-                    );
-                } catch (\Throwable $e) {
-                    report($e);
-                }
-            }
+        if ($admins->isEmpty()) {
+            return;
         }
 
-        $this->notifyAdminsBySms($participant, $payment, $event);
+        $this->panelNotifications->notify(
+            $admins,
+            $title,
+            $message,
+            $link,
+            'payment',
+            $participant
+        );
+
+        foreach ($admins as $admin) {
+            if (! filled($admin->email)) {
+                continue;
+            }
+            try {
+                Mail::to($admin->email)->send(
+                    new RetreatCashPaymentAdminMail($participant, $payment, $event)
+                );
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
     }
 
     /**
@@ -75,61 +78,9 @@ class RetreatCashPaymentAdminNotifier
     }
 
     /**
-     * Envoie un SMS aux numéros administrateurs configurés et aux téléphones des admins actifs.
+     * @param RetreatParticipant $participant Participant
+     * @return string|null URL admin Filament
      */
-    protected function notifyAdminsBySms(
-        RetreatParticipant $participant,
-        RetreatPayment $payment,
-        ChurchEvent $event
-    ): void {
-        $phones = $this->resolveAdminPhoneNumbers();
-
-        if ($phones === []) {
-            Log::channel('daily')->info('SMS admin cash : aucun numéro configuré.', [
-                'participant_id' => $participant->id,
-                'reference' => $payment->reference,
-            ]);
-
-            return;
-        }
-
-        $body = __('retraite.sms_admin_cash_body', [
-            'name' => $participant->full_name,
-            'event' => $event->name,
-            'ref' => $payment->reference,
-        ]);
-
-        foreach ($phones as $phone) {
-            try {
-                $this->sms->send($phone, $body, 'retreat_cash_payment_admin');
-            } catch (\Throwable $e) {
-                report($e);
-            }
-        }
-    }
-
-    /**
-     * @return list<string>
-     */
-    protected function resolveAdminPhoneNumbers(): array
-    {
-        $phones = [];
-
-        foreach ($this->resolveAdminRecipients() as $admin) {
-            if (filled($admin->telephone)) {
-                $phones[] = (string) $admin->telephone;
-            }
-        }
-
-        foreach (config('retraite.admin_notify_phones', []) as $configured) {
-            if (filled($configured)) {
-                $phones[] = (string) $configured;
-            }
-        }
-
-        return array_values(array_unique(array_filter($phones)));
-    }
-
     protected function participantAdminUrl(RetreatParticipant $participant): ?string
     {
         try {

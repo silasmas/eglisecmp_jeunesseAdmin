@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Enums\ChurchEventType;
 use App\Enums\EventAccessAuthMode;
 use App\Enums\EventAccessOtpChannel;
+use App\Support\ChurchEventPublicRegistrationEvaluator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -32,11 +34,6 @@ class ChurchEvent extends Model
                 $event->access_otp_channel = EventAccessOtpChannel::Email;
             }
 
-            /*
-             * Ne pas forcer is_active à false quand start_at est passé : cela désactivait
-             * l’événement à chaque enregistrement (modif. prix, affiche, etc.).
-             * Les inscriptions publiques se ferment via la date de fin (isOpenForPublicRetreatRegistration()).
-             */
             if (! $event->is_active) {
                 return;
             }
@@ -75,39 +72,67 @@ class ChurchEvent extends Model
     }
 
     /**
-     * Inscriptions publiques closes : date de fin dépassée (pas la date de début).
+     * Inscriptions publiques closes : fenêtre d'inscription dépassée ou date de fin événement.
      */
     public function isPublicRegistrationClosedBySchedule(): bool
     {
-        if ($this->end_at === null) {
+        $closesAt = ChurchEventPublicRegistrationEvaluator::resolveRegistrationClosesAt($this);
+
+        if ($closesAt === null) {
             return false;
         }
 
-        return $this->end_at->isPast();
+        return $closesAt->isPast();
     }
 
     /**
-     * Vrai si l’événement peut ouvrir le formulaire d’inscription publique (API / portail).
-     * Seule la date de fin compte : pas de blocage is_active, clôture manuelle ou quota.
+     * Inscriptions pas encore ouvertes (date de début d'inscription future).
+     */
+    public function isPublicRegistrationNotYetOpen(): bool
+    {
+        if ($this->public_registration_opens_at === null) {
+            return false;
+        }
+
+        return $this->public_registration_opens_at->isFuture();
+    }
+
+    /**
+     * Vrai si l'événement peut ouvrir le formulaire d'inscription publique (API / portail).
      */
     public function isOpenForPublicRetreatRegistration(): bool
     {
-        return $this->type === 'retraite'
-            && ! $this->isPublicRegistrationClosedBySchedule();
+        return ChurchEventPublicRegistrationEvaluator::isOpen($this);
     }
 
     /**
-     * Événements retraite dont les inscriptions en ligne sont encore ouvertes (date de fin non dépassée).
+     * Événements retraite dont les inscriptions en ligne sont ouvertes.
      *
      * @param Builder<ChurchEvent> $query
      * @return Builder<ChurchEvent>
      */
     public function scopeOpenForPublicRegistration(Builder $query): Builder
     {
+        $now = now();
+
         return $query
-            ->where('type', 'retraite')
-            ->where(function (Builder $q): void {
-                $q->whereNull('end_at')->orWhere('end_at', '>', now());
+            ->where('type', ChurchEventType::Retraite->value)
+            ->where('is_active', true)
+            ->where('is_publicly_closed', false)
+            ->where(function (Builder $q) use ($now): void {
+                $q->whereNull('public_registration_opens_at')
+                    ->orWhere('public_registration_opens_at', '<=', $now);
+            })
+            ->where(function (Builder $q) use ($now): void {
+                $q->where(function (Builder $inner) use ($now): void {
+                    $inner->whereNotNull('public_registration_closes_at')
+                        ->where('public_registration_closes_at', '>', $now);
+                })->orWhere(function (Builder $inner) use ($now): void {
+                    $inner->whereNull('public_registration_closes_at')
+                        ->where(function (Builder $fallback) use ($now): void {
+                            $fallback->whereNull('end_at')->orWhere('end_at', '>', $now);
+                        });
+                });
             });
     }
 
@@ -119,7 +144,7 @@ class ChurchEvent extends Model
      */
     public function scopeAvailableForDonations(Builder $query): Builder
     {
-        return $query->where('type', 'retraite');
+        return $query->where('type', ChurchEventType::Retraite->value);
     }
 
     /**
@@ -171,6 +196,8 @@ class ChurchEvent extends Model
         'access_otp_channel',
         'is_active',
         'is_publicly_closed',
+        'public_registration_opens_at',
+        'public_registration_closes_at',
     ];
 
     public function setAccessAuthModeAttribute(mixed $value): void
@@ -198,6 +225,8 @@ class ChurchEvent extends Model
         return [
             'start_at' => 'datetime',
             'end_at' => 'datetime',
+            'public_registration_opens_at' => 'datetime',
+            'public_registration_closes_at' => 'datetime',
             'capacity' => 'integer',
             'price_to_pay' => 'decimal:2',
             'is_active' => 'boolean',

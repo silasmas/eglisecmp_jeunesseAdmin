@@ -2,9 +2,11 @@
 
 namespace App\Filament\Resources\ChurchEvents\Tables;
 
+use App\Enums\ChurchEventType;
 use App\Enums\EventAccessAuthMode;
 use App\Enums\EventAccessOtpChannel;
 use App\Models\ChurchEvent;
+use App\Support\ChurchEventPublicRegistrationEvaluator;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -33,6 +35,27 @@ class ChurchEventsTable
                     ->label('Nom')
                     ->searchable()
                     ->sticky(),
+                TextColumn::make('public_registration_status')
+                    ->label('Formulaire public')
+                    ->badge()
+                    ->state(function (ChurchEvent $record): string {
+                        return ChurchEventPublicRegistrationEvaluator::evaluate($record)['label'];
+                    })
+                    ->icon(function (ChurchEvent $record): string {
+                        return ChurchEventPublicRegistrationEvaluator::isOpen($record)
+                            ? 'heroicon-o-check-circle'
+                            : 'heroicon-o-x-circle';
+                    })
+                    ->color(function (ChurchEvent $record): string {
+                        return ChurchEventPublicRegistrationEvaluator::isOpen($record) ? 'success' : 'gray';
+                    })
+                    ->tooltip(function (ChurchEvent $record): string {
+                        $checks = ChurchEventPublicRegistrationEvaluator::evaluate($record)['checks'];
+
+                        return collect($checks)
+                            ->map(fn (array $check): string => ($check['ok'] ? '✓' : '✗').' '.$check['label'])
+                            ->implode(' · ');
+                    }),
                 TextColumn::make('statut_temporel')
                     ->label('Statut')
                     ->badge()
@@ -55,7 +78,18 @@ class ChurchEventsTable
                     }),
                 TextColumn::make('type')
                     ->label("Type d'evenement")
+                    ->formatStateUsing(fn (?string $state): string => ChurchEventType::tryFrom((string) $state)?->label() ?? (string) $state)
                     ->searchable(),
+                TextColumn::make('public_registration_opens_at')
+                    ->label('Inscriptions — début')
+                    ->dateTime('d/m/Y H:i')
+                    ->placeholder('—')
+                    ->toggleable(),
+                TextColumn::make('public_registration_closes_at')
+                    ->label('Inscriptions — fin')
+                    ->dateTime('d/m/Y H:i')
+                    ->placeholder('—')
+                    ->toggleable(),
                 TextColumn::make('start_at')
                     ->label('Debut')
                     ->dateTime()

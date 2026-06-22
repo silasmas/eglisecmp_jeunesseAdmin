@@ -24,6 +24,7 @@ use App\Services\RetreatInscriptionFunnelService;
 use App\Services\RetreatInscriptionPaymentCompletionService;
 use App\Services\RetreatRegistration\RetreatEventCapacityService;
 use App\Services\StoragePathService;
+use App\Support\ChurchEventPublicRegistrationEvaluator;
 use App\Support\RetreatRegistrationBadgeViewResolver;
 use App\Support\RegistrationFormUiSettings;
 use App\Support\StoragePath;
@@ -136,7 +137,7 @@ class RetreatPublicRegistrationController extends Controller
 
         if (! $event) {
             return response()->json([
-                'message' => 'Aucun événement retraite ouvert aux inscriptions (vérifiez la date de fin).',
+                'message' => 'Aucun événement retraite ouvert aux inscriptions (type retraite, actif, accès public ouvert, fenêtre d\'inscription en cours).',
             ], 404);
         }
 
@@ -1938,7 +1939,8 @@ class RetreatPublicRegistrationController extends Controller
             'places_remaining' => $remaining,
             'is_sold_out' => $capacitySnapshot['is_sold_out'],
             'registration_open' => $event->isOpenForPublicRetreatRegistration(),
-            'registration_closes_at' => $event->end_at?->toISOString(),
+            'registration_opens_at' => $event->public_registration_opens_at?->toISOString(),
+            'registration_closes_at' => ChurchEventPublicRegistrationEvaluator::resolveRegistrationClosesAt($event)?->toISOString(),
             'places_message' => $capacitySnapshot['places_message'],
             'retreat_detail' => $detail ? [
                 'theme' => $detail->theme,

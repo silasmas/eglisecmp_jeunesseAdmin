@@ -2,6 +2,9 @@
 
 namespace App\Filament\Resources\ChurchEvents\Schemas;
 
+use App\Enums\ChurchEventType;
+use App\Models\ChurchEvent;
+use App\Support\ChurchEventPublicRegistrationEvaluator;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
@@ -10,6 +13,10 @@ use Slimani\MediaManager\Infolists\Components\MediaImageEntry;
 
 class ChurchEventInfolist
 {
+    /**
+     * @param Schema $schema Schéma Filament
+     * @return Schema
+     */
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -20,11 +27,33 @@ class ChurchEventInfolist
                             ->label('Affiche')
                             ->conversion('thumb'),
                         TextEntry::make('name')->label('Nom'),
-                        TextEntry::make('type')->label("Type d'evenement"),
+                        TextEntry::make('type')
+                            ->label("Type d'evenement")
+                            ->formatStateUsing(fn (?string $state): string => ChurchEventType::tryFrom((string) $state)?->label() ?? (string) $state),
                         TextEntry::make('location')->label('Lieu'),
                         IconEntry::make('is_active')
                             ->label('Actif')
                             ->boolean(),
+                        IconEntry::make('is_publicly_closed')
+                            ->label('Accès public fermé')
+                            ->boolean(),
+                        TextEntry::make('public_registration_status')
+                            ->label('Formulaire public')
+                            ->badge()
+                            ->state(fn (ChurchEvent $record): string => ChurchEventPublicRegistrationEvaluator::evaluate($record)['label'])
+                            ->color(fn (ChurchEvent $record): string => ChurchEventPublicRegistrationEvaluator::isOpen($record) ? 'success' : 'gray'),
+                    ])
+                    ->columns(2),
+                Section::make('Inscriptions publiques')
+                    ->schema([
+                        TextEntry::make('public_registration_opens_at')
+                            ->label('Ouverture formulaire')
+                            ->dateTime('d/m/Y H:i')
+                            ->placeholder('Immédiat si conditions OK'),
+                        TextEntry::make('public_registration_closes_at')
+                            ->label('Fermeture formulaire')
+                            ->dateTime('d/m/Y H:i')
+                            ->placeholder('Repli sur fin retraite'),
                     ])
                     ->columns(2),
                 Section::make('Dates et capacite')
