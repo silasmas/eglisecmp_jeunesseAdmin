@@ -15,7 +15,7 @@ use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\Checkbox;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
+use App\Filament\Support\RetreatParticipantDeletionActions;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\TextInput;
@@ -656,7 +656,7 @@ class RetreatParticipantsTable
                         ->color('danger')
                         ->requiresConfirmation()
                         ->action(fn ($records) => $records->each(fn ($record) => $record->update(['atelier_id' => null]))),
-                    DeleteBulkAction::make(),
+                    RetreatParticipantDeletionActions::bulkDeleteAction(),
                 ]),
             ]);
     }

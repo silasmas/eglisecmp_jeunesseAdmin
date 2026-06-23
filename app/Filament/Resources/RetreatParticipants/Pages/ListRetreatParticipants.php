@@ -2,7 +2,7 @@
 
 namespace App\Filament\Resources\RetreatParticipants\Pages;
 
-use App\Filament\Pages\ManageRetreatAtelierQuarantine;
+use App\Filament\Resources\RetreatParticipantDeletionLogs\RetreatParticipantDeletionLogResource;
 use App\Filament\Resources\RetreatParticipants\RetreatParticipantResource;
 use App\Filament\Resources\RetreatParticipants\Widgets\RetreatParticipantsStats;
 use App\Models\RetreatParticipant;
@@ -36,6 +36,12 @@ class ListRetreatParticipants extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('deletionHistory')
+                ->label('Historique suppressions')
+                ->icon('heroicon-o-archive-box-x-mark')
+                ->color('gray')
+                ->url(fn (): string => RetreatParticipantDeletionLogResource::getUrl('index'))
+                ->visible(fn (): bool => auth()->user()?->can('DeleteAny:RetreatParticipant') ?? false),
             Action::make('openAtelierQuarantine')
                 ->label('Quarantaine atelier')
                 ->icon('heroicon-o-shield-exclamation')
