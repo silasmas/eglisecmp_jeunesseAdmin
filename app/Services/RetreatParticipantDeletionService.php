@@ -131,19 +131,19 @@ class RetreatParticipantDeletionService
         $loaded = $this->loadForDeletionPreview($participants);
         $participantIds = $loaded->pluck('id')->all();
 
-        DB::transaction(function () use ($participantIds): void {
+        $log = DB::transaction(function () use ($participantIds, $preview, $performedBy): RetreatParticipantDeletionLog {
             foreach ($participantIds as $participantId) {
                 $this->deleteSingleParticipant((int) $participantId);
             }
-        });
 
-        $log = RetreatParticipantDeletionLog::query()->create([
-            'performed_by' => $performedBy->id,
-            'event_id' => $preview['event_id'],
-            'participant_count' => $preview['totals']['participants'],
-            'participants_summary' => $preview['participants_summary'],
-            'related_summary' => $preview['related_summary'],
-        ]);
+            return RetreatParticipantDeletionLog::query()->create([
+                'performed_by' => $performedBy->id,
+                'event_id' => $preview['event_id'],
+                'participant_count' => $preview['totals']['participants'],
+                'participants_summary' => $preview['participants_summary'],
+                'related_summary' => $preview['related_summary'],
+            ]);
+        });
 
         return [
             'deleted_count' => $preview['totals']['participants'],
