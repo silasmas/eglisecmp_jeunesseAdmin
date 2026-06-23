@@ -57,6 +57,19 @@ class RetreatParticipantDeletionLogPolicy
      */
     public function delete(AuthUser $authUser, RetreatParticipantDeletionLog $retreatParticipantDeletionLog): bool
     {
-        return false;
+        if (! $authUser->can('DeleteAny:RetreatParticipant')) {
+            return false;
+        }
+
+        return $retreatParticipantDeletionLog->isPurgeable();
+    }
+
+    /**
+     * @param AuthUser $authUser Utilisateur connecté
+     * @return bool
+     */
+    public function deleteAny(AuthUser $authUser): bool
+    {
+        return $authUser->can('DeleteAny:RetreatParticipant');
     }
 }

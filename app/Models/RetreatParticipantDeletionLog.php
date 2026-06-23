@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -10,6 +11,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class RetreatParticipantDeletionLog extends Model
 {
+    /**
+     * Délai minimum de conservation avant purge de l'historique (en mois).
+     */
+    public const RETENTION_MONTHS = 1;
+
     /** @var list<string> */
     protected $fillable = [
         'performed_by',
@@ -27,6 +33,32 @@ class RetreatParticipantDeletionLog extends Model
         return [
             'participant_count' => 'integer',
         ];
+    }
+
+    /**
+     * Indique si l'entrée d'historique peut être supprimée (âge >= 1 mois).
+     *
+     * @return bool
+     */
+    public function isPurgeable(): bool
+    {
+        $purgeableAt = $this->purgeableAt();
+
+        if ($purgeableAt === null) {
+            return false;
+        }
+
+        return now()->gte($purgeableAt);
+    }
+
+    /**
+     * Date à partir de laquelle l'entrée peut être purgée.
+     *
+     * @return CarbonInterface|null
+     */
+    public function purgeableAt(): ?CarbonInterface
+    {
+        return $this->created_at?->copy()->addMonths(self::RETENTION_MONTHS);
     }
 
     /**
