@@ -31,8 +31,15 @@ class RetreatVoluntaryDonationDonorMail extends Mailable
     {
         $eventName = $this->donation->event?->name ?? 'Retraite';
 
+        $subject = match (true) {
+            $this->donation->status === RetreatVoluntaryDonation::STATUS_CASH_SUBMITTED => "Preuve reçue — validation en cours — {$eventName}",
+            $this->donation->cash_purpose === RetreatVoluntaryDonation::PURPOSE_SPONSOR_YOUTH
+                && $this->donation->status === RetreatVoluntaryDonation::STATUS_PAID => "Paiement confirmé — contactez l'administration — {$eventName}",
+            default => "Confirmation de votre don — {$eventName}",
+        };
+
         return new Envelope(
-            subject: "Confirmation de votre don — {$eventName}",
+            subject: $subject,
             from: new Address(
                 (string) config('mail.from.address'),
                 (string) config('mail.from.name')

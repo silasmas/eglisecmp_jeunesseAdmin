@@ -777,7 +777,7 @@ async function submitDonCashProof() {
   const statusEl = document.getElementById('donPaymentStatus');
   if (statusEl) {
     statusEl.textContent =
-      'Preuve envoyée. Validation admin en cours — vous recevrez un e-mail de confirmation.';
+      'Preuve envoyée. Vous serez notifié par e-mail après validation par l\'administration.';
   }
   retraiteNotifyToast(json.message || 'Preuve reçue.', 'success');
   if (btn) {
@@ -915,10 +915,13 @@ function startDonPaymentPoll(originalBtnHtml, pollOptions) {
       finishPollStopped();
       donMobilePayManualSessionsLeft = null;
       setDonPaymentProgressStep(3, 'Le paiement est confirmé. Merci pour votre générosité !');
-      showDonPaymentBanner('Paiement confirmé par votre opérateur. Un e-mail de confirmation vous sera envoyé.', 'success');
+      showDonPaymentBanner(
+        'Paiement confirmé. Un e-mail de confirmation vous a été envoyé. Pour les codes parrainage, contactez le département jeunesse.',
+        'success'
+      );
       const statusEl = document.getElementById('donPaymentStatus');
       if (statusEl) {
-        statusEl.textContent = 'Paiement confirmé. Un e-mail de confirmation vous a été envoyé.';
+        statusEl.textContent = 'Paiement confirmé. Consultez votre e-mail. Les codes parrainage se retirent auprès de l\'administration.';
       }
       if (hint) {
         hint.textContent = 'Paiement confirmé.';

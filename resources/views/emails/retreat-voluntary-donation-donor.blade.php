@@ -4,19 +4,35 @@
   $isSponsor = $donation->cash_purpose === \App\Models\RetreatVoluntaryDonation::PURPOSE_SPONSOR_YOUTH;
   $isPaid = $donation->status === \App\Models\RetreatVoluntaryDonation::STATUS_PAID;
   $isCashSubmitted = $donation->status === \App\Models\RetreatVoluntaryDonation::STATUS_CASH_SUBMITTED;
-  $cashStatusSuffix = match (true) {
-    $isPaid => ' et le paiement est confirmé.',
-    $isCashSubmitted => ' : votre preuve est en cours de validation par l\'équipe.',
-    default => '.',
-  };
   $displayAmount = (float) ($donation->amount_paid > 0 ? $donation->amount_paid : $donation->amount_expected);
-  $vouchers = $donation->relationLoaded('vouchers') ? $donation->vouchers : collect();
   $portalUrl = \App\Support\RetreatMailUrl::inscription();
 @endphp
 
 <x-mail::message>
 @include('emails.partials.jeunesse-cmp-mail-header')
 
+@if($isCashSubmitted)
+# Preuve de paiement reçue
+
+Bonjour **{{ $donation->donor_name }}**,
+
+Nous confirmons la bonne réception de votre **preuve de paiement en espèces** pour **{{ $eventName }}**.
+
+**Référence :** {{ $donation->reference }}
+
+**Montant indiqué :** {{ number_format($displayAmount, 2, ',', ' ') }} {{ $donation->currency }}
+
+@if($isSponsor)
+Vous avez demandé à sponsoriser **{{ (int) $donation->youth_slots_count }}** jeune{{ (int) $donation->youth_slots_count > 1 ? 's' : '' }}.
+@endif
+
+<x-mail::panel>
+Votre dossier est **en attente de validation** par l'équipe d'administration. **Vous recevrez un e-mail dès que votre paiement aura été validé.**
+</x-mail::panel>
+
+Les codes parrainage (le cas échéant) ne sont **pas** transmis par e-mail : vous devrez vous rapprocher du **département jeunesse CMP** après validation pour les obtenir et les remettre aux jeunes concernés.
+
+@else
 # Merci pour votre don
 
 Bonjour **{{ $donation->donor_name }}**,
@@ -28,37 +44,26 @@ Nous confirmons la bonne réception de votre don pour **{{ $eventName }}**.
 @if($isInKind)
 Votre proposition de **don en nature** a été transmise à l'équipe d'organisation. Nous vous recontacterons si nécessaire pour la coordination logistique.
 @else
-Votre **don en espèces** a bien été enregistré{{ $cashStatusSuffix }}
+Votre **don en espèces** a bien été enregistré@if($isPaid) et le **paiement est confirmé**@endif.
 
 **Montant :** {{ number_format($displayAmount, 2, ',', ' ') }} {{ $donation->currency }}
-@endif
-
-@if($isCashSubmitted)
-Nous vous enverrons un **second e-mail de confirmation** (avec les codes parrainage le cas échéant) dès validation du paiement en espèces par l'administration.
 @endif
 
 @if($isSponsor && $isPaid)
 Vous avez sponsorisé **{{ (int) $donation->youth_slots_count }}** jeune{{ (int) $donation->youth_slots_count > 1 ? 's' : '' }}.
 
-@if($vouchers->isNotEmpty())
-## Codes parrainage à transmettre
-
-Chaque jeune doit saisir **un code distinct** lors de l'étape **Paiement** sur le portail d'inscription (après avoir rempli le formulaire).
-
 <x-mail::panel>
-@foreach($vouchers as $voucher)
-**{{ $voucher->code }}**
-@endforeach
+Votre paiement est **validé**. Pour obtenir les **codes parrainage** à remettre aux jeunes, rapprochez-vous du **département jeunesse CMP** ou de l'administration de la retraite.
+
+Les codes **ne sont pas envoyés par e-mail** : seule l'équipe en charge pourra vous les remettre après vérification de votre dossier.
 </x-mail::panel>
 
 @include('emails.partials.cmp-mail-button', [
     'url' => $portalUrl,
-    'label' => 'Ouvrir le portail d\'inscription',
+    'label' => 'Portail d\'inscription (pour les jeunes)',
 ])
 
-Le code couvre les frais d'inscription pour **une place**. Conservez une copie de ces codes pour les transmettre aux jeunes concernés.
-@else
-Les codes parrainage seront générés sous peu. Contactez l'équipe d'organisation si vous ne les recevez pas.
+Indiquez aux jeunes qu'ils saisiront le code reçu auprès de l'administration à l'étape **Paiement** du formulaire d'inscription.
 @endif
 @endif
 

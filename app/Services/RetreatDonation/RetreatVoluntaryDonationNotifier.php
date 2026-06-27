@@ -69,9 +69,9 @@ class RetreatVoluntaryDonationNotifier
             return;
         }
 
-        $donation->loadMissing(['event', 'vouchers']);
+        $donation->loadMissing(['event']);
 
-        Mail::to($email)->send(new RetreatVoluntaryDonationDonorMail($donation->fresh(['event', 'vouchers'])));
+        Mail::to($email)->send(new RetreatVoluntaryDonationDonorMail($donation->fresh(['event'])));
 
         $donation->update(['donor_notified' => true]);
     }
@@ -118,5 +118,7 @@ class RetreatVoluntaryDonationNotifier
         $donation->loadMissing(['event']);
 
         Mail::to($email)->send(new RetreatVoluntaryDonationDonorMail($donation->fresh(['event'])));
+
+        // Ne pas marquer donor_notified : un second e-mail part après validation admin.
     }
 }

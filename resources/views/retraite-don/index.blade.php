@@ -164,7 +164,7 @@
             <div id="donCashBlock" class="hidden mt-3">
               <div class="info-box warning mb-3">
                 <i class="bi bi-cash-stack"></i>
-                <span>Après dépôt en espèces, téléchargez votre preuve. L'équipe validera avant confirmation et génération des codes parrainage.</span>
+                <span>Après dépôt en espèces, téléchargez votre preuve. L'équipe validera votre paiement et vous notifiera par e-mail. Les codes parrainage se retirent ensuite auprès de l'administration.</span>
               </div>
               <div class="field full">
                 <label class="field-label">Preuve de paiement <span class="required">*</span></label>

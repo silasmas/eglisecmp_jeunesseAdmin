@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Filament\Resources\RetreatVoluntaryDonations\RetreatVoluntaryDonationResource;
 use App\Models\RetreatVoluntaryDonation;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
@@ -31,8 +32,12 @@ class RetreatVoluntaryDonationMail extends Mailable
     {
         $eventName = $this->donation->event?->name ?? 'Retraite';
 
+        $subject = $this->donation->status === RetreatVoluntaryDonation::STATUS_CASH_SUBMITTED
+            ? "Don cash à valider — {$eventName}"
+            : "Nouveau don volontaire — {$eventName}";
+
         return new Envelope(
-            subject: "Nouveau don volontaire — {$eventName}",
+            subject: $subject,
             from: new Address(
                 (string) config('mail.from.address'),
                 (string) config('mail.from.name')
@@ -45,10 +50,23 @@ class RetreatVoluntaryDonationMail extends Mailable
      */
     public function content(): Content
     {
+        $adminDonationUrl = null;
+
+        try {
+            $adminDonationUrl = RetreatVoluntaryDonationResource::getUrl(
+                'view',
+                ['record' => $this->donation->id],
+                panel: 'admin',
+            );
+        } catch (\Throwable) {
+            $adminDonationUrl = null;
+        }
+
         return new Content(
             markdown: 'emails.retreat-voluntary-donation',
             with: [
                 'donation' => $this->donation,
+                'adminDonationUrl' => $adminDonationUrl,
             ],
         );
     }
