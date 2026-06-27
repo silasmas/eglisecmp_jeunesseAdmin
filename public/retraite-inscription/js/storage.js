@@ -253,7 +253,9 @@ function restoreState() {
       }
     }
     /* Trigger age calculation */
-    if (data.dateNaissance) {
+    if (data.dateNaissance && typeof syncBirthDateFieldFromValue === 'function') {
+      syncBirthDateFieldFromValue(data.dateNaissance);
+    } else if (data.dateNaissance) {
       document.getElementById('dateNaissance').dispatchEvent(new Event('change'));
     }
     /* Restore step (but not badge step) */

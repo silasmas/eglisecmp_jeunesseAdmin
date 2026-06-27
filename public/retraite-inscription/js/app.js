@@ -569,6 +569,10 @@ async function wireWorkerPrefill() {
 
 function fillAndNotifyField(id, value) {
   if (value === undefined || value === null || value === '') return;
+  if (id === 'dateNaissance' && typeof syncBirthDateFieldFromValue === 'function') {
+    syncBirthDateFieldFromValue(value);
+    return;
+  }
   const field = document.getElementById(id);
   if (!field) return;
   field.value = value;

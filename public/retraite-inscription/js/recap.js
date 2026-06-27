@@ -66,18 +66,23 @@ function buildRecapRowForField(field, processedKeys) {
     }
     case 'date_naissance': {
       let ageStr = '';
-      const dob = new Date(val('dateNaissance'));
-      if (!isNaN(dob.getTime())) {
-        const today = new Date();
-        let age = today.getFullYear() - dob.getFullYear();
-        const m = today.getMonth() - dob.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
-          age--;
-        }
-        ageStr = age + ' ans';
+      const dobRaw = val('dateNaissance');
+      const dob = typeof parseBirthDateString === 'function'
+        ? parseBirthDateString(dobRaw)
+        : new Date(dobRaw);
+
+      if (dob && !(dob instanceof Date && isNaN(dob.getTime()))) {
+        const age = typeof computeAgeFromBirthDate === 'function'
+          ? computeAgeFromBirthDate(dob)
+          : null;
+        ageStr = age !== null ? `${age} ans` : '';
       }
-      const value = val('dateNaissance')
-        ? formatDate(val('dateNaissance')) + (ageStr ? ` (${ageStr})` : '')
+
+      const displayRaw = typeof formatBirthDateDisplay === 'function' && dob
+        ? formatBirthDateDisplay(dob)
+        : dobRaw;
+      const value = displayRaw
+        ? formatDate(displayRaw) + (ageStr ? ` (${ageStr})` : '')
         : '—';
       return [field.label, value];
     }
@@ -125,16 +130,21 @@ function buildRetraiteRecapSectionModelsLegacy() {
   const sexeLabel = val('sexe') === 'M' ? 'Masculin' : val('sexe') === 'F' ? 'Féminin' : '';
 
   let ageStr = '';
-  const dob = new Date(val('dateNaissance'));
-  if (!isNaN(dob.getTime())) {
-    const today = new Date();
-    let age = today.getFullYear() - dob.getFullYear();
-    const m = today.getMonth() - dob.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
-      age--;
-    }
-    ageStr = age + ' ans';
+  const dobRaw = val('dateNaissance');
+  const dob = typeof parseBirthDateString === 'function'
+    ? parseBirthDateString(dobRaw)
+    : new Date(dobRaw);
+
+  if (dob && !(dob instanceof Date && isNaN(dob.getTime()))) {
+    const age = typeof computeAgeFromBirthDate === 'function'
+      ? computeAgeFromBirthDate(dob)
+      : null;
+    ageStr = age !== null ? `${age} ans` : '';
   }
+
+  const displayDob = typeof formatBirthDateDisplay === 'function' && dob
+    ? formatBirthDateDisplay(dob)
+    : dobRaw;
 
   return [
     {
@@ -144,7 +154,7 @@ function buildRetraiteRecapSectionModelsLegacy() {
       rows: [
         ['Nom complet', `${val('nom')} ${val('prenom')}`],
         ['Sexe', sexeLabel],
-        ['Date de naissance', val('dateNaissance') ? formatDate(val('dateNaissance')) + (ageStr ? ` (${ageStr})` : '') : '—'],
+        ['Date de naissance', displayDob ? formatDate(displayDob) + (ageStr ? ` (${ageStr})` : '') : '—'],
         ['Rôle', roleValue || '—'],
         ['Photo', App.photoDataURL ? '__photo__' : 'Non fournie'],
       ]
@@ -316,8 +326,15 @@ function recapUpdateSubmitGate() {
 window.recapUpdateSubmitGate = recapUpdateSubmitGate;
 
 function formatDate(dateStr) {
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return dateStr;
+  const parsed = typeof parseBirthDateString === 'function'
+    ? parseBirthDateString(dateStr)
+    : null;
+  const d = parsed || new Date(dateStr);
+
+  if (isNaN(d.getTime())) {
+    return dateStr;
+  }
+
   return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 

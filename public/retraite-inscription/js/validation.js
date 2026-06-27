@@ -163,19 +163,35 @@ function validateStep(step) {
 
     const dobInput = document.getElementById('dateNaissance');
     if (dobInput && dobInput.hasAttribute('data-required')) {
-      if (!(dobInput.value || '').trim()) {
+      const altValue = dobInput._flatpickr?.altInput?.value || '';
+      const rawValue = (altValue || dobInput.value || '').trim();
+
+      if (!rawValue) {
         showFieldError(dobInput);
         valid = false;
       } else {
-        const dob = new Date(dobInput.value);
-        if (!isNaN(dob.getTime())) {
-          const today = new Date();
-          let age = today.getFullYear() - dob.getFullYear();
-          const m = today.getMonth() - dob.getMonth();
-          if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
-            age--;
+        const parsedDob = typeof parseBirthDateString === 'function'
+          ? parseBirthDateString(rawValue) || parseBirthDateString(dobInput.value)
+          : null;
+
+        if (!parsedDob) {
+          showFieldError(dobInput);
+          const hint = document.getElementById('birthDateFormatHint');
+          if (hint) {
+            hint.textContent = 'Format invalide. Utilisez JJ-MM-AAAA (ex. 15-03-2005).';
           }
-          if (age < 15) {
+          valid = false;
+        } else {
+          const hint = document.getElementById('birthDateFormatHint');
+          if (hint) {
+            hint.textContent = 'Format attendu : JJ-MM-AAAA (ex. 15-03-2005). Vous pouvez aussi choisir dans le calendrier.';
+          }
+
+          const age = typeof computeAgeFromBirthDate === 'function'
+            ? computeAgeFromBirthDate(parsedDob)
+            : null;
+
+          if (age !== null && age < 15) {
             showFieldError(dobInput);
             const ageDisplay = document.getElementById('ageDisplay');
             if (ageDisplay) {

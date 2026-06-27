@@ -690,7 +690,9 @@ async function registerParticipantOnServer() {
   fd.append('nom', val('nom'));
   fd.append('prenom', val('prenom'));
   fd.append('sexe', val('sexe'));
-  fd.append('date_naissance', val('dateNaissance'));
+  fd.append('date_naissance', typeof normalizeDateNaissanceForApi === 'function'
+    ? normalizeDateNaissanceForApi(val('dateNaissance'))
+    : val('dateNaissance'));
   fd.append('role', val('role') || 'Participant');
   fd.append('indicatif', val('indicatif'));
   fd.append('telephone', val('telephone'));

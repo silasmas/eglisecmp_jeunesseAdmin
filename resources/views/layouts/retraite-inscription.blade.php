@@ -33,7 +33,7 @@
   <link rel="stylesheet" href="{{ $r }}/css/base.css">
   <link rel="stylesheet" href="{{ $r }}/css/stepper.css">
   <link rel="stylesheet" href="{{ $rv('css/form.css') }}">
-  <link rel="stylesheet" href="{{ $r }}/css/datepicker.css">
+  <link rel="stylesheet" href="{{ $rv('css/datepicker.css') }}">
   <link rel="stylesheet" href="{{ $r }}/css/uploads.css">
   <link rel="stylesheet" href="{{ $r }}/css/payment.css">
   <link rel="stylesheet" href="{{ $r }}/css/recap.css">
@@ -58,7 +58,7 @@
   <script src="{{ $r }}/js/validation.js"></script>
   <script src="{{ $r }}/js/identity-live-validation.js"></script>
   <script src="{{ $r }}/js/phone-live-validation.js"></script>
-  <script src="{{ $r }}/js/datepicker.js"></script>
+  <script src="{{ $rv('js/datepicker.js') }}"></script>
   <script src="{{ $r }}/js/uploads.js"></script>
   <script src="{{ $r }}/js/recap.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>

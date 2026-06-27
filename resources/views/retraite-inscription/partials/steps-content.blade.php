@@ -48,8 +48,9 @@
           </div>
           <div class="field" data-reg-field="date_naissance">
             <label class="field-label" for="dateNaissance">Date de naissance <span class="required">*</span></label>
-            <input type="text" id="dateNaissance" class="field-input" data-required placeholder="JJ/MM/AAAA ou sélectionnez" autocomplete="bday">
+            <input type="text" id="dateNaissance" class="field-input" data-required placeholder="JJ-MM-AAAA" inputmode="numeric" maxlength="10" autocomplete="bday">
             <span class="field-error"><i class="bi bi-exclamation-circle"></i> Ce champ est requis</span>
+            <span class="field-hint" id="birthDateFormatHint">Format attendu : JJ-MM-AAAA (ex. 15-03-2005). Vous pouvez aussi choisir dans le calendrier.</span>
             <span class="field-hint" id="ageDisplay"></span>
           </div>
           <div class="field" data-reg-field="telephone">
