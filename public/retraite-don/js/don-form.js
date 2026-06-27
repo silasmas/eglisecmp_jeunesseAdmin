@@ -104,6 +104,20 @@ function applySponsorshipClosedState() {
   toggleCashPurposeFields();
 }
 
+function updateCashAmountFieldHints() {
+  const input = document.getElementById('cashAmount');
+  if (!input || !DonApp.context) {
+    return;
+  }
+
+  const currency = String(DonApp.context.currency || 'USD').toUpperCase();
+  const isCdf = currency === 'CDF';
+
+  input.min = isCdf ? '100' : '1';
+  input.step = isCdf ? '1' : '0.01';
+  input.placeholder = isCdf ? 'Minimum 100 FC' : 'Minimum 1 $';
+}
+
 async function loadDonContext() {
   const res = await fetch(`${getDonApiBase()}/context`, {
     headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
@@ -121,6 +135,7 @@ async function loadDonContext() {
   if (unit) {
     unit.textContent = `${DonApp.context.price_to_pay} ${DonApp.context.currency}`;
   }
+  updateCashAmountFieldHints();
   updateCapacityUi();
   applySponsorshipClosedState();
 }

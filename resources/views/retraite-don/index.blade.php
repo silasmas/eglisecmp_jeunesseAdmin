@@ -76,7 +76,7 @@
 
               <div class="field full" id="generalAmountField">
                 <label class="field-label" for="cashAmount">Montant (<span id="donCurrency">USD</span>) <span class="required">*</span></label>
-                <input type="number" id="cashAmount" class="field-input" min="1" step="0.01" placeholder="Ex. 50">
+                <input type="number" id="cashAmount" class="field-input" min="1" step="0.01" placeholder="Minimum 1 $">
               </div>
 
               <div class="field full hidden" id="youthSlotsField">

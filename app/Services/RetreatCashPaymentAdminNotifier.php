@@ -7,7 +7,7 @@ use App\Models\ChurchEvent;
 use App\Models\RetreatParticipant;
 use App\Models\RetreatPayment;
 use App\Models\User;
-use Illuminate\Support\Facades\Mail;
+use App\Support\SuperAdminRecipientResolver;
 
 /**
  * Prévient les super_admin par e-mail et cloche Filament lors d'une preuve de paiement cash.
@@ -16,6 +16,7 @@ class RetreatCashPaymentAdminNotifier
 {
     public function __construct(
         protected PanelNotificationDispatcher $panelNotifications,
+        protected SuperAdminRecipientResolver $superAdminRecipients,
     ) {}
 
     /**
@@ -29,7 +30,8 @@ class RetreatCashPaymentAdminNotifier
     public function notify(RetreatParticipant $participant, RetreatPayment $payment, ChurchEvent $event): void
     {
         $participant->loadMissing(['event']);
-        $admins = $this->resolveAdminRecipients();
+        $admins = $this->superAdminRecipients->recipientsForPanelNotifications();
+        $emailRecipients = $this->superAdminRecipients->recipientsForEmail();
         $title = 'Paiement cash à valider';
         $message = sprintf(
             '%s a soumis une preuve de paiement en espèces pour %s (réf. %s).',
@@ -39,23 +41,22 @@ class RetreatCashPaymentAdminNotifier
         );
         $link = $this->participantAdminUrl($participant);
 
-        if ($admins->isEmpty()) {
+        if ($admins->isEmpty() && $emailRecipients->isEmpty()) {
             return;
         }
 
-        $this->panelNotifications->notify(
-            $admins,
-            $title,
-            $message,
-            $link,
-            'payment',
-            $participant
-        );
+        if ($admins->isNotEmpty()) {
+            $this->panelNotifications->notify(
+                $admins,
+                $title,
+                $message,
+                $link,
+                'payment',
+                $participant
+            );
+        }
 
-        foreach ($admins as $admin) {
-            if (! filled($admin->email)) {
-                continue;
-            }
+        foreach ($emailRecipients as $admin) {
             try {
                 Mail::to($admin->email)->send(
                     new RetreatCashPaymentAdminMail($participant, $payment, $event)
@@ -64,17 +65,6 @@ class RetreatCashPaymentAdminNotifier
                 report($e);
             }
         }
-    }
-
-    /**
-     * @return \Illuminate\Support\Collection<int, User>
-     */
-    protected function resolveAdminRecipients()
-    {
-        return User::query()
-            ->role('super_admin')
-            ->where('is_active', true)
-            ->get();
     }
 
     /**

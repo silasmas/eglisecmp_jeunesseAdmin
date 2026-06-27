@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\RetreatAdminPaymentProofController;
 use App\Http\Controllers\ProductionBaseSyncController;
 use App\Http\Controllers\RetreatBadgeStudioApiController;
 use App\Http\Controllers\RetreatBadgeStudioController;
@@ -58,6 +59,11 @@ Route::get('/', function () {
         'portalInactiveEvent' => $portalInactiveEvent,
     ]);
 });
+
+/** Preuve de paiement cash (admin authentifié — évite les 403 stockage direct) */
+Route::get('/admin/retreat-participants/{participant}/payment-proof', [RetreatAdminPaymentProofController::class, 'show'])
+    ->middleware(['auth'])
+    ->name('retreat.admin.payment-proof');
 
 /** Formulaire public Grande Retraite des Jeunes (UI Blade + assets dans public/retraite-inscription) */
 Route::view('/inscription-retraite', 'retraite-inscription.index')->name('retraite.inscription');

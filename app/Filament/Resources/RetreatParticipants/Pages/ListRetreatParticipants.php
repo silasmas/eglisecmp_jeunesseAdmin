@@ -80,7 +80,7 @@ class ListRetreatParticipants extends ListRecords
                         ->searchable()
                         ->multiple()
                         ->required()
-                        ->helperText('Selectionne un ou plusieurs participants.'),
+                        ->helperText('Participants payés uniquement (hors ouvriers et encadrement).'),
                     Select::make('chambre_id')
                         ->label('Chambre')
                         ->options(fn (): array => $this->getAvailableChambresOptions())
@@ -207,9 +207,11 @@ class ListRetreatParticipants extends ListRecords
 
     protected function getParticipantsOptionsForOperation(?string $operation, mixed $chambreId = null, mixed $atelierId = null): array
     {
-        $query = RetreatParticipant::query()
-            ->orderBy('prenom')
-            ->orderBy('nom');
+        $placement = app(RetreatPlacementAssignmentService::class);
+        $query = RetreatParticipant::query();
+        $placement->scopeEligibleForManualAssignment($query);
+
+        $query->orderBy('prenom')->orderBy('nom');
 
         match ($operation) {
             'assign_chambre' => app(RetreatPlacementAssignmentService::class)

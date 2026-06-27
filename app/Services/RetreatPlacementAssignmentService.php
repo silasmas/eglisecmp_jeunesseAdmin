@@ -14,6 +14,20 @@ use Illuminate\Support\Str;
  */
 class RetreatPlacementAssignmentService
 {
+    /**
+     * Mots-clés identifiant un rôle d'encadrement (ouvrier, staff…) — exclus des affectations manuelles.
+     *
+     * @var list<string>
+     */
+    public const ENCADREMENT_ROLE_KEYWORDS = [
+        'ouvrier',
+        'worker',
+        'encadreur',
+        'staff',
+        'responsable',
+        'volontaire',
+    ];
+
     public function __construct(
         protected RetreatAtelierQuarantineNotifier $quarantineNotifier,
     ) {}
@@ -263,7 +277,7 @@ class RetreatPlacementAssignmentService
             ->map(fn (RetreatAtelier $atelier): array => [
                 'atelier' => $atelier,
                 'atelier_id' => (int) $atelier->id,
-                'score' => $this->atelierImbalanceScore($atelier, $participantSexe, $participantBand),
+                'score' => $this->atelierImbalanceScore($atelier, $participantSexe, $participantBand, ageRangeAlreadyFiltered: true),
             ])
             ->sortBy('score')
             ->values();
@@ -421,6 +435,45 @@ class RetreatPlacementAssignmentService
 
     /**
      * @param RetreatParticipant $participant Participant
+     * @return bool Vrai si rôle encadrement / ouvrier
+     */
+    public function isEncadrementParticipant(RetreatParticipant $participant): bool
+    {
+        $role = Str::lower(trim((string) $participant->role_participant));
+
+        if ($role === '') {
+            return false;
+        }
+
+        foreach (self::ENCADREMENT_ROLE_KEYWORDS as $keyword) {
+            if (str_contains($role, $keyword)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param Builder<RetreatParticipant> $query Requête participants
+     * @return Builder<RetreatParticipant> Participants payés, hors encadrement
+     */
+    public function scopeEligibleForManualAssignment(Builder $query): Builder
+    {
+        return $query
+            ->where('paiement_valide', true)
+            ->where(function (Builder $inner): void {
+                $inner->whereNull('role_participant')
+                    ->orWhere(function (Builder $roleQuery): void {
+                        foreach (self::ENCADREMENT_ROLE_KEYWORDS as $keyword) {
+                            $roleQuery->where('role_participant', 'not like', '%'.$keyword.'%');
+                        }
+                    });
+            });
+    }
+
+    /**
+     * @param RetreatParticipant $participant Participant
      * @return bool Vrai si le participant ne dort pas sur le site (externe)
      */
     public function isExternalParticipant(RetreatParticipant $participant): bool
@@ -524,7 +577,7 @@ class RetreatPlacementAssignmentService
         }
 
         if (! $this->shouldEnforceAtelierAgeRange($participant)) {
-            return $this->chooseBalancedAtelierFromPool($all, $participant);
+            return $this->chooseBalancedAtelierFromPool($all, $participant, false);
         }
 
         $pool = $this->eligibleAteliersForAge($all, (int) $participant->age);
@@ -533,7 +586,7 @@ class RetreatPlacementAssignmentService
             return null;
         }
 
-        return $this->chooseBalancedAtelierFromPool($pool, $participant);
+        return $this->chooseBalancedAtelierFromPool($pool, $participant, true);
     }
 
     /**
@@ -695,8 +748,11 @@ class RetreatPlacementAssignmentService
      * @param RetreatParticipant $participant Participant à placer
      * @return RetreatAtelier|null Atelier le plus équilibré
      */
-    private function chooseBalancedAtelierFromPool(Collection $pool, RetreatParticipant $participant): ?RetreatAtelier
-    {
+    private function chooseBalancedAtelierFromPool(
+        Collection $pool,
+        RetreatParticipant $participant,
+        bool $ageRangeAlreadyFiltered,
+    ): ?RetreatAtelier {
         if ($pool->isEmpty()) {
             return null;
         }
@@ -708,7 +764,8 @@ class RetreatPlacementAssignmentService
             ->sortBy(fn (RetreatAtelier $atelier): float => $this->atelierImbalanceScore(
                 $atelier,
                 $participantSexe,
-                $participantBand
+                $participantBand,
+                $ageRangeAlreadyFiltered,
             ))
             ->first();
     }
@@ -748,12 +805,14 @@ class RetreatPlacementAssignmentService
      * @param RetreatAtelier $atelier Atelier candidat
      * @param string $participantSexe Sexe normalisé
      * @param string $participantBand Tranche d'âge
+     * @param bool $ageRangeAlreadyFiltered Pool déjà filtré par tranche d'âge
      * @return float Score
      */
     private function atelierImbalanceScore(
         RetreatAtelier $atelier,
         string $participantSexe,
-        string $participantBand
+        string $participantBand,
+        bool $ageRangeAlreadyFiltered = false,
     ): float {
         $sexCounts = ['homme' => 0, 'femme' => 0, 'autre' => 0];
         $bandCounts = [
@@ -777,6 +836,10 @@ class RetreatPlacementAssignmentService
         $hommes = $sexCounts['homme'] ?? 0;
         $femmes = $sexCounts['femme'] ?? 0;
         $sexImbalance = abs($hommes - $femmes);
+
+        if ($ageRangeAlreadyFiltered) {
+            return ($total * 100) + ($sexImbalance * 40);
+        }
 
         $bandValues = array_values($bandCounts);
         $ageSpread = max($bandValues) - min($bandValues);

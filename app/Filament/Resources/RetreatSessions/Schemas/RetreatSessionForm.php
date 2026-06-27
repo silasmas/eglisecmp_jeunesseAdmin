@@ -39,19 +39,20 @@ class RetreatSessionForm
                             ->label('Evenement')
                             ->options(fn (callable $get): array => ChurchEvent::query()
                                 ->where(function ($query) use ($get): void {
-                                    $query
-                                        ->where(function ($q): void {
-                                            $q->where('is_active', true)->where('start_at', '>=', now());
-                                        })
+                                    $query->where('is_active', true)
                                         ->orWhere('id', $get('event_id'));
                                 })
-                                ->orderBy('start_at')
+                                ->orderByDesc('is_active')
+                                ->orderByDesc('start_at')
                                 ->get()
                                 ->mapWithKeys(fn (ChurchEvent $record): array => [
-                                    $record->id => "{$record->name} ({$record->start_at?->format('d/m/Y')})",
+                                    $record->id => $record->name
+                                        .($record->is_active ? ' (actif)' : '')
+                                        .($record->start_at ? ' — '.$record->start_at->format('d/m/Y') : ''),
                                 ])
                                 ->all())
-                            ->helperText('Selection obligatoire: uniquement les evenements actifs avec une date future.')
+                            ->default(fn (): ?int => ChurchEvent::query()->where('is_active', true)->value('id'))
+                            ->helperText('Événement actif sélectionné par défaut.')
                             ->searchable()
                             ->required(),
                         Toggle::make('is_active')

@@ -8,6 +8,7 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -28,6 +29,16 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectGuestsTo(fn (): string => url('/admin/login'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->render(function (HttpException $e, Request $request): ?\Illuminate\Http\Response {
+            if ($e->getStatusCode() !== 403 || $request->expectsJson()) {
+                return null;
+            }
+
+            return response()->view('errors.403', [
+                'message' => $e->getMessage() ?: null,
+            ], 403);
+        });
+
         $exceptions->render(function (TooManyRequestsHttpException $e, Request $request): ?JsonResponse {
             if (! $request->expectsJson()) {
                 return null;

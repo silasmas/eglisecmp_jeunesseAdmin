@@ -4,7 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Models\RetreatPayment;
 use App\Models\User;
-use App\Services\PublicStorageUrl;
+use App\Support\RetreatPaymentProofUrl;
 use App\Services\RetreatParticipantRegistrationService;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -111,7 +111,7 @@ class ManageRetreatCashPayments extends Page implements HasTable
                 TextColumn::make('participant.preuve_paiement')
                     ->label('Preuve')
                     ->formatStateUsing(fn (?string $state): string => filled($state) ? 'Voir' : '—')
-                    ->url(fn (RetreatPayment $record): ?string => app(PublicStorageUrl::class)->fromPath($record->participant?->preuve_paiement))
+                    ->url(fn (RetreatPayment $record): ?string => RetreatPaymentProofUrl::forParticipant($record->participant))
                     ->openUrlInNewTab()
                     ->color('primary'),
                 TextColumn::make('updated_at')
@@ -132,7 +132,7 @@ class ManageRetreatCashPayments extends Page implements HasTable
                 Action::make('voir_preuve')
                     ->label('Preuve')
                     ->icon('heroicon-o-document-magnifying-glass')
-                    ->url(fn (RetreatPayment $record): ?string => app(PublicStorageUrl::class)->fromPath($record->participant?->preuve_paiement))
+                    ->url(fn (RetreatPayment $record): ?string => RetreatPaymentProofUrl::forParticipant($record->participant))
                     ->openUrlInNewTab()
                     ->visible(fn (RetreatPayment $record): bool => filled($record->participant?->preuve_paiement)),
                 Action::make('valider_cash')
