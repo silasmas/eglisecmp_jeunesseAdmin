@@ -25,6 +25,8 @@ use App\Services\RetreatInscriptionPaymentCompletionService;
 use App\Services\RetreatRegistration\RetreatEventCapacityService;
 use App\Services\StoragePathService;
 use App\Support\ChurchEventPublicRegistrationEvaluator;
+use App\Support\ChurchEventParticipantDocuments;
+use App\Support\RetreatPlacementVisibility;
 use App\Support\RetreatRegistrationBadgeViewResolver;
 use App\Support\RegistrationFormUiSettings;
 use App\Support\StoragePath;
@@ -1212,9 +1214,10 @@ class RetreatPublicRegistrationController extends Controller
 
     public function participantStatus(RetreatParticipant $participant): JsonResponse
     {
-        $participant->load(['payments.event', 'chambre', 'atelier']);
+        $participant->load(['payments.event', 'chambre', 'atelier', 'event']);
 
         $payment = RetreatRegistrationBadgeViewResolver::resolvePrimaryPayment($participant);
+        $showPlacements = RetreatPlacementVisibility::shouldReveal($participant);
 
         return response()->json([
             'data' => [
@@ -1227,10 +1230,14 @@ class RetreatPublicRegistrationController extends Controller
                 'registration_status' => $participant->registration_status,
                 'registration_confirmed' => (bool) $participant->paiement_valide,
                 'badge_view' => $this->resolveBadgeView($participant, $payment),
+                'show_placements' => $showPlacements,
+                'placements_available_from' => $participant->event?->start_at?->toISOString(),
+                'placements_pending_message' => $showPlacements ? null : RetreatPlacementVisibility::pendingMessage($participant),
                 'placements' => [
-                    'chambre' => $participant->placementChambreLabel(),
-                    'atelier' => $participant->placementAtelierLabel(),
+                    'chambre' => $showPlacements ? $participant->placementChambreLabel() : null,
+                    'atelier' => $showPlacements ? $participant->placementAtelierLabel() : null,
                 ],
+                'participant_documents' => ChurchEventParticipantDocuments::entries($participant->event),
                 'payment' => $payment ? [
                     'channel' => $payment->channel,
                     'etat' => $payment->etat,

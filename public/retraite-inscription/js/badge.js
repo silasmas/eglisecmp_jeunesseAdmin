@@ -111,12 +111,23 @@ function renderBadgePlacementsSection(status) {
   }
 
   const placements = status && status.placements;
+  const showPlacements = status && status.show_placements;
   const show =
     isRetraiteTruthyFlag(status && status.paiement_valide) ||
     (status && status.payment && status.payment.channel === 'cash' && status.payment.etat === 'payee');
 
-  if (!show || !placements) {
+  if (!show || !placements || !showPlacements) {
     mount.innerHTML = '';
+    if (show && !showPlacements && status && status.placements_pending_message) {
+      mount.classList.remove('hidden');
+      const esc = typeof escapeHtml === 'function' ? escapeHtml : (t => String(t));
+      mount.innerHTML = `
+    <div class="badge-placements-card badge-placements-card--pending">
+      <div class="badge-placements-title"><i class="bi bi-clock"></i> Affectations</div>
+      <p class="badge-placements-pending">${esc(String(status.placements_pending_message))}</p>
+    </div>`;
+      return;
+    }
     mount.classList.add('hidden');
     return;
   }

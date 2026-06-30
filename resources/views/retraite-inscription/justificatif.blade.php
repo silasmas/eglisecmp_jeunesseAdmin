@@ -227,6 +227,11 @@
           <span class="label">Atelier</span>
           <span class="value">{{ $participant->atelier?->numero ? 'Atelier '.$participant->atelier->numero : 'Non assigne' }}</span>
         </div>
+        @else
+        <div class="field full">
+          <span class="label">Affectations</span>
+          <span class="value">{{ $placementsPendingMessage ?? 'Visibles à partir du début officiel de la retraite.' }}</span>
+        </div>
         @endif
         <div class="field">
           <span class="label">Paiement</span>

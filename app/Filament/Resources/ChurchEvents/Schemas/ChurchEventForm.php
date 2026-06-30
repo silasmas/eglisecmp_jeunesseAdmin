@@ -56,6 +56,28 @@ class ChurchEventForm
                             ->extraFieldWrapperAttributes(['class' => 'cmp-event-affiche-upload']),
                     ])
                     ->columns(2),
+                Section::make('Documents billet participant')
+                    ->description('Consultables et téléchargeables sur la page billet dès l\'inscription confirmée.')
+                    ->schema([
+                        FileUpload::make('document_reglement')
+                            ->label('Règlement intérieur (PDF)')
+                            ->directory(StoragePath::EVENT_PARTICIPANT_DOCUMENTS.'/reglement')
+                            ->acceptedFileTypes(['application/pdf'])
+                            ->maxSize(10240)
+                            ->downloadable(true)
+                            ->openable(true)
+                            ->columnSpanFull(),
+                        FileUpload::make('document_histoires')
+                            ->label('Histoires à apporter (PDF)')
+                            ->directory(StoragePath::EVENT_PARTICIPANT_DOCUMENTS.'/histoires')
+                            ->acceptedFileTypes(['application/pdf'])
+                            ->maxSize(10240)
+                            ->downloadable(true)
+                            ->openable(true)
+                            ->columnSpanFull(),
+                    ])
+                    ->columns(1)
+                    ->collapsible(),
                 Section::make('Inscriptions publiques en ligne')
                     ->description('Le formulaire /inscription-retraite s\'ouvre uniquement si toutes les conditions ci-dessous sont remplies (signal vert).')
                     ->schema([
@@ -69,7 +91,7 @@ class ChurchEventForm
                             ->required(),
                         Toggle::make('is_publicly_closed')
                             ->label('Fermer l\'accès public (retraite clôturée)')
-                            ->helperText('Si activé, le formulaire d\'inscription public est fermé.')
+                            ->helperText('Ferme le portail public et désactive les ateliers/chambres utilisés par cette retraite.')
                             ->default(false)
                             ->live(),
                         DateTimePicker::make('public_registration_opens_at')
@@ -89,7 +111,7 @@ class ChurchEventForm
                     ->schema([
                         DateTimePicker::make('start_at')
                             ->label('Debut retraite')
-                            ->helperText('Planning de l\'événement (affichage portail).'),
+                            ->helperText('Ouverture officielle : chambre et atelier visibles sur le billet et l\'e-mail à partir de cette date et heure.'),
                         DateTimePicker::make('end_at')
                             ->label('Fin retraite')
                             ->helperText('Utilisée comme date de fin d\'inscription si « Fin ouverture du formulaire » est vide.')

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\ChurchEventType;
 use App\Enums\EventAccessAuthMode;
 use App\Enums\EventAccessOtpChannel;
+use App\Services\RetreatEventLogisticsLifecycleService;
 use App\Support\ChurchEventPublicRegistrationEvaluator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -49,6 +50,14 @@ class ChurchEvent extends Model
                     'is_active' => "Impossible d'activer cet evenement: un autre evenement est deja actif.",
                 ]);
             }
+        });
+
+        static::updated(function (ChurchEvent $event): void {
+            if (! $event->wasChanged('is_publicly_closed') || ! $event->is_publicly_closed) {
+                return;
+            }
+
+            app(RetreatEventLogisticsLifecycleService::class)->deactivateForEvent($event);
         });
     }
 
@@ -216,6 +225,8 @@ class ChurchEvent extends Model
         'location',
         'affiche',
         'affiche_id',
+        'document_reglement',
+        'document_histoires',
         'capacity',
         'price_to_pay',
         'currency',

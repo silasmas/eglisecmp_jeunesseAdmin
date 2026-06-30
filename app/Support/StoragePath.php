@@ -19,6 +19,8 @@ final class StoragePath
 
     public const EVENTS_AFFICHES = 'events-affiches';
 
+    public const EVENT_PARTICIPANT_DOCUMENTS = 'events-participant-documents';
+
     public const MEDIA_LIBRARY = 'mediatheque';
 
     public const IMPORTS = 'imports';

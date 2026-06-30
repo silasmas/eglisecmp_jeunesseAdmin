@@ -10,7 +10,7 @@ use Filament\Widgets\TableWidget;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Liste des participants d'une retraite archivée (chambre, atelier, statut).
+ * Liste des participants d'une retraite archivée (chambre, atelier, présence).
  */
 class ArchivedEventParticipantsWidget extends TableWidget
 {
@@ -40,6 +40,11 @@ class ArchivedEventParticipantsWidget extends TableWidget
                         fn (Builder $query): Builder => $query->where('event_id', $this->eventId)
                     )
                     ->with(['chambre', 'atelier'])
+                    ->withCount([
+                        'activityAttendances as presences_count' => fn (Builder $query): Builder => $query
+                            ->whereIn('status', ['present', 'late'])
+                            ->where('is_active', true),
+                    ])
             )
             ->columns([
                 TextColumn::make('nom')
@@ -54,18 +59,29 @@ class ArchivedEventParticipantsWidget extends TableWidget
                 TextColumn::make('email')
                     ->label('E-mail')
                     ->toggleable(),
-                TextColumn::make('chambre.nom')
+                TextColumn::make('chambre_label')
                     ->label('Chambre')
+                    ->state(fn (RetreatParticipant $record): string => $record->placementChambreLabel())
                     ->placeholder('—'),
-                TextColumn::make('atelier.numero')
-                    ->label('Atelier n°')
+                TextColumn::make('atelier_label')
+                    ->label('Atelier')
+                    ->state(fn (RetreatParticipant $record): string => $record->placementAtelierLabel())
                     ->placeholder('—'),
                 IconColumn::make('paiement_valide')
                     ->label('Payé')
                     ->boolean(),
                 IconColumn::make('present')
-                    ->label('Présent')
+                    ->label('Présent retraite')
                     ->boolean(),
+                TextColumn::make('date_presence')
+                    ->label('Pointage accueil')
+                    ->dateTime('d/m/Y H:i')
+                    ->placeholder('—')
+                    ->toggleable(),
+                TextColumn::make('presences_count')
+                    ->label('Présences activités')
+                    ->numeric()
+                    ->sortable(),
                 TextColumn::make('registration_status')
                     ->label('Statut')
                     ->badge(),

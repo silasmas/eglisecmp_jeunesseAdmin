@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\RetreatParticipant;
+use App\Support\ChurchEventParticipantDocuments;
+use App\Support\RetreatPlacementVisibility;
 use App\Support\RetreatPublicPortalGate;
 use Illuminate\Contracts\View\View;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
@@ -29,11 +31,15 @@ class RetreatInscriptionBilletController extends Controller
         }
 
         $payment = $participant->payments->sortByDesc('id')->first();
+        $showPlacements = RetreatPlacementVisibility::shouldReveal($participant);
 
         return view('retraite-inscription.billet', [
             'participant' => $participant,
             'payment' => $payment,
             'accessUrl' => route('retraite.inscription.acces', ['token' => $participant->download_token], absolute: true),
+            'showPlacements' => $showPlacements,
+            'placementsPendingMessage' => $showPlacements ? null : RetreatPlacementVisibility::pendingMessage($participant),
+            'participantDocuments' => ChurchEventParticipantDocuments::entries($participant->event),
         ]);
     }
 

@@ -6,6 +6,8 @@ use App\Models\ChurchEvent;
 use App\Models\RetreatParticipant;
 use App\Models\RetreatPayment;
 use App\Support\RetreatMailUrl;
+use App\Support\ChurchEventParticipantDocuments;
+use App\Support\RetreatPlacementVisibility;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Address;
@@ -37,12 +39,18 @@ class RetreatRegistrationConfirmedMail extends Mailable
 
     public function content(): Content
     {
+        $showPlacements = RetreatPlacementVisibility::shouldReveal($this->participant);
+        $hasDocuments = ChurchEventParticipantDocuments::hasAny($this->event);
+
         return new Content(
             markdown: 'emails.retreat-registration-confirmed',
             with: [
                 'participant' => $this->participant,
                 'payment' => $this->payment,
                 'event' => $this->event,
+                'showPlacements' => $showPlacements,
+                'placementsPendingMessage' => $showPlacements ? null : RetreatPlacementVisibility::pendingMessage($this->participant),
+                'hasParticipantDocuments' => $hasDocuments,
                 'billetUrl' => $this->billetUrl ?? RetreatMailUrl::route('retraite.inscription.billet', [
                     'token' => $this->participant->download_token,
                 ]),

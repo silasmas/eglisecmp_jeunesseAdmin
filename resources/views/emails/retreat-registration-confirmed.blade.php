@@ -6,16 +6,24 @@
 **{{ __('retraite.mail_label_reference') }}** : {{ $payment->reference }}  
 **{{ __('retraite.mail_label_amount') }}** : {{ $payment->amount_paid }} {{ $payment->currency }}
 
+@if($showPlacements ?? false)
 **{{ __('retraite.mail_label_room') }}** : {{ $participant->placementChambreLabel() }}
 
 **{{ __('retraite.mail_label_workshop') }}** : {{ $participant->placementAtelierLabel() }}
+@else
+{{ $placementsPendingMessage ?? __('retraite.mail_placements_pending') }}
+@endif
 
 @include('emails.partials.cmp-mail-button', [
     'url' => $billetUrl,
     'label' => __('retraite.mail_button_billet'),
 ])
 
-<p>Conservez ce billet : le QR code permettra de vérifier votre inscription à l'accueil.</p>
+@if($hasParticipantDocuments ?? false)
+{{ __('retraite.mail_billet_documents_hint') }}
+@else
+<p>{{ __('retraite.mail_billet_qr_hint') }}</p>
+@endif
 
 @include('emails.partials.cmp-mail-button', [
     'url' => $portalUrl,

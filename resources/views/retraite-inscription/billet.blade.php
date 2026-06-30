@@ -1,6 +1,8 @@
 @php
   $reference = $payment?->reference ?: '#'.$participant->id.'-'.substr((string) $participant->download_token, 0, 8);
   $participantPhotoUrl = $participant->getFilamentAvatarUrl();
+  $showPlacements = $showPlacements ?? false;
+  $participantDocuments = $participantDocuments ?? [];
 @endphp
 <!DOCTYPE html>
 <html lang="fr">
@@ -166,6 +168,48 @@
       color: #146c43;
       background: #fff;
     }
+    .docs-box {
+      margin-top: 22px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+    }
+    .docs-box h2 {
+      margin: 0 0 12px;
+      font-size: 16px;
+      color: var(--primary);
+    }
+    .docs-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .docs-list a {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      color: var(--primary);
+      font-weight: 700;
+      text-decoration: none;
+      background: var(--soft);
+    }
+    .placement-pending {
+      grid-column: 1 / -1;
+      padding: 14px 16px;
+      border: 1px dashed #c9a227;
+      border-radius: 12px;
+      background: #fffbeb;
+      color: #7a5d00;
+      font-size: 14px;
+      line-height: 1.5;
+    }
     #qrDownloadMount {
       position: absolute;
       left: -9999px;
@@ -239,6 +283,7 @@
             <span class="label">Canal de paiement</span>
             <span class="value">{{ $payment?->channel ? ucfirst(str_replace('_', ' ', $payment->channel)) : '—' }}</span>
           </div>
+          @if($showPlacements)
           <div class="field">
             <span class="label">Chambre</span>
             <span class="value">{{ $participant->placementChambreLabel() }}</span>
@@ -247,6 +292,11 @@
             <span class="label">Atelier</span>
             <span class="value">{{ $participant->placementAtelierLabel() }}</span>
           </div>
+          @else
+          <div class="placement-pending">
+            {{ $placementsPendingMessage ?? 'Vos affectations chambre et atelier seront visibles à partir du début officiel de la retraite.' }}
+          </div>
+          @endif
         </div>
 
         <aside class="qr-box">
@@ -255,6 +305,24 @@
           <p class="qr-hint">Présentez ce code à l'accueil : il affiche l'état de votre inscription.</p>
         </aside>
       </div>
+
+      @if(count($participantDocuments) > 0)
+      <section class="docs-box" aria-label="Documents retraite">
+        <h2>Documents à consulter</h2>
+        <p style="margin:0 0 12px;color:var(--muted);font-size:14px;line-height:1.5;">
+          Téléchargez le règlement et la liste des histoires à apporter pour préparer votre venue.
+        </p>
+        <ul class="docs-list">
+          @foreach($participantDocuments as $document)
+          <li>
+            <a href="{{ $document['url'] }}" target="_blank" rel="noopener" download>
+              {{ $document['label'] }}
+            </a>
+          </li>
+          @endforeach
+        </ul>
+      </section>
+      @endif
     </section>
 
     <div class="actions">

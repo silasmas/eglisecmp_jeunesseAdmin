@@ -61,7 +61,7 @@ class EditChurchEvent extends EditRecord
                 ->color('warning')
                 ->requiresConfirmation()
                 ->modalHeading('Archiver cette retraite')
-                ->modalDescription('La retraite sera clôturée et ses participants ne compteront plus dans les vues opérationnelles. Consultez l\'historique pour les retrouver.')
+                ->modalDescription('La retraite sera clôturée, ses ateliers et chambres seront désactivés, et ses participants ne compteront plus dans les vues opérationnelles. Consultez l\'historique pour les retrouver.')
                 ->visible(fn (ChurchEvent $record): bool => ! $record->isArchived())
                 ->action(function (ChurchEvent $record): void {
                     app(ChurchEventArchiveService::class)->archive($record);
