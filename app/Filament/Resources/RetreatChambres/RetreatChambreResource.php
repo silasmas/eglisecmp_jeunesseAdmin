@@ -10,10 +10,12 @@ use App\Filament\Resources\RetreatChambres\Schemas\RetreatChambreForm;
 use App\Filament\Resources\RetreatChambres\Schemas\RetreatChambreInfolist;
 use App\Filament\Resources\RetreatChambres\Tables\RetreatChambresTable;
 use App\Models\RetreatChambre;
+use App\Support\RetreatActiveEventScope;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
 class RetreatChambreResource extends Resource
@@ -45,6 +47,14 @@ class RetreatChambreResource extends Resource
     public static function table(Table $table): Table
     {
         return RetreatChambresTable::configure($table);
+    }
+
+    /**
+     * @return Builder<RetreatChambre>
+     */
+    public static function getEloquentQuery(): Builder
+    {
+        return RetreatActiveEventScope::applyToChambres(parent::getEloquentQuery());
     }
 
     public static function getRelations(): array

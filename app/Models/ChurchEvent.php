@@ -5,8 +5,8 @@ namespace App\Models;
 use App\Enums\ChurchEventType;
 use App\Enums\EventAccessAuthMode;
 use App\Enums\EventAccessOtpChannel;
-use App\Services\RetreatEventLogisticsLifecycleService;
 use App\Support\ChurchEventPublicRegistrationEvaluator;
+use App\Support\RetreatActiveEventScope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -51,14 +51,32 @@ class ChurchEvent extends Model
                 ]);
             }
         });
+    }
 
-        static::updated(function (ChurchEvent $event): void {
-            if (! $event->wasChanged('is_publicly_closed') || ! $event->is_publicly_closed) {
-                return;
-            }
+    /**
+     * Événement retraite opérationnel pour créer ateliers/chambres (actif, non clôturé, non archivé).
+     *
+     * @return ChurchEvent|null
+     */
+    public static function resolveOperationalLogisticsEvent(): ?ChurchEvent
+    {
+        return RetreatActiveEventScope::operationalEvents(
+            self::query()
+                ->where('type', ChurchEventType::Retraite->value)
+                ->where('is_active', true)
+        )
+            ->orderByDesc('start_at')
+            ->first();
+    }
 
-            app(RetreatEventLogisticsLifecycleService::class)->deactivateForEvent($event);
-        });
+    /**
+     * Indique si l'événement est visible dans les vues logistiques opérationnelles.
+     *
+     * @return bool
+     */
+    public function isOperationalForLogistics(): bool
+    {
+        return ! $this->isArchived() && ! $this->isPublicPortalClosed();
     }
 
     /**
@@ -287,6 +305,22 @@ class ChurchEvent extends Model
     public function participants(): HasMany
     {
         return $this->hasMany(RetreatParticipant::class, 'event_id');
+    }
+
+    /**
+     * Ateliers rattachés à cette édition de retraite.
+     */
+    public function ateliers(): HasMany
+    {
+        return $this->hasMany(RetreatAtelier::class, 'event_id');
+    }
+
+    /**
+     * Chambres rattachées à cette édition de retraite.
+     */
+    public function chambres(): HasMany
+    {
+        return $this->hasMany(RetreatChambre::class, 'event_id');
     }
 
     public function retreatDetail(): HasOne

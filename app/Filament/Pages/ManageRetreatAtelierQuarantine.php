@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Filament\Support\QuarantinedAtelierAssignmentAction;
+use App\Filament\Resources\RetreatParticipants\RetreatParticipantResource;
 use App\Models\RetreatParticipant;
 use App\Models\User;
 use App\Services\RetreatAtelierProposalService;
@@ -52,7 +53,7 @@ class ManageRetreatAtelierQuarantine extends Page implements HasTable
      */
     public static function getNavigationBadge(): ?string
     {
-        $count = RetreatParticipant::query()->where('atelier_quarantine', true)->count();
+        $count = RetreatParticipantResource::getEloquentQuery()->where('atelier_quarantine', true)->count();
 
         return $count > 0 ? (string) $count : null;
     }
@@ -80,7 +81,7 @@ class ManageRetreatAtelierQuarantine extends Page implements HasTable
     {
         return $table
             ->query(
-                RetreatParticipant::query()
+                RetreatParticipantResource::getEloquentQuery()
                     ->where('atelier_quarantine', true)
                     ->with(['event'])
                     ->orderByDesc('atelier_quarantine_at')

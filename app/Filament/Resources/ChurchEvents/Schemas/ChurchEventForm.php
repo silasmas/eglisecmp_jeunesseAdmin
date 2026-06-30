@@ -61,6 +61,7 @@ class ChurchEventForm
                     ->schema([
                         FileUpload::make('document_reglement')
                             ->label('Règlement intérieur (PDF)')
+                            ->helperText('Rattaché à l\'événement courant — visible sur le billet participant.')
                             ->directory(StoragePath::EVENT_PARTICIPANT_DOCUMENTS.'/reglement')
                             ->acceptedFileTypes(['application/pdf'])
                             ->maxSize(10240)
@@ -91,7 +92,7 @@ class ChurchEventForm
                             ->required(),
                         Toggle::make('is_publicly_closed')
                             ->label('Fermer l\'accès public (retraite clôturée)')
-                            ->helperText('Ferme le portail public et désactive les ateliers/chambres utilisés par cette retraite.')
+                            ->helperText('Ferme le portail public. Les ateliers/chambres de cette édition ne s\'affichent plus dans l\'admin opérationnelle.'),
                             ->default(false)
                             ->live(),
                         DateTimePicker::make('public_registration_opens_at')

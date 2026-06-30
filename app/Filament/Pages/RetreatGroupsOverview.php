@@ -2,6 +2,8 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Resources\RetreatAteliers\RetreatAtelierResource;
+use App\Filament\Resources\RetreatChambres\RetreatChambreResource;
 use App\Models\RetreatAtelier;
 use App\Models\RetreatChambre;
 use BackedEnum;
@@ -55,7 +57,7 @@ class RetreatGroupsOverview extends Page
 
         $atelierMap = $this->ateliersMap();
 
-        $this->chambresCache = RetreatChambre::query()
+        $this->chambresCache = RetreatChambreResource::getEloquentQuery()
             ->with([
                 'responsable:id,name',
                 'participants:id,nom,prenom,chambre_id,atelier_id,role_participant',
@@ -104,7 +106,7 @@ class RetreatGroupsOverview extends Page
 
         $chambreMap = $this->chambresMap();
 
-        $this->ateliersCache = RetreatAtelier::query()
+        $this->ateliersCache = RetreatAtelierResource::getEloquentQuery()
             ->with([
                 'responsable:id,name',
                 'adjoint:id,name',
@@ -225,7 +227,7 @@ class RetreatGroupsOverview extends Page
      */
     private function ateliersMap(): array
     {
-        return RetreatAtelier::query()
+        return RetreatAtelierResource::getEloquentQuery()
             ->select(['id', 'numero'])
             ->get()
             ->mapWithKeys(fn (RetreatAtelier $atelier): array => [
@@ -241,7 +243,7 @@ class RetreatGroupsOverview extends Page
      */
     private function chambresMap(): array
     {
-        return RetreatChambre::query()
+        return RetreatChambreResource::getEloquentQuery()
             ->select(['id', 'nom'])
             ->get()
             ->mapWithKeys(fn (RetreatChambre $chambre): array => [

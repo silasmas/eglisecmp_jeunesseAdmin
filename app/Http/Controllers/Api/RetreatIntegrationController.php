@@ -12,7 +12,7 @@ use App\Models\RetreatParticipant;
 use App\Models\RetreatPayment;
 use App\Models\RetreatPolicy;
 use App\Models\RetreatSession;
-use Illuminate\Database\Eloquent\Builder;
+use App\Support\RetreatActiveEventScope;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -36,8 +36,8 @@ class RetreatIntegrationController extends Controller
                 ),
                 'participants' => RetreatParticipant::query()->count(),
                 'participants_present' => RetreatParticipant::query()->where('present', true)->count(),
-                'chambres' => RetreatChambre::query()->count(),
-                'ateliers' => RetreatAtelier::query()->count(),
+                'chambres' => RetreatActiveEventScope::applyToChambres(RetreatChambre::query())->count(),
+                'ateliers' => RetreatActiveEventScope::applyToAteliers(RetreatAtelier::query())->count(),
                 'activity_plans' => RetreatActivityPlan::query()->count(),
                 'attendances' => RetreatActivityAttendance::query()->count(),
                 'policies' => RetreatPolicy::query()->where('is_active', true)->count(),
@@ -161,7 +161,7 @@ class RetreatIntegrationController extends Controller
 
     public function chambres(Request $request): JsonResponse
     {
-        $chambres = RetreatChambre::query()
+        $chambres = RetreatActiveEventScope::applyToChambres(RetreatChambre::query())
             ->with('responsable')
             ->withCount('participants')
             ->when($request->filled('sexe'), fn (Builder $query): Builder => $query->where('sexe', $request->string('sexe')->toString()))
@@ -184,7 +184,7 @@ class RetreatIntegrationController extends Controller
 
     public function ateliers(Request $request): JsonResponse
     {
-        $ateliers = RetreatAtelier::query()
+        $ateliers = RetreatActiveEventScope::applyToAteliers(RetreatAtelier::query())
             ->with('responsable')
             ->withCount('participants')
             ->where('is_active', true)

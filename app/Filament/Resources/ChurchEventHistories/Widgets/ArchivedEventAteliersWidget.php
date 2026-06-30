@@ -2,9 +2,7 @@
 
 namespace App\Filament\Resources\ChurchEventHistories\Widgets;
 
-use App\Models\ChurchEvent;
 use App\Models\RetreatAtelier;
-use App\Services\RetreatEventLogisticsLifecycleService;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -12,7 +10,7 @@ use Filament\Widgets\TableWidget;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Ateliers utilisés lors d'une retraite archivée.
+ * Ateliers rattachés à une retraite archivée.
  */
 class ArchivedEventAteliersWidget extends TableWidget
 {
@@ -34,14 +32,12 @@ class ArchivedEventAteliersWidget extends TableWidget
      */
     public function table(Table $table): Table
     {
-        $atelierIds = $this->resolveAtelierIds();
-
         return $table
             ->query(
                 RetreatAtelier::query()
                     ->when(
-                        $atelierIds !== [],
-                        fn (Builder $query): Builder => $query->whereIn('id', $atelierIds),
+                        $this->eventId,
+                        fn (Builder $query): Builder => $query->where('event_id', $this->eventId),
                         fn (Builder $query): Builder => $query->whereRaw('1 = 0')
                     )
                     ->with(['responsable', 'adjoint'])
@@ -66,24 +62,6 @@ class ArchivedEventAteliersWidget extends TableWidget
                     ->boolean(),
             ])
             ->paginated([10, 25, 50])
-            ->emptyStateHeading('Aucun atelier affecté');
-    }
-
-    /**
-     * @return array<int, int>
-     */
-    private function resolveAtelierIds(): array
-    {
-        if (! $this->eventId) {
-            return [];
-        }
-
-        $event = ChurchEvent::query()->find($this->eventId);
-
-        if (! $event) {
-            return [];
-        }
-
-        return app(RetreatEventLogisticsLifecycleService::class)->atelierIdsForEvent($event);
+            ->emptyStateHeading('Aucun atelier pour cette édition');
     }
 }

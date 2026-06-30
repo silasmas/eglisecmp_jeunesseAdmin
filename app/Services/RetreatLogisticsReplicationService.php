@@ -5,20 +5,18 @@ namespace App\Services;
 use App\Models\ChurchEvent;
 use App\Models\RetreatAtelier;
 use App\Models\RetreatChambre;
-use App\Models\RetreatParticipant;
 use Illuminate\Support\Facades\DB;
 
 /**
  * Reconduit ateliers et chambres d'une retraite source vers une nouvelle édition.
- * Les fiches existantes (même numéro + responsable) sont réutilisées, pas dupliquées.
  */
 class RetreatLogisticsReplicationService
 {
     /**
-     * Rend disponibles les ateliers et chambres utilisés lors d'une retraite source.
+     * Copie les fiches logistiques de la retraite source vers la cible (par event_id).
      *
      * @param  ChurchEvent  $source Retraite de référence
-     * @param  ChurchEvent  $target Nouvelle retraite (non archivée)
+     * @param  ChurchEvent  $target Nouvelle retraite opérationnelle
      * @return array{
      *   ateliers_created: int,
      *   ateliers_reused: int,
@@ -28,21 +26,9 @@ class RetreatLogisticsReplicationService
      */
     public function replicateFromEvent(ChurchEvent $source, ChurchEvent $target): array
     {
-        if ($target->isArchived()) {
-            throw new \InvalidArgumentException('Impossible de reconduire vers un événement archivé.');
+        if ($target->isArchived() || $target->isPublicPortalClosed()) {
+            throw new \InvalidArgumentException('Impossible de reconduire vers un événement clôturé ou archivé.');
         }
-
-        $atelierIds = RetreatParticipant::query()
-            ->where('event_id', $source->id)
-            ->whereNotNull('atelier_id')
-            ->distinct()
-            ->pluck('atelier_id');
-
-        $chambreIds = RetreatParticipant::query()
-            ->where('event_id', $source->id)
-            ->whereNotNull('chambre_id')
-            ->distinct()
-            ->pluck('chambre_id');
 
         $stats = [
             'ateliers_created' => 0,
@@ -51,14 +37,14 @@ class RetreatLogisticsReplicationService
             'chambres_reused' => 0,
         ];
 
-        DB::transaction(function () use ($atelierIds, $chambreIds, &$stats): void {
-            foreach (RetreatAtelier::query()->whereIn('id', $atelierIds)->get() as $atelier) {
-                $result = $this->ensureAtelier($atelier);
+        DB::transaction(function () use ($source, $target, &$stats): void {
+            foreach (RetreatAtelier::query()->where('event_id', $source->getKey())->get() as $atelier) {
+                $result = $this->ensureAtelier($atelier, $target);
                 $stats[$result === 'created' ? 'ateliers_created' : 'ateliers_reused']++;
             }
 
-            foreach (RetreatChambre::query()->whereIn('id', $chambreIds)->get() as $chambre) {
-                $result = $this->ensureChambre($chambre);
+            foreach (RetreatChambre::query()->where('event_id', $source->getKey())->get() as $chambre) {
+                $result = $this->ensureChambre($chambre, $target);
                 $stats[$result === 'created' ? 'chambres_created' : 'chambres_reused']++;
             }
         });
@@ -67,14 +53,16 @@ class RetreatLogisticsReplicationService
     }
 
     /**
-     * Crée l'atelier s'il n'existe pas, sinon réactive la fiche existante.
+     * Crée l'atelier sur la cible s'il n'existe pas déjà pour cet événement.
      *
      * @param  RetreatAtelier  $template Modèle issu de la retraite source
+     * @param  ChurchEvent  $target Événement cible
      * @return string created|reused
      */
-    private function ensureAtelier(RetreatAtelier $template): string
+    private function ensureAtelier(RetreatAtelier $template, ChurchEvent $target): string
     {
         $existing = RetreatAtelier::query()
+            ->where('event_id', $target->getKey())
             ->where('numero', $template->numero)
             ->where('responsable_user_id', $template->responsable_user_id)
             ->first();
@@ -88,6 +76,7 @@ class RetreatLogisticsReplicationService
         }
 
         RetreatAtelier::query()->create([
+            'event_id' => $target->getKey(),
             'numero' => $template->numero,
             'age_min' => $template->age_min,
             'age_max' => $template->age_max,
@@ -102,14 +91,16 @@ class RetreatLogisticsReplicationService
     }
 
     /**
-     * Crée la chambre si elle n'existe pas, sinon réactive la fiche existante.
+     * Crée la chambre sur la cible si elle n'existe pas déjà pour cet événement.
      *
      * @param  RetreatChambre  $template Modèle issu de la retraite source
+     * @param  ChurchEvent  $target Événement cible
      * @return string created|reused
      */
-    private function ensureChambre(RetreatChambre $template): string
+    private function ensureChambre(RetreatChambre $template, ChurchEvent $target): string
     {
         $existing = RetreatChambre::query()
+            ->where('event_id', $target->getKey())
             ->where('nom', $template->nom)
             ->where('sexe', $template->sexe)
             ->where('responsable_user_id', $template->responsable_user_id)
@@ -124,6 +115,7 @@ class RetreatLogisticsReplicationService
         }
 
         RetreatChambre::query()->create([
+            'event_id' => $target->getKey(),
             'nom' => $template->nom,
             'capacite' => $template->capacite,
             'sexe' => $template->sexe,
@@ -167,7 +159,7 @@ class RetreatLogisticsReplicationService
     }
 
     /**
-     * Liste les retraites éligibles comme source (avec participants affectés).
+     * Liste les retraites éligibles comme source (avec logistique).
      *
      * @return array<int, string> id => label
      */
@@ -175,7 +167,11 @@ class RetreatLogisticsReplicationService
     {
         return ChurchEvent::query()
             ->when($excludeEventId, fn ($q) => $q->whereKeyNot($excludeEventId))
-            ->whereHas('participants')
+            ->where(function ($query): void {
+                $query->whereHas('ateliers')
+                    ->orWhereHas('chambres')
+                    ->orWhereHas('participants');
+            })
             ->orderByDesc('start_at')
             ->pluck('name', 'id')
             ->all();

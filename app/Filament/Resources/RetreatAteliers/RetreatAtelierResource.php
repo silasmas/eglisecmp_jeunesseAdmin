@@ -10,10 +10,12 @@ use App\Filament\Resources\RetreatAteliers\Schemas\RetreatAtelierForm;
 use App\Filament\Resources\RetreatAteliers\Schemas\RetreatAtelierInfolist;
 use App\Filament\Resources\RetreatAteliers\Tables\RetreatAteliersTable;
 use App\Models\RetreatAtelier;
+use App\Support\RetreatActiveEventScope;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
 class RetreatAtelierResource extends Resource
@@ -45,6 +47,14 @@ class RetreatAtelierResource extends Resource
     public static function table(Table $table): Table
     {
         return RetreatAteliersTable::configure($table);
+    }
+
+    /**
+     * @return Builder<RetreatAtelier>
+     */
+    public static function getEloquentQuery(): Builder
+    {
+        return RetreatActiveEventScope::applyToAteliers(parent::getEloquentQuery());
     }
 
     public static function getRelations(): array

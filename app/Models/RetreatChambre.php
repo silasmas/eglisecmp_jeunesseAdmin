@@ -23,6 +23,11 @@ class RetreatChambre extends Model
         ];
     }
 
+    public function event(): BelongsTo
+    {
+        return $this->belongsTo(ChurchEvent::class, 'event_id');
+    }
+
     public function responsable(): BelongsTo
     {
         return $this->belongsTo(User::class, 'responsable_user_id');

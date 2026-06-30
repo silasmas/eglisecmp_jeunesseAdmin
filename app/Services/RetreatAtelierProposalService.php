@@ -68,7 +68,7 @@ class RetreatAtelierProposalService
         })->values()->all();
 
         $creationSuggestion = $eligible === []
-            ? $this->suggestNewAtelierCreation((int) $participant->age)
+            ? $this->suggestNewAtelierCreation((int) $participant->age, $participant->event_id)
             : null;
 
         $summary = match (true) {
@@ -103,7 +103,8 @@ class RetreatAtelierProposalService
     /**
      * Suggère un nouvel atelier lorsqu'aucun existant ne convient.
      *
-     * @param int $age Âge du participant
+     * @param  int  $age Âge du participant
+     * @param  int|null  $eventId Événement retraite
      * @return array{
      *     suggested_numero: int,
      *     suggested_age_min: int,
@@ -112,11 +113,16 @@ class RetreatAtelierProposalService
      *     reason: string
      * }
      */
-    public function suggestNewAtelierCreation(int $age): array
+    public function suggestNewAtelierCreation(int $age, ?int $eventId = null): array
     {
         [$ageMin, $ageMax] = $this->ageBoundsForAge($age);
 
-        $maxNumero = (int) (RetreatAtelier::query()->max('numero') ?? 0);
+        $numeroQuery = RetreatAtelier::query();
+        if ($eventId !== null) {
+            $numeroQuery->where('event_id', $eventId);
+        }
+
+        $maxNumero = (int) ($numeroQuery->max('numero') ?? 0);
         $suggestedNumero = $maxNumero + 1;
 
         return [

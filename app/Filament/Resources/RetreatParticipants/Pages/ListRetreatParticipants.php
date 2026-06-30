@@ -6,9 +6,11 @@ use App\Filament\Pages\ManageRetreatAtelierQuarantine;
 use App\Filament\Resources\RetreatParticipantDeletionLogs\RetreatParticipantDeletionLogResource;
 use App\Filament\Resources\RetreatParticipants\RetreatParticipantResource;
 use App\Filament\Resources\RetreatParticipants\Widgets\RetreatParticipantsStats;
-use App\Models\RetreatParticipant;
+use App\Filament\Resources\RetreatChambres\RetreatChambreResource;
+use App\Filament\Resources\RetreatAteliers\RetreatAtelierResource;
 use App\Models\RetreatAtelier;
 use App\Models\RetreatChambre;
+use App\Models\RetreatParticipant;
 use App\Models\User;
 use App\Notifications\ParticipantAssignmentMailNotification;
 use App\Services\RetreatAtelierQuarantineNotifier;
@@ -48,7 +50,7 @@ class ListRetreatParticipants extends ListRecords
                 ->icon('heroicon-o-shield-exclamation')
                 ->color('warning')
                 ->url(fn (): string => ManageRetreatAtelierQuarantine::getUrl())
-                ->badge(fn (): ?string => ($count = RetreatParticipant::query()->where('atelier_quarantine', true)->count()) > 0
+                ->badge(fn (): ?string => ($count = RetreatParticipantResource::getEloquentQuery()->where('atelier_quarantine', true)->count()) > 0
                     ? (string) $count
                     : null),
             Action::make('affectations')
@@ -161,23 +163,25 @@ class ListRetreatParticipants extends ListRecords
      */
     public function getTabs(): array
     {
+        $baseQuery = fn (): Builder => RetreatParticipantResource::getEloquentQuery();
+
         return [
             'all' => Tab::make('Tous')
-                ->badge(fn (): int => RetreatParticipant::query()->count()),
+                ->badge(fn (): int => $baseQuery()->count()),
             'paid' => Tab::make('Payés')
-                ->badge(fn (): int => RetreatParticipant::query()->where('paiement_valide', true)->count())
+                ->badge(fn (): int => $baseQuery()->where('paiement_valide', true)->count())
                 ->badgeColor('success')
                 ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('paiement_valide', true)),
             'sponsored' => Tab::make('Prise en charge (code)')
-                ->badge(fn (): int => RetreatParticipant::query()->whereHas('sponsorshipVoucher')->count())
+                ->badge(fn (): int => $baseQuery()->whereHas('sponsorshipVoucher')->count())
                 ->badgeColor('info')
                 ->modifyQueryUsing(fn (Builder $query): Builder => $query->whereHas('sponsorshipVoucher')),
             'access_granted' => Tab::make('Accès accordé')
-                ->badge(fn (): int => RetreatParticipant::query()->where('present', true)->count())
+                ->badge(fn (): int => $baseQuery()->where('present', true)->count())
                 ->badgeColor('success')
                 ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('present', true)),
             'access_pending' => Tab::make('Accès en attente')
-                ->badge(fn (): int => RetreatParticipant::query()
+                ->badge(fn (): int => $baseQuery()
                     ->where('paiement_valide', true)
                     ->where('present', false)
                     ->count())
@@ -186,11 +190,11 @@ class ListRetreatParticipants extends ListRecords
                     ->where('paiement_valide', true)
                     ->where('present', false)),
             'badge_received' => Tab::make('Badge remis')
-                ->badge(fn (): int => RetreatParticipant::query()->where('badge_received', true)->count())
+                ->badge(fn (): int => $baseQuery()->where('badge_received', true)->count())
                 ->badgeColor('success')
                 ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('badge_received', true)),
             'badge_pending' => Tab::make('Badge en attente')
-                ->badge(fn (): int => RetreatParticipant::query()
+                ->badge(fn (): int => $baseQuery()
                     ->where('paiement_valide', true)
                     ->where('badge_received', false)
                     ->count())
@@ -199,7 +203,7 @@ class ListRetreatParticipants extends ListRecords
                     ->where('paiement_valide', true)
                     ->where('badge_received', false)),
             'atelier_quarantine' => Tab::make('Quarantaine atelier')
-                ->badge(fn (): int => RetreatParticipant::query()->where('atelier_quarantine', true)->count())
+                ->badge(fn (): int => $baseQuery()->where('atelier_quarantine', true)->count())
                 ->badgeColor('warning')
                 ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('atelier_quarantine', true)),
         ];
@@ -259,13 +263,13 @@ class ListRetreatParticipants extends ListRecords
 
     protected function getAvailableChambresOptions(): array
     {
-        return RetreatChambre::query()
+        return RetreatChambreResource::getEloquentQuery()
             ->where('is_active', true)
             ->with('responsable')
             ->orderBy('nom')
             ->get()
             ->filter(function (RetreatChambre $chambre): bool {
-                $occupancy = RetreatParticipant::query()
+                $occupancy = RetreatParticipantResource::getEloquentQuery()
                     ->where('chambre_id', $chambre->id)
                     ->count();
 
@@ -283,7 +287,7 @@ class ListRetreatParticipants extends ListRecords
 
     protected function getAvailableAteliersOptions(): array
     {
-        return RetreatAtelier::query()
+        return RetreatAtelierResource::getEloquentQuery()
             ->where('is_active', true)
             ->with('responsable')
             ->orderBy('numero')

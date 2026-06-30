@@ -337,7 +337,10 @@ class RetreatPlacementAssignmentService
     {
         $numero = (int) $data['numero'];
 
-        if (RetreatAtelier::query()->where('numero', $numero)->exists()) {
+        if (RetreatAtelier::query()
+            ->where('event_id', $participant->event_id)
+            ->where('numero', $numero)
+            ->exists()) {
             return [
                 'success' => false,
                 'message' => sprintf('Le numéro d\'atelier %d existe déjà.', $numero),
@@ -361,6 +364,7 @@ class RetreatPlacementAssignmentService
         }
 
         $atelier = RetreatAtelier::query()->create([
+            'event_id' => $participant->event_id,
             'numero' => $numero,
             'age_min' => $ageMin,
             'age_max' => $ageMax,
@@ -545,6 +549,10 @@ class RetreatPlacementAssignmentService
 
         return RetreatChambre::query()
             ->where('is_active', true)
+            ->when(
+                filled($participant->event_id),
+                fn ($query) => $query->where('event_id', $participant->event_id)
+            )
             ->withCount('participants')
             ->where(function ($query) use ($sexe): void {
                 $query->whereNull('sexe')
@@ -779,6 +787,10 @@ class RetreatPlacementAssignmentService
     {
         $query = RetreatAtelier::query()
             ->where('is_active', true)
+            ->when(
+                $eventId !== null,
+                fn ($builder) => $builder->where('event_id', $eventId)
+            )
             ->withCount(['participants' => function ($relation) use ($eventId): void {
                 if ($eventId !== null) {
                     $relation->where('event_id', $eventId);
