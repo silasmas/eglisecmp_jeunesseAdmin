@@ -344,7 +344,16 @@ class RegistrationFormConfigForm
                         .'Ouvrir le formulaire public dans un nouvel onglet</a>'
                         .' · les changements nécessitent « Appliquer au formulaire ».</p>';
 
-                    return new HtmlString($previewHtml.$linkHtml);
+                    $previewKey = md5(json_encode([
+                        $items,
+                        $uiSettings,
+                        $fieldOrder,
+                        $step,
+                    ]));
+
+                    return new HtmlString(
+                        '<div wire:key="reg-form-preview-'.$previewKey.'">'.$previewHtml.$linkHtml.'</div>'
+                    );
                 }),
             ])
             ->columnSpanFull()
@@ -404,31 +413,38 @@ class RegistrationFormConfigForm
             foreach ($group['fields'] as $definition) {
                 $fieldKey = $definition->key->value;
                 $isRegistryLocked = $definition->isLocked;
+                $isContactIdentityField = in_array($fieldKey, ['telephone', 'email'], true);
 
                 $rows[] = Section::make($definition->label())
-                    ->description($isRegistryLocked
-                        ? 'Champ critique · '.$definition->type->label()
-                        : $definition->type->label())
+                    ->description($isContactIdentityField
+                        ? 'Visibilité et obligation : section « Blocs et paiement » → « Contact identité ». Libellé et texte d\'aide ci-dessous.'
+                        : ($isRegistryLocked
+                            ? 'Champ critique · '.$definition->type->label()
+                            : $definition->type->label()))
                     ->schema([
                         Grid::make(5)
                             ->schema(array_filter([
-                                $isRegistryLocked && $canUnlock
+                                $isRegistryLocked && $canUnlock && ! $isContactIdentityField
                                     ? Toggle::make("items.{$fieldKey}.is_admin_unlocked")
                                         ->label('Déverrouiller')
                                         ->helperText('Réservé admin : rend ce champ configurable.')
                                         ->live()
                                     : null,
-                                Toggle::make("items.{$fieldKey}.is_visible")
-                                    ->label('Visible')
-                                    ->disabled(fn (callable $get): bool => $isRegistryLocked
-                                        && (! $canUnlock || ! (bool) $get("items.{$fieldKey}.is_admin_unlocked")))
-                                    ->live(),
-                                Toggle::make("items.{$fieldKey}.is_required")
-                                    ->label('Obligatoire')
-                                    ->disabled(fn (callable $get): bool => $isRegistryLocked
-                                        && (! $canUnlock || ! (bool) $get("items.{$fieldKey}.is_admin_unlocked")))
-                                    ->hidden(fn (callable $get): bool => ! (bool) $get("items.{$fieldKey}.is_visible"))
-                                    ->live(),
+                                ! $isContactIdentityField
+                                    ? Toggle::make("items.{$fieldKey}.is_visible")
+                                        ->label('Visible')
+                                        ->disabled(fn (callable $get): bool => $isRegistryLocked
+                                            && (! $canUnlock || ! (bool) $get("items.{$fieldKey}.is_admin_unlocked")))
+                                        ->live()
+                                    : null,
+                                ! $isContactIdentityField
+                                    ? Toggle::make("items.{$fieldKey}.is_required")
+                                        ->label('Obligatoire')
+                                        ->disabled(fn (callable $get): bool => $isRegistryLocked
+                                            && (! $canUnlock || ! (bool) $get("items.{$fieldKey}.is_admin_unlocked")))
+                                        ->hidden(fn (callable $get): bool => ! (bool) $get("items.{$fieldKey}.is_visible"))
+                                        ->live()
+                                    : null,
                                 Select::make("items.{$fieldKey}.column_span")
                                     ->label('Largeur')
                                     ->options(collect(RegistrationFormColumnSpan::cases())
@@ -437,8 +453,10 @@ class RegistrationFormConfigForm
                                         ])
                                         ->all())
                                     ->disabled(fn (callable $get): bool => $isRegistryLocked
+                                        && (! $isContactIdentityField)
                                         && (! $canUnlock || ! (bool) $get("items.{$fieldKey}.is_admin_unlocked")))
-                                    ->hidden(fn (callable $get): bool => ! (bool) $get("items.{$fieldKey}.is_visible"))
+                                    ->hidden(fn (callable $get): bool => ! $isContactIdentityField
+                                        && ! (bool) $get("items.{$fieldKey}.is_visible"))
                                     ->live(),
                             ])),
                         Grid::make(2)

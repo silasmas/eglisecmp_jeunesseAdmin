@@ -5,6 +5,7 @@ namespace App\Filament\Resources\RetreatAteliers\Tables;
 use App\Filament\Pages\ManageRetreatAtelierQuarantine;
 use App\Filament\Tables\Columns\UserStackedColumn;
 use App\Services\RetreatPlacementAssignmentService;
+use App\Support\RetreatActiveEventScope;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -23,7 +24,11 @@ class RetreatAteliersTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn ($query) => $query->with(['participants', 'responsable'])->withCount('participants'))
+            ->modifyQueryUsing(fn ($query) => $query
+                ->with(['responsable'])
+                ->withCount([
+                    'participants as participants_count' => fn ($participantQuery) => RetreatActiveEventScope::applyToParticipantCount($participantQuery),
+                ]))
             ->columns([
                 TextColumn::make('numero')
                     ->label('Numero atelier')

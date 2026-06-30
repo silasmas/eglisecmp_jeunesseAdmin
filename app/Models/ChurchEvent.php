@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Validation\ValidationException;
 use Slimani\MediaManager\Concerns\InteractsWithMediaFiles;
@@ -49,6 +50,32 @@ class ChurchEvent extends Model
                 ]);
             }
         });
+    }
+
+    /**
+     * Retraite archivée (hors opérations courantes, visible dans l'historique).
+     */
+    public function isArchived(): bool
+    {
+        return $this->archived_at !== null;
+    }
+
+    /**
+     * @param Builder<ChurchEvent> $query
+     * @return Builder<ChurchEvent>
+     */
+    public function scopeNotArchived(Builder $query): Builder
+    {
+        return $query->whereNull('archived_at');
+    }
+
+    /**
+     * @param Builder<ChurchEvent> $query
+     * @return Builder<ChurchEvent>
+     */
+    public function scopeArchived(Builder $query): Builder
+    {
+        return $query->whereNotNull('archived_at');
     }
 
     /**
@@ -196,6 +223,7 @@ class ChurchEvent extends Model
         'access_otp_channel',
         'is_active',
         'is_publicly_closed',
+        'archived_at',
         'public_registration_opens_at',
         'public_registration_closes_at',
     ];
@@ -231,6 +259,7 @@ class ChurchEvent extends Model
             'price_to_pay' => 'decimal:2',
             'is_active' => 'boolean',
             'is_publicly_closed' => 'boolean',
+            'archived_at' => 'datetime',
             'access_auth_mode' => EventAccessAuthMode::class,
             'access_otp_channel' => EventAccessOtpChannel::class,
         ];
@@ -239,6 +268,14 @@ class ChurchEvent extends Model
     public function afficheMedia(): BelongsTo
     {
         return $this->mediaFile('affiche_id');
+    }
+
+    /**
+     * Participants inscrits à cet événement.
+     */
+    public function participants(): HasMany
+    {
+        return $this->hasMany(RetreatParticipant::class, 'event_id');
     }
 
     public function retreatDetail(): HasOne

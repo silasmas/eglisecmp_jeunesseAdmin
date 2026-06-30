@@ -700,6 +700,7 @@ class RetreatPublicRegistrationController extends Controller
             $validated,
             $parentGroupMode,
             $parentContactPhone,
+            $this->formConfigService->isTelephoneRequiredForEvent($event),
         );
 
         if ($phoneResolution['error'] !== null) {
@@ -2008,6 +2009,15 @@ class RetreatPublicRegistrationController extends Controller
 
     protected function resolveAfficheUrl(ChurchEvent $event): ?string
     {
+        $legacy = $event->affiche;
+        if (filled($legacy)) {
+            if (Str::startsWith($legacy, ['http://', 'https://'])) {
+                return $legacy;
+            }
+
+            return app(PublicStorageUrl::class)->fromPath($legacy);
+        }
+
         $event->loadMissing('afficheMedia');
         $file = $event->afficheMedia;
         if ($file && method_exists($file, 'getUrl')) {
@@ -2017,15 +2027,7 @@ class RetreatPublicRegistrationController extends Controller
             }
         }
 
-        $legacy = $event->affiche;
-        if (blank($legacy)) {
-            return null;
-        }
-        if (Str::startsWith($legacy, ['http://', 'https://'])) {
-            return $legacy;
-        }
-
-        return app(PublicStorageUrl::class)->fromPath($legacy);
+        return null;
     }
 
     protected function participantIdentityExists(string $nom, string $prenom, ?string $postnom, ?int $eventId = null): bool
@@ -2325,6 +2327,7 @@ class RetreatPublicRegistrationController extends Controller
         array $validated,
         bool $parentGroupMode,
         ?string $parentContactPhone,
+        bool $telephoneRequired = true,
     ): array {
         $rawTelephone = trim((string) ($validated['telephone'] ?? ''));
         $indicatif = trim((string) ($validated['indicatif'] ?? ''));
@@ -2364,6 +2367,14 @@ class RetreatPublicRegistrationController extends Controller
         }
 
         if ($parentGroupMode) {
+            return [
+                'canon' => null,
+                'indicatif' => $indicatif !== '' ? $indicatif : null,
+                'error' => null,
+            ];
+        }
+
+        if (! $telephoneRequired) {
             return [
                 'canon' => null,
                 'indicatif' => $indicatif !== '' ? $indicatif : null,

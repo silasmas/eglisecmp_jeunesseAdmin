@@ -14,6 +14,7 @@ use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use JibayMcs\Tabbed\Traits\HasTabbedActions;
 use UnitEnum;
 
@@ -46,6 +47,14 @@ class ChurchEventResource extends Resource
     public static function table(Table $table): Table
     {
         return ChurchEventsTable::configure($table);
+    }
+
+    /**
+     * @return Builder<ChurchEvent>
+     */
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->whereNull('archived_at');
     }
 
     public static function getRelations(): array

@@ -339,7 +339,6 @@ function applyRegistrationFormConfig(ev) {
 
   reorderRegistrationFieldsDom(fields);
   applyRegistrationUiSettings(payload);
-  reapplyContactCoordinationFields(payload.ui_settings);
 
   const observationsYes = document.getElementById('hasObservationsYes');
   const observationsNo = document.getElementById('hasObservationsNo');
@@ -453,8 +452,6 @@ function applyRegistrationUiSettings(payload) {
 
   App.uiSettings = ui;
 
-  reapplyContactCoordinationFields(ui);
-
   if (typeof autoSelectSinglePaymentMode === 'function') {
     autoSelectSinglePaymentMode();
   }
@@ -473,17 +470,15 @@ function reapplyContactCoordinationFields(uiSettings) {
 
   const coord = uiSettings.contact_coordination;
   const preferred = coord.preferred_channel === 'email' ? 'email' : 'phone';
-  const telVisible = coord.telephone?.is_visible !== false;
-  const emailVisible = coord.email?.is_visible !== false;
 
   const patch = {
     telephone: {
-      is_visible: telVisible,
-      is_required: telVisible && preferred === 'phone',
+      coordVisible: coord.telephone?.is_visible !== false,
+      preferredRequired: preferred === 'phone',
     },
     email: {
-      is_visible: emailVisible,
-      is_required: emailVisible && preferred === 'email',
+      coordVisible: coord.email?.is_visible !== false,
+      preferredRequired: preferred === 'email',
     },
   };
 
@@ -492,26 +487,32 @@ function reapplyContactCoordinationFields(uiSettings) {
       return;
     }
 
-    App.formFields[key].is_visible = patch[key].is_visible;
-    App.formFields[key].is_required = patch[key].is_required;
+    const field = App.formFields[key];
+    const itemVisible = field.is_visible !== false;
+    const itemRequired = field.is_required === true;
+    const isVisible = itemVisible && patch[key].coordVisible;
+    const isRequired = isVisible && patch[key].preferredRequired && itemRequired;
+
+    field.is_visible = isVisible;
+    field.is_required = isRequired;
 
     const wrapper = document.querySelector(`[data-reg-field="${key}"]`);
     if (!wrapper) {
       return;
     }
 
-    wrapper.classList.toggle('hidden', patch[key].is_visible !== true);
+    wrapper.classList.toggle('hidden', !isVisible);
 
     const inputs = wrapper.querySelectorAll('input.field-input, select.field-input');
     inputs.forEach((input) => {
-      if (patch[key].is_visible && patch[key].is_required) {
+      if (isVisible && isRequired) {
         input.setAttribute('data-required', '');
       } else {
         input.removeAttribute('data-required');
       }
     });
 
-    updateRegistrationFieldLabel(wrapper, App.formFields[key]);
+    updateRegistrationFieldLabel(wrapper, field);
   });
 
   const indicatif = document.getElementById('indicatif');

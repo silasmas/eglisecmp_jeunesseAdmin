@@ -19,6 +19,10 @@ class CreateChurchEvent extends CreateRecord
         );
         $data['access_otp_channel'] = $this->normalizeEnumValue($data['access_otp_channel'] ?? null);
 
+        if (filled($data['affiche'] ?? null)) {
+            $data['affiche_id'] = null;
+        }
+
         return $data;
     }
 

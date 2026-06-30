@@ -6,6 +6,7 @@ use App\Filament\Pages\ManageRetreatAtelierQuarantine;
 use App\Filament\Resources\RetreatAteliers\RetreatAtelierResource;
 use App\Filament\Resources\RetreatAteliers\Widgets\RetreatAteliersStats;
 use App\Models\RetreatParticipant;
+use App\Support\RetreatActiveEventScope;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
@@ -18,7 +19,9 @@ class ListRetreatAteliers extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        $quarantineCount = RetreatParticipant::query()->where('atelier_quarantine', true)->count();
+        $quarantineCount = RetreatActiveEventScope::applyToParticipants(
+            RetreatParticipant::query()->where('atelier_quarantine', true)
+        )->count();
 
         return [
             Action::make('openAtelierQuarantine')

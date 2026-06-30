@@ -379,6 +379,20 @@ class RegistrationFormConfigService
     }
 
     /**
+     * Indique si le téléphone principal est visible et obligatoire pour l'événement (config publiée).
+     */
+    public function isTelephoneRequiredForEvent(?ChurchEvent $event): bool
+    {
+        foreach ($this->resolvedFieldsForEvent($event) as $field) {
+            if (($field['api_key'] ?? '') === 'telephone') {
+                return (bool) ($field['is_visible'] ?? true) && (bool) ($field['is_required'] ?? false);
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * Indique si un champ verrouillé est configurable (déverrouillé par un admin).
      */
     public function isFieldConfigurable(RegistrationFieldDefinition $definition, ?RegistrationFormFieldItem $item): bool

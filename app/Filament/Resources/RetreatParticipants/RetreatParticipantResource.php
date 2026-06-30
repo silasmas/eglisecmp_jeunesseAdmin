@@ -10,6 +10,7 @@ use App\Filament\Resources\RetreatParticipants\Schemas\RetreatParticipantForm;
 use App\Filament\Resources\RetreatParticipants\Schemas\RetreatParticipantInfolist;
 use App\Filament\Resources\RetreatParticipants\Tables\RetreatParticipantsTable;
 use App\Models\RetreatParticipant;
+use App\Support\RetreatActiveEventScope;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -51,9 +52,11 @@ class RetreatParticipantResource extends Resource
      */
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with([
-            'sponsorshipVoucher.donation',
-        ]);
+        return RetreatActiveEventScope::applyToParticipants(
+            parent::getEloquentQuery()->with([
+                'sponsorshipVoucher.donation',
+            ])
+        );
     }
 
     public static function getRelations(): array

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\RetreatPayments\Widgets;
 
 use App\Models\RetreatPayment;
+use App\Support\RetreatActiveEventScope;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -10,7 +11,9 @@ class RetreatPaymentsStats extends StatsOverviewWidget
 {
     protected function getStats(): array
     {
-        $currencyStats = RetreatPayment::query()
+        $base = RetreatActiveEventScope::applyToPayments(RetreatPayment::query());
+
+        $currencyStats = (clone $base)
             ->selectRaw('currency, count(*) as aggregate')
             ->groupBy('currency')
             ->orderBy('currency')
@@ -19,7 +22,7 @@ class RetreatPaymentsStats extends StatsOverviewWidget
             ->values()
             ->all();
 
-        $channelStats = RetreatPayment::query()
+        $channelStats = (clone $base)
             ->selectRaw('channel, count(*) as aggregate')
             ->groupBy('channel')
             ->orderBy('channel')
@@ -29,8 +32,8 @@ class RetreatPaymentsStats extends StatsOverviewWidget
             ->all();
 
         return [
-            Stat::make('Nombre de paiements', (string) RetreatPayment::query()->count()),
-            Stat::make('Paiements valides', (string) RetreatPayment::query()->where('etat', 'payee')->count()),
+            Stat::make('Nombre de paiements', (string) (clone $base)->count()),
+            Stat::make('Paiements valides', (string) (clone $base)->where('etat', 'payee')->count()),
             ...$currencyStats,
             ...$channelStats,
         ];

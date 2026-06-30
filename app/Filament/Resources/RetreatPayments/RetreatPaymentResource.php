@@ -10,10 +10,12 @@ use App\Filament\Resources\RetreatPayments\Schemas\RetreatPaymentForm;
 use App\Filament\Resources\RetreatPayments\Schemas\RetreatPaymentInfolist;
 use App\Filament\Resources\RetreatPayments\Tables\RetreatPaymentsTable;
 use App\Models\RetreatPayment;
+use App\Support\RetreatActiveEventScope;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
 class RetreatPaymentResource extends Resource
@@ -43,6 +45,14 @@ class RetreatPaymentResource extends Resource
     public static function table(Table $table): Table
     {
         return RetreatPaymentsTable::configure($table);
+    }
+
+    /**
+     * @return Builder<RetreatPayment>
+     */
+    public static function getEloquentQuery(): Builder
+    {
+        return RetreatActiveEventScope::applyToPayments(parent::getEloquentQuery());
     }
 
     public static function getRelations(): array

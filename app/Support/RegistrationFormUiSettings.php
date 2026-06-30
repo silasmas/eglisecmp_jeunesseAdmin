@@ -217,6 +217,7 @@ class RegistrationFormUiSettings
 
     /**
      * Applique visibilité et obligation téléphone/e-mail selon la coordination contact.
+     * Fusionne les réglages par champ (items) et la section « Contact identité ».
      *
      * @param  array<int, array<string, mixed>>  $fields Champs résolus
      * @param  array<string, mixed>|null  $uiSettings Paramètres fusionnés
@@ -229,14 +230,36 @@ class RegistrationFormUiSettings
         $preferred = $coord['preferred_channel'];
 
         foreach ($fields as &$field) {
-            if (($field['api_key'] ?? '') === 'telephone') {
-                $field['is_visible'] = (bool) ($coord['telephone']['is_visible'] ?? true);
-                $field['is_required'] = $field['is_visible'] && $preferred === self::CONTACT_PREFERRED_PHONE;
+            $apiKey = (string) ($field['api_key'] ?? '');
+
+            if ($apiKey === 'telephone') {
+                $itemVisible = (bool) ($field['is_visible'] ?? true);
+                $itemRequired = (bool) ($field['is_required'] ?? false);
+                $coordVisible = (bool) ($coord['telephone']['is_visible'] ?? true);
+                $field['is_visible'] = $itemVisible && $coordVisible;
+
+                if (! $field['is_visible']) {
+                    $field['is_required'] = false;
+                } elseif ($preferred === self::CONTACT_PREFERRED_PHONE) {
+                    $field['is_required'] = $itemRequired;
+                } else {
+                    $field['is_required'] = false;
+                }
             }
 
-            if (($field['api_key'] ?? '') === 'email') {
-                $field['is_visible'] = (bool) ($coord['email']['is_visible'] ?? true);
-                $field['is_required'] = $field['is_visible'] && $preferred === self::CONTACT_PREFERRED_EMAIL;
+            if ($apiKey === 'email') {
+                $itemVisible = (bool) ($field['is_visible'] ?? true);
+                $itemRequired = (bool) ($field['is_required'] ?? false);
+                $coordVisible = (bool) ($coord['email']['is_visible'] ?? true);
+                $field['is_visible'] = $itemVisible && $coordVisible;
+
+                if (! $field['is_visible']) {
+                    $field['is_required'] = false;
+                } elseif ($preferred === self::CONTACT_PREFERRED_EMAIL) {
+                    $field['is_required'] = $itemRequired;
+                } else {
+                    $field['is_required'] = false;
+                }
             }
         }
         unset($field);

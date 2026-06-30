@@ -5,10 +5,10 @@ namespace App\Filament\Resources\ChurchEvents\Schemas;
 use App\Enums\ChurchEventType;
 use App\Enums\EventAccessAuthMode;
 use App\Enums\EventAccessOtpChannel;
-use App\Filament\Forms\FastMediaPicker;
 use App\Support\ChurchEventPublicRegistrationEvaluator;
 use App\Support\StoragePath;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -43,11 +43,17 @@ class ChurchEventForm
                         TextInput::make('location')
                             ->label('Lieu')
                             ->required(),
-                        FastMediaPicker::make('affiche_id')
-                            ->relationship('afficheMedia')
+                        FileUpload::make('affiche')
                             ->label("Affiche de l'événement")
-                            ->helperText('Selectionne ou charge une affiche depuis la mediatheque.')
+                            ->helperText('Image affichée sur la bannière du formulaire d\'inscription public.')
                             ->directory(StoragePath::EVENTS_AFFICHES)
+                            ->image()
+                            ->panelLayout('integrated')
+                            ->imagePreviewHeight('12rem')
+                            ->itemPanelAspectRatio(16 / 9)
+                            ->previewable(true)
+                            ->openable(true)
+                            ->downloadable(false)
                             ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
                             ->maxSize(8192)
                             ->columnSpanFull(),

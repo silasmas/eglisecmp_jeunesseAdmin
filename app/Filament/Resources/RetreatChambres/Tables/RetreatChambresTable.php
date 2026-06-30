@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\RetreatChambres\Tables;
 
 use App\Filament\Tables\Columns\UserStackedColumn;
+use App\Support\RetreatActiveEventScope;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -19,7 +20,11 @@ class RetreatChambresTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn ($query) => $query->with(['participants', 'responsable'])->withCount('participants'))
+            ->modifyQueryUsing(fn ($query) => $query
+                ->with(['responsable'])
+                ->withCount([
+                    'participants as participants_count' => fn ($participantQuery) => RetreatActiveEventScope::applyToParticipantCount($participantQuery),
+                ]))
             ->columns([
                 TextColumn::make('nom')
                     ->label('Chambre')
