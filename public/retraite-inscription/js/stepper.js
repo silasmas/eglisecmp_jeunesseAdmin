@@ -13,7 +13,7 @@ function goToStep(n) {
 
   if (n > App.currentStep && n <= 2) {
     for (let stepIndex = App.currentStep; stepIndex < n; stepIndex += 1) {
-      if (!validateStep(stepIndex)) {
+      if (!validateStep(stepIndex, { showToast: stepIndex === App.currentStep })) {
         return;
       }
     }
@@ -55,7 +55,7 @@ function goToStep(n) {
 
 function nextStep() {
   if (App.registrationOpen !== true) return;
-  if (!validateStep(App.currentStep)) return;
+  if (!validateStep(App.currentStep, { showToast: true })) return;
   if (App.currentStep === 3) return;
   if (App.currentStep === 4) return;
   goToStep(App.currentStep + 1);

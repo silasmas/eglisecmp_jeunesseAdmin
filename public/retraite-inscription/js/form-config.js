@@ -339,6 +339,7 @@ function applyRegistrationFormConfig(ev) {
 
   reorderRegistrationFieldsDom(fields);
   applyRegistrationUiSettings(payload);
+  reapplyContactCoordinationFields(payload.ui_settings);
 
   const observationsYes = document.getElementById('hasObservationsYes');
   const observationsNo = document.getElementById('hasObservationsNo');
@@ -452,11 +453,79 @@ function applyRegistrationUiSettings(payload) {
 
   App.uiSettings = ui;
 
+  reapplyContactCoordinationFields(ui);
+
   if (typeof autoSelectSinglePaymentMode === 'function') {
     autoSelectSinglePaymentMode();
   }
 }
 
+/**
+ * Réapplique téléphone/e-mail selon la coordination contact (canal privilégié, visibilité).
+ *
+ * @param {object|null|undefined} uiSettings Paramètres ui_settings fusionnés
+ * @return {void}
+ */
+function reapplyContactCoordinationFields(uiSettings) {
+  if (!uiSettings || !uiSettings.contact_coordination) {
+    return;
+  }
+
+  const coord = uiSettings.contact_coordination;
+  const preferred = coord.preferred_channel === 'email' ? 'email' : 'phone';
+  const telVisible = coord.telephone?.is_visible !== false;
+  const emailVisible = coord.email?.is_visible !== false;
+
+  const patch = {
+    telephone: {
+      is_visible: telVisible,
+      is_required: telVisible && preferred === 'phone',
+    },
+    email: {
+      is_visible: emailVisible,
+      is_required: emailVisible && preferred === 'email',
+    },
+  };
+
+  Object.keys(patch).forEach((key) => {
+    if (!App.formFields[key]) {
+      return;
+    }
+
+    App.formFields[key].is_visible = patch[key].is_visible;
+    App.formFields[key].is_required = patch[key].is_required;
+
+    const wrapper = document.querySelector(`[data-reg-field="${key}"]`);
+    if (!wrapper) {
+      return;
+    }
+
+    wrapper.classList.toggle('hidden', patch[key].is_visible !== true);
+
+    const inputs = wrapper.querySelectorAll('input.field-input, select.field-input');
+    inputs.forEach((input) => {
+      if (patch[key].is_visible && patch[key].is_required) {
+        input.setAttribute('data-required', '');
+      } else {
+        input.removeAttribute('data-required');
+      }
+    });
+
+    updateRegistrationFieldLabel(wrapper, App.formFields[key]);
+  });
+
+  const indicatif = document.getElementById('indicatif');
+  if (indicatif) {
+    const telRequired = App.formFields.telephone?.is_visible && App.formFields.telephone?.is_required;
+    if (telRequired) {
+      indicatif.setAttribute('data-required', '');
+    } else {
+      indicatif.removeAttribute('data-required');
+    }
+  }
+}
+
+window.reapplyContactCoordinationFields = reapplyContactCoordinationFields;
 window.applyRegistrationFormConfig = applyRegistrationFormConfig;
 window.applyRegistrationUiSettings = applyRegistrationUiSettings;
 window.isRegistrationFieldRequired = isRegistrationFieldRequired;

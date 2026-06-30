@@ -550,15 +550,14 @@ function scheduleTutorFamilyHintFetch() {
   }, 520);
 }
 
-function telephoneMarkInvalid(show) {
+function telephoneMarkInvalid(show, message) {
   const telInput = document.getElementById('telephone');
   if (!telInput) return;
   if (show) {
-    showFieldError(telInput);
-    const fb = document.getElementById('telephoneLiveFeedback');
-    if (fb && !fb.classList.contains('hidden')) {
-      fb.classList.add('hidden');
-    }
+    showFieldError(
+      telInput,
+      message || 'Le numéro de téléphone est obligatoire ou invalide'
+    );
   } else if (
     digitsLookLikeE164(
       normalizeMainPhoneCanon(
@@ -616,7 +615,7 @@ function validateContactStepPhones(stepIndex = null) {
 
     if (telRequired) {
       if (!telRaw) {
-        telephoneMarkInvalid(true);
+        telephoneMarkInvalid(true, 'Le numéro de téléphone est obligatoire');
         setLiveHint(
           'telephoneLiveFeedback',
           '<i class="bi bi-exclamation-circle"></i> Le numéro de téléphone est obligatoire.',
@@ -624,7 +623,7 @@ function validateContactStepPhones(stepIndex = null) {
         );
         valid = false;
       } else if (!digitsLookLikeE164(mainCanon)) {
-        telephoneMarkInvalid(true);
+        telephoneMarkInvalid(true, 'Numéro de téléphone invalide');
         valid = false;
       } else {
         telephoneMarkInvalid(false);

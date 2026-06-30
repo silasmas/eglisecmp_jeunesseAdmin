@@ -320,14 +320,16 @@ class RegistrationFormConfigForm
                             $get('mobile_money_providers_order') ?? []
                         ),
                         'contact_coordination' => $get('ui_settings.contact_coordination') ?? [],
-                        'contact_coordination' => $get('ui_settings.contact_coordination') ?? [],
                     ]);
                     $fields = in_array($step, [0, 1, 2], true)
-                        ? RegistrationFormPreviewBuilder::fieldsForStep($items, $step, $canUnlock, $fieldOrder)
+                        ? RegistrationFormPreviewBuilder::fieldsForStep(
+                            $items,
+                            $step,
+                            $canUnlock,
+                            $fieldOrder,
+                            $uiSettings
+                        )
                         : [];
-                    if ($step === 0 && $fields !== []) {
-                        $fields = RegistrationFormUiSettings::applyContactCoordinationToFields($fields, $uiSettings);
-                    }
                     $uiBlocks = RegistrationFormPreviewBuilder::uiBlocksForStep($step, $uiSettings);
 
                     $previewHtml = view('filament.registration-form-configs.preview', [
@@ -425,7 +427,8 @@ class RegistrationFormConfigForm
                                     ->label('Obligatoire')
                                     ->disabled(fn (callable $get): bool => $isRegistryLocked
                                         && (! $canUnlock || ! (bool) $get("items.{$fieldKey}.is_admin_unlocked")))
-                                    ->hidden(fn (callable $get): bool => ! (bool) $get("items.{$fieldKey}.is_visible")),
+                                    ->hidden(fn (callable $get): bool => ! (bool) $get("items.{$fieldKey}.is_visible"))
+                                    ->live(),
                                 Select::make("items.{$fieldKey}.column_span")
                                     ->label('Largeur')
                                     ->options(collect(RegistrationFormColumnSpan::cases())

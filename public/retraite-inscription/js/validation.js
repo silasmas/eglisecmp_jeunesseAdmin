@@ -19,6 +19,35 @@ const REGISTRATION_FIELD_INPUT_IDS = {
 };
 
 /**
+ * Libellé lisible d'un champ pour les messages de validation.
+ *
+ * @param {HTMLElement} field Champ DOM
+ * @return {string|null}
+ */
+function getFieldValidationLabel(field) {
+  if (!field) {
+    return null;
+  }
+
+  const wrapper = field.closest('[data-reg-field]');
+  const regKey = wrapper ? wrapper.getAttribute('data-reg-field') : null;
+
+  if (regKey && App.formFields && App.formFields[regKey] && App.formFields[regKey].label) {
+    return App.formFields[regKey].label;
+  }
+
+  const labelEl = wrapper
+    ? wrapper.querySelector('[data-reg-label], .field-label')
+    : field.closest('.field')?.querySelector('.field-label');
+
+  if (!labelEl) {
+    return null;
+  }
+
+  return (labelEl.textContent || '').replace(/\*/g, '').replace(/\(facultatif\)/gi, '').trim() || null;
+}
+
+/**
  * Affiche l'erreur sous un champ et le surligne en rouge.
  *
  * @param {HTMLElement} field Champ concerné
@@ -75,7 +104,8 @@ function validateRequiredField(field) {
   const value = (field.value || '').trim();
 
   if (!value) {
-    showFieldError(field);
+    const label = getFieldValidationLabel(field);
+    showFieldError(field, label ? `Le champ « ${label} » est obligatoire` : 'Ce champ est obligatoire');
     return false;
   }
 
@@ -180,11 +210,19 @@ function validateHebergementFieldConfigured() {
     if (wrapper) {
       wrapper.classList.add('is-error');
     }
+    const err = document.getElementById('hebergementRequiredError');
+    if (err) {
+      err.classList.add('visible');
+    }
     return false;
   }
 
   if (wrapper) {
     wrapper.classList.remove('is-error');
+  }
+  const err = document.getElementById('hebergementRequiredError');
+  if (err) {
+    err.classList.remove('visible');
   }
   return true;
 }
@@ -305,7 +343,8 @@ function validateAllRegistrationSteps() {
   return { valid: true, step: null };
 }
 
-function validateStep(step) {
+function validateStep(step, options) {
+  const opts = options || {};
   wireInstantRequiredValidation();
 
   const steps = document.querySelectorAll('.step');
@@ -485,6 +524,12 @@ function validateStep(step) {
     const firstError = section.querySelector('.is-error, .field-error.visible, #photoZone.is-error, .is-error-text, [data-reg-field].is-error');
     if (firstError) {
       firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    if (opts.showToast && typeof retraiteNotifyToast === 'function') {
+      retraiteNotifyToast(
+        'Complétez les champs obligatoires signalés en rouge sous chaque champ avant de continuer.',
+        'warning'
+      );
     }
   }
 

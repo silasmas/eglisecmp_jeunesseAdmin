@@ -762,7 +762,12 @@ async function confirmRecapAndProceed() {
     if (typeof goToStep === 'function') {
       goToStep(gate.step);
     }
-    retraiteNotifyToast('Corrigez les champs signalés avant de continuer vers le paiement.', 'warning');
+    if (typeof retraiteNotifyToast === 'function') {
+      retraiteNotifyToast(
+        'Corrigez les champs obligatoires signalés en rouge avant de continuer vers le paiement.',
+        'warning'
+      );
+    }
     return;
   }
 

@@ -251,6 +251,7 @@
                 <span>Externe</span>
               </label>
             </div>
+            <span class="field-error" id="hebergementRequiredError"><i class="bi bi-exclamation-circle"></i> Veuillez choisir un type d'hébergement</span>
             <span class="field-hint">Interne = vous dormez sur le site de retraite ; Externe = vous rentrez/logez hors site.</span>
           </div>
           <div class="field full" data-reg-field="observations">

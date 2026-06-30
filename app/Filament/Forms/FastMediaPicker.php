@@ -38,6 +38,9 @@ class FastMediaPicker extends MediaPicker
         $this->nullable();
         $this->deletable();
 
+        // Le MediaPicker parent désactive fetchFileInformation : l’upload reste bloqué sur « En attente de taille ».
+        $this->fetchFileInformation(true);
+
         $this->saveUploadedFileUsing(static function (FastMediaPicker $component, TemporaryUploadedFile $file): ?string {
             $folderId = app(MediaFolderResolver::class)->resolveFolderId($component->getDirectory());
             $uniqueName = app(StoragePathService::class)->uniqueFilename($file);
@@ -82,6 +85,10 @@ class FastMediaPicker extends MediaPicker
 
             $conversion = $component->getConversion();
             $url = media_preview_url($fileRecord, $conversion !== '' ? $conversion : '');
+
+            if (filled($url) && ! str_starts_with((string) $url, 'http')) {
+                $url = url($url);
+            }
 
             if (blank($url)) {
                 return [

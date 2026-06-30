@@ -37,6 +37,7 @@ class RegistrationFormPreviewBuilder
         int $step,
         bool $canUnlock,
         array $fieldOrder = [],
+        ?array $uiSettings = null,
     ): array {
         $service = app(RegistrationFormConfigService::class);
         $sortMap = $service->sortOrdersFromFieldOrder($fieldOrder);
@@ -52,7 +53,16 @@ class RegistrationFormPreviewBuilder
             $resolved[] = $service->resolveDraftFieldPayload($definition, $payload, $canUnlock, $sortOrder);
         }
 
-        return $service->sortResolvedFields($resolved);
+        $resolved = $service->sortResolvedFields($resolved);
+
+        if ($step === 0 && $uiSettings !== null) {
+            $resolved = RegistrationFormUiSettings::applyContactCoordinationToFields(
+                $resolved,
+                RegistrationFormUiSettings::merge($uiSettings)
+            );
+        }
+
+        return $resolved;
     }
 
     /**
