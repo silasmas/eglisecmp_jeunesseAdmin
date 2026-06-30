@@ -754,6 +754,18 @@ async function registerParticipantOnServer() {
 }
 
 async function confirmRecapAndProceed() {
+  const gate = typeof validateAllRegistrationSteps === 'function'
+    ? validateAllRegistrationSteps()
+    : { valid: true, step: null };
+
+  if (!gate.valid && gate.step !== null) {
+    if (typeof goToStep === 'function') {
+      goToStep(gate.step);
+    }
+    retraiteNotifyToast('Corrigez les champs signalés avant de continuer vers le paiement.', 'warning');
+    return;
+  }
+
   const confirmCheck = document.getElementById('confirmCheck');
   if (!confirmCheck || !confirmCheck.checked) {
     retraiteNotifyToast('Cochez la confirmation : les informations ci-dessus sont exactes.', 'warning');

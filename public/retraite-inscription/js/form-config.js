@@ -10,6 +10,56 @@ const REG_STEP_GRID_SELECTORS = {
 };
 
 /**
+ * Associe une clé de registre au champ DOM (input/select).
+ *
+ * @param {string} apiKey Clé API (ex. date_naissance)
+ * @return {string|null} Identifiant HTML
+ */
+function registrationFieldInputId(apiKey) {
+  const map = {
+    date_naissance: 'dateNaissance',
+    tel_urgence: 'telUrgence',
+    guardian_name: 'guardianName',
+    guardian_phone: 'guardianPhone',
+  };
+
+  return map[apiKey] || apiKey;
+}
+
+/**
+ * Met à jour le libellé d'un groupe radio (hébergement).
+ *
+ * @param {HTMLElement} wrapper Conteneur .field
+ * @param {{ label?: string, is_required?: boolean, is_visible?: boolean }} field Config champ
+ * @return {void}
+ */
+function updateRegistrationRadioGroupLabel(wrapper, field) {
+  const label = wrapper.querySelector('.field-label');
+  if (!label || !field.label) {
+    return;
+  }
+
+  label.textContent = '';
+  label.appendChild(document.createTextNode(field.label));
+
+  if (field.is_visible && field.is_required) {
+    label.appendChild(document.createTextNode(' '));
+    const requiredSpan = document.createElement('span');
+    requiredSpan.className = 'required';
+    requiredSpan.textContent = '*';
+    label.appendChild(requiredSpan);
+    return;
+  }
+
+  if (field.is_visible && !field.is_required) {
+    label.appendChild(document.createTextNode(' '));
+    const optionalSpan = document.createElement('span');
+    optionalSpan.className = 'optional';
+    optionalSpan.textContent = '(facultatif)';
+    label.appendChild(optionalSpan);
+  }
+}
+/**
  * Indique si un champ est requis selon la configuration active.
  *
  * @param {string} key Clé du registre (ex. photo, commune)
@@ -22,6 +72,21 @@ function isRegistrationFieldRequired(key) {
   }
 
   return field.is_visible === true && field.is_required === true;
+}
+
+/**
+ * Indique si un champ est visible selon la configuration active.
+ *
+ * @param {string} key Clé du registre
+ * @return {boolean}
+ */
+function isRegistrationFieldVisible(key) {
+  const field = App.formFields && App.formFields[key];
+  if (!field) {
+    return true;
+  }
+
+  return field.is_visible === true;
 }
 
 /**
@@ -241,6 +306,17 @@ function applyRegistrationFormConfig(ev) {
       }
     });
 
+    if (field.key === 'telephone') {
+      const indicatif = document.getElementById('indicatif');
+      if (indicatif) {
+        if (field.is_visible && field.is_required) {
+          indicatif.setAttribute('data-required', '');
+        } else {
+          indicatif.removeAttribute('data-required');
+        }
+      }
+    }
+
     if (field.key === 'observations' && field.is_visible === true && field.is_required) {
       const yesRadio = document.getElementById('hasObservationsYes');
       const observationsInput = document.getElementById('observations');
@@ -252,7 +328,12 @@ function applyRegistrationFormConfig(ev) {
       }
     }
 
-    updateRegistrationFieldLabel(wrapper, field);
+    if (field.key === 'hebergement') {
+      updateRegistrationRadioGroupLabel(wrapper, field);
+    } else {
+      updateRegistrationFieldLabel(wrapper, field);
+    }
+
     updateRegistrationFieldHelperText(wrapper, field.helper_text);
   });
 
@@ -379,4 +460,6 @@ function applyRegistrationUiSettings(payload) {
 window.applyRegistrationFormConfig = applyRegistrationFormConfig;
 window.applyRegistrationUiSettings = applyRegistrationUiSettings;
 window.isRegistrationFieldRequired = isRegistrationFieldRequired;
+window.isRegistrationFieldVisible = isRegistrationFieldVisible;
+window.registrationFieldInputId = registrationFieldInputId;
 window.reorderRegistrationFieldsDom = reorderRegistrationFieldsDom;

@@ -55,6 +55,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
+  if (ev.registration_open === false) {
+    if (gateSplash) {
+      gateSplash.classList.add('hidden');
+    }
+    if (gateClosed) {
+      gateClosed.classList.remove('hidden');
+    }
+    App.registrationOpen = false;
+    return;
+  }
+
   dismissRetraiteGateSplash(() => {
     if (gateOverlay) {
       gateOverlay.classList.add('hidden');

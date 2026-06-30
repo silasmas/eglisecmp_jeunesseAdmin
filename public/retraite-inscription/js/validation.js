@@ -2,6 +2,22 @@
    FORM VALIDATION
 ═══════════════════════════════════════════ */
 
+/** Correspondance clé API → id DOM pour les champs texte/select. */
+const REGISTRATION_FIELD_INPUT_IDS = {
+  nom: 'nom',
+  prenom: 'prenom',
+  sexe: 'sexe',
+  date_naissance: 'dateNaissance',
+  tel_urgence: 'telUrgence',
+  guardian_name: 'guardianName',
+  guardian_phone: 'guardianPhone',
+  adresse: 'adresse',
+  commune: 'commune',
+  ville: 'ville',
+  eglise: 'eglise',
+  departement: 'departement',
+};
+
 /**
  * Affiche l'erreur sous un champ et le surligne en rouge.
  *
@@ -29,7 +45,9 @@ function clearFieldError(field) {
   const error = field.closest('.field')
     ? field.closest('.field').querySelector('.field-error')
     : field.parentElement?.parentElement?.querySelector('.field-error');
-  if (error) error.classList.remove('visible');
+  if (error) {
+    error.classList.remove('visible');
+  }
 }
 
 function markFieldValid(field) {
@@ -38,7 +56,9 @@ function markFieldValid(field) {
   const error = field.closest('.field')
     ? field.closest('.field').querySelector('.field-error')
     : field.parentElement?.parentElement?.querySelector('.field-error');
-  if (error) error.classList.remove('visible');
+  if (error) {
+    error.classList.remove('visible');
+  }
 }
 
 /**
@@ -96,6 +116,193 @@ function wireInstantRequiredValidation() {
       }
     });
   });
+}
+
+/**
+ * Valide le département selon la config (requis sauf si « aucun département »).
+ *
+ * @return {boolean}
+ */
+function validateDepartementFieldConfigured() {
+  if (typeof isRegistrationFieldVisible === 'function' && !isRegistrationFieldVisible('departement')) {
+    return true;
+  }
+
+  if (typeof isRegistrationFieldRequired !== 'function' || !isRegistrationFieldRequired('departement')) {
+    return true;
+  }
+
+  const noDeptCheck = document.getElementById('noDepartement');
+  if (noDeptCheck && noDeptCheck.checked) {
+    const deptInput = document.getElementById('departement');
+    if (deptInput) {
+      clearFieldError(deptInput);
+      deptInput.classList.remove('is-error');
+    }
+    return true;
+  }
+
+  const deptInput = document.getElementById('departement');
+  if (!deptInput) {
+    return true;
+  }
+
+  deptInput.setAttribute('data-required', '');
+  return validateRequiredField(deptInput);
+}
+
+/**
+ * Valide le choix d'hébergement lorsque requis par la configuration admin.
+ *
+ * @return {boolean}
+ */
+function validateHebergementFieldConfigured() {
+  if (typeof isRegistrationFieldVisible === 'function' && !isRegistrationFieldVisible('hebergement')) {
+    const wrapper = document.querySelector('[data-reg-field="hebergement"]');
+    if (wrapper) {
+      wrapper.classList.remove('is-error');
+    }
+    return true;
+  }
+
+  if (typeof isRegistrationFieldRequired !== 'function' || !isRegistrationFieldRequired('hebergement')) {
+    const wrapper = document.querySelector('[data-reg-field="hebergement"]');
+    if (wrapper) {
+      wrapper.classList.remove('is-error');
+    }
+    return true;
+  }
+
+  const wrapper = document.querySelector('[data-reg-field="hebergement"]');
+  const selected = document.querySelector('input[name="hebergement"]:checked');
+
+  if (!selected) {
+    if (wrapper) {
+      wrapper.classList.add('is-error');
+    }
+    return false;
+  }
+
+  if (wrapper) {
+    wrapper.classList.remove('is-error');
+  }
+  return true;
+}
+
+/**
+ * Valide les champs texte/select configurables d'une étape (hors cas spéciaux).
+ *
+ * @param {number} step Index d'étape
+ * @return {boolean}
+ */
+function validateConfiguredInputFieldsForStep(step) {
+  const fields = Object.values(App.formFields || {}).filter(
+    (field) => field.step === step && field.is_visible && field.is_required
+  );
+
+  const skipKeys = new Set([
+    'nom',
+    'prenom',
+    'date_naissance',
+    'telephone',
+    'email',
+    'photo',
+    'departement',
+    'hebergement',
+    'observations',
+    'tel_urgence',
+    'guardian_phone',
+  ]);
+
+  let valid = true;
+
+  fields.forEach((field) => {
+    if (skipKeys.has(field.key)) {
+      return;
+    }
+
+    const inputId = REGISTRATION_FIELD_INPUT_IDS[field.api_key]
+      || REGISTRATION_FIELD_INPUT_IDS[field.key]
+      || (typeof registrationFieldInputId === 'function'
+        ? registrationFieldInputId(field.api_key || field.key)
+        : null);
+    if (!inputId) {
+      return;
+    }
+
+    const input = document.getElementById(inputId);
+    if (!input) {
+      return;
+    }
+
+    input.setAttribute('data-required', '');
+    if (!validateRequiredField(input)) {
+      valid = false;
+    }
+  });
+
+  return valid;
+}
+
+/**
+ * Valide les téléphones optionnels/requis des étapes coordonnées (urgence, tuteur).
+ *
+ * @param {number} step Index d'étape
+ * @return {boolean}
+ */
+function validateConfiguredPhoneFieldsForStep(step) {
+  let valid = true;
+
+  if (step === 1 && typeof isRegistrationFieldRequired === 'function') {
+    if (isRegistrationFieldRequired('tel_urgence')) {
+      const telUrgEl = document.getElementById('telUrgence');
+      if (telUrgEl) {
+        telUrgEl.setAttribute('data-required', '');
+        if (!(telUrgEl.value || '').trim()) {
+          showFieldError(telUrgEl);
+          valid = false;
+        }
+      }
+    }
+
+    if (isRegistrationFieldRequired('guardian_phone')) {
+      const guardianEl = document.getElementById('guardianPhone');
+      if (guardianEl && !document.getElementById('familyMultiChildCheck')?.checked) {
+        guardianEl.setAttribute('data-required', '');
+        if (!(guardianEl.value || '').trim()) {
+          showFieldError(guardianEl);
+          valid = false;
+        }
+      }
+    }
+
+    if (isRegistrationFieldRequired('guardian_name')) {
+      const guardianNameEl = document.getElementById('guardianName');
+      if (guardianNameEl && !document.getElementById('familyMultiChildCheck')?.checked) {
+        guardianNameEl.setAttribute('data-required', '');
+        if (!validateRequiredField(guardianNameEl)) {
+          valid = false;
+        }
+      }
+    }
+  }
+
+  return valid;
+}
+
+/**
+ * Valide toutes les étapes de saisie (0 à 2) avant envoi au serveur.
+ *
+ * @return {{ valid: boolean, step: number|null }}
+ */
+function validateAllRegistrationSteps() {
+  for (let step = 0; step <= 2; step += 1) {
+    if (!validateStep(step)) {
+      return { valid: false, step };
+    }
+  }
+
+  return { valid: true, step: null };
 }
 
 function validateStep(step) {
@@ -162,7 +369,11 @@ function validateStep(step) {
     }
 
     const dobInput = document.getElementById('dateNaissance');
-    if (dobInput && dobInput.hasAttribute('data-required')) {
+    const dobRequired = typeof isRegistrationFieldRequired === 'function'
+      ? isRegistrationFieldRequired('date_naissance')
+      : dobInput?.hasAttribute('data-required');
+
+    if (dobInput && dobRequired) {
       const altValue = dobInput._flatpickr?.altInput?.value || '';
       const rawValue = (altValue || dobInput.value || '').trim();
 
@@ -231,6 +442,14 @@ function validateStep(step) {
   }
 
   if (step === 2) {
+    if (!validateDepartementFieldConfigured()) {
+      valid = false;
+    }
+
+    if (!validateHebergementFieldConfigured()) {
+      valid = false;
+    }
+
     const observationsField = App.formFields && App.formFields.observations;
     if (observationsField && observationsField.is_visible && observationsField.is_required) {
       const yesRadio = document.getElementById('hasObservationsYes');
@@ -254,8 +473,16 @@ function validateStep(step) {
     }
   }
 
+  if (!validateConfiguredInputFieldsForStep(step)) {
+    valid = false;
+  }
+
+  if (!validateConfiguredPhoneFieldsForStep(step)) {
+    valid = false;
+  }
+
   if (!valid) {
-    const firstError = section.querySelector('.is-error, .field-error.visible, #photoZone.is-error, .is-error-text');
+    const firstError = section.querySelector('.is-error, .field-error.visible, #photoZone.is-error, .is-error-text, [data-reg-field].is-error');
     if (firstError) {
       firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
@@ -263,3 +490,6 @@ function validateStep(step) {
 
   return valid;
 }
+
+window.validateAllRegistrationSteps = validateAllRegistrationSteps;
+window.validateStep = validateStep;

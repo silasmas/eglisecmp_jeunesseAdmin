@@ -272,13 +272,46 @@ class RegistrationFormConfigService
 
         foreach ($fields as $field) {
             $apiKey = (string) $field['api_key'];
-            $fieldRules = $field['is_required'] ? ['required'] : ['nullable'];
+            $isVisible = (bool) ($field['is_visible'] ?? true);
+            $isRequired = $isVisible && (bool) ($field['is_required'] ?? false);
+
+            if ($apiKey === 'photo') {
+                $rules[$apiKey] = $isRequired
+                    ? array_merge(['required'], $field['validation_rules'])
+                    : array_merge(['nullable'], $field['validation_rules']);
+
+                continue;
+            }
+
+            if ($apiKey === 'departement') {
+                $rules[$apiKey] = $isRequired
+                    ? ['required_without:no_departement', 'nullable', 'string', 'max:150']
+                    : ['nullable', 'string', 'max:150'];
+
+                continue;
+            }
+
+            if ($apiKey === 'hebergement') {
+                $rules[$apiKey] = $isRequired
+                    ? ['required', 'string', 'in:interne,externe']
+                    : ['nullable', 'string', 'in:interne,externe'];
+
+                continue;
+            }
+
+            if (! $isVisible) {
+                $rules[$apiKey] = array_merge(['nullable'], $field['validation_rules']);
+
+                continue;
+            }
+
+            $fieldRules = $isRequired ? ['required'] : ['nullable'];
 
             foreach ($field['validation_rules'] as $rule) {
                 $fieldRules[] = $rule;
             }
 
-            if ($apiKey === 'date_naissance' && $field['is_required']) {
+            if ($apiKey === 'date_naissance' && $isRequired) {
                 $fieldRules[] = 'before_or_equal:'.now()->subYears(15)->toDateString();
             }
 
@@ -339,6 +372,8 @@ class RegistrationFormConfigService
             'adresse.required' => 'Le champ adresse est obligatoire.',
             'photo.required' => 'La photo est obligatoire pour poursuivre.',
             'photo.image' => 'Le fichier photo doit être une image valide.',
+            'departement.required_without' => 'Indiquez votre département ou cochez « Je ne fais partie d\'aucun département ».',
+            'hebergement.required' => 'Veuillez choisir un type d’hébergement.',
             'parent_contact_email.email' => 'Adresse e-mail parent/tuteur invalide.',
         ];
     }

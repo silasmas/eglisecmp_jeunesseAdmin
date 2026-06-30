@@ -11,6 +11,14 @@ function goToStep(n) {
   if (App.registrationOpen !== true) return;
   if (n < 0 || n >= App.totalSteps) return;
 
+  if (n > App.currentStep && n <= 2) {
+    for (let stepIndex = App.currentStep; stepIndex < n; stepIndex += 1) {
+      if (!validateStep(stepIndex)) {
+        return;
+      }
+    }
+  }
+
   const steps = document.querySelectorAll('.step');
   const currentEl = steps[App.currentStep];
   currentEl.style.opacity = '0';

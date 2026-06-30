@@ -106,6 +106,9 @@ class File extends Model implements HasMedia
         if (config('cmp.media_generate_conversions', false)) {
             $thumb->queued();
             $preview->queued();
+        } else {
+            $thumb->nonQueued();
+            $preview->nonQueued();
         }
 
         if (static::$registerMediaConversionsUsing) {
