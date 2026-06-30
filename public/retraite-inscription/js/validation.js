@@ -55,16 +55,32 @@ function getFieldValidationLabel(field) {
  * @return {void}
  */
 function showFieldError(field, message) {
+  if (!field) {
+    return;
+  }
+
   field.classList.add('is-error');
   field.classList.remove('is-valid');
-  const error = field.closest('.field')
-    ? field.closest('.field').querySelector('.field-error')
-    : field.parentElement?.parentElement?.querySelector('.field-error');
+
+  const fieldWrap = field.closest('.field');
+  let error = fieldWrap ? fieldWrap.querySelector('.field-error') : null;
+
+  if (!error && fieldWrap) {
+    error = document.createElement('span');
+    error.className = 'field-error';
+    error.innerHTML = '<i class="bi bi-exclamation-circle"></i> Ce champ est obligatoire';
+    const liveFeedback = fieldWrap.querySelector('.phone-live-feedback');
+    if (liveFeedback) {
+      fieldWrap.insertBefore(error, liveFeedback);
+    } else {
+      fieldWrap.appendChild(error);
+    }
+  }
+
   if (error) {
     error.classList.add('visible');
     if (message) {
-      const icon = error.querySelector('i');
-      error.innerHTML = icon ? `${icon.outerHTML} ${message}` : message;
+      error.innerHTML = `<i class="bi bi-exclamation-circle"></i> ${message}`;
     }
   }
 }
@@ -294,11 +310,24 @@ function validateConfiguredPhoneFieldsForStep(step) {
   if (step === 1 && typeof isRegistrationFieldRequired === 'function') {
     if (isRegistrationFieldRequired('tel_urgence')) {
       const telUrgEl = document.getElementById('telUrgence');
-      if (telUrgEl) {
+      if (telUrgEl && typeof isRegFieldDomVisible === 'function' && isRegFieldDomVisible('tel_urgence')) {
         telUrgEl.setAttribute('data-required', '');
-        if (!(telUrgEl.value || '').trim()) {
-          showFieldError(telUrgEl);
+        const telUrgRaw = (telUrgEl.value || '').trim();
+        if (!telUrgRaw) {
+          const label = getFieldValidationLabel(telUrgEl);
+          showFieldError(
+            telUrgEl,
+            label ? `Le champ « ${label} » est obligatoire` : 'Le téléphone d\'urgence est obligatoire'
+          );
           valid = false;
+        } else if (typeof canonicalEmergencyDigitsClient === 'function' && typeof digitsLookLikeE164 === 'function') {
+          const indicatifEl = document.getElementById('indicatif');
+          const indicatif = indicatifEl ? indicatifEl.value : '+243';
+          const canon = canonicalEmergencyDigitsClient(telUrgRaw, indicatif);
+          if (!digitsLookLikeE164(canon)) {
+            showFieldError(telUrgEl, 'Numéro de téléphone d\'urgence invalide ou incomplet');
+            valid = false;
+          }
         }
       }
     }
@@ -308,7 +337,11 @@ function validateConfiguredPhoneFieldsForStep(step) {
       if (guardianEl && !document.getElementById('familyMultiChildCheck')?.checked) {
         guardianEl.setAttribute('data-required', '');
         if (!(guardianEl.value || '').trim()) {
-          showFieldError(guardianEl);
+          const label = getFieldValidationLabel(guardianEl);
+          showFieldError(
+            guardianEl,
+            label ? `Le champ « ${label} » est obligatoire` : 'Ce champ est obligatoire'
+          );
           valid = false;
         }
       }
@@ -367,6 +400,10 @@ function validateStep(step, options) {
       valid = false;
     }
   });
+
+  if ((step === 0 || step === 1) && !validateConfiguredPhoneFieldsForStep(step)) {
+    valid = false;
+  }
 
   if ((step === 0 || step === 1) && typeof validateContactStepPhones === 'function') {
     const okPhones = validateContactStepPhones(step);
@@ -516,12 +553,10 @@ function validateStep(step, options) {
     valid = false;
   }
 
-  if (!validateConfiguredPhoneFieldsForStep(step)) {
-    valid = false;
-  }
-
   if (!valid) {
-    const firstError = section.querySelector('.is-error, .field-error.visible, #photoZone.is-error, .is-error-text, [data-reg-field].is-error');
+    const firstError = section.querySelector(
+      '.field-input.is-error, .field-error.visible, #photoZone.is-error, .is-error-text, [data-reg-field].is-error'
+    );
     if (firstError) {
       firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }

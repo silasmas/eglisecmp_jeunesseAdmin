@@ -337,3 +337,34 @@ html.fi.fi-panel-admin .cmp-media-picker-field .filepond--drop-label label {
   white-space: normal;
   word-break: break-word;
 }
+
+/* ——— Affiche événement (FileUpload Filament natif) ——— */
+html.fi.fi-panel-admin .cmp-event-affiche-upload .fi-fo-file-upload {
+  width: 100%;
+  max-width: 22rem;
+}
+
+html.fi.fi-panel-admin .cmp-event-affiche-upload .filepond--root {
+  max-height: none;
+}
+
+html.fi.fi-panel-admin .cmp-event-affiche-upload .filepond--item-panel {
+  background-color: #f8fafc;
+}
+
+html.fi.fi-panel-admin .cmp-event-affiche-upload .filepond--image-preview-wrapper {
+  max-height: 11rem;
+}
+
+html.fi.fi-panel-admin .cmp-event-affiche-upload .filepond--image-preview {
+  object-fit: contain;
+  background: #f1f5f9;
+}
+
+html.fi.fi-panel-admin.dark .cmp-event-affiche-upload .filepond--item-panel {
+  background-color: rgba(15, 23, 42, 0.5);
+}
+
+html.fi.fi-panel-admin.dark .cmp-event-affiche-upload .filepond--image-preview {
+  background: rgba(15, 23, 42, 0.35);
+}

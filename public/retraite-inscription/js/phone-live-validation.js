@@ -723,10 +723,17 @@ function validateContactStepPhones(stepIndex = null) {
     );
     valid = false;
   } else if (telUrgEl) {
-    telUrgEl.classList.remove('is-error');
-    if ((telUrgEl.value || '').trim()) {
+    const telUrgRequired = typeof isRegistrationFieldRequired === 'function'
+      && isRegistrationFieldRequired('tel_urgence');
+    const telUrgRaw = (telUrgEl.value || '').trim();
+
+    if (telUrgRequired && !telUrgRaw) {
+      // Ne pas effacer l'erreur : champ obligatoire vide (validateStep / validateConfiguredPhoneFieldsForStep).
+    } else if (telUrgRaw && !telUrgEl.classList.contains('is-error')) {
+      telUrgEl.classList.remove('is-error');
       telUrgEl.classList.add('is-valid');
-    } else {
+    } else if (!telUrgRequired && !telUrgRaw) {
+      telUrgEl.classList.remove('is-error');
       telUrgEl.classList.remove('is-valid');
     }
   }

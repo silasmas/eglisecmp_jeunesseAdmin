@@ -166,18 +166,21 @@
 
         <div class="fields-grid">
           <div class="field full" data-reg-field="tel_urgence">
-            <label class="field-label" for="telUrgence">Téléphone d'urgence <span class="optional">(facultatif)</span></label>
+            <label class="field-label" for="telUrgence" data-reg-label>Téléphone d'urgence <span class="optional">(facultatif)</span></label>
             <input type="tel" id="telUrgence" class="field-input" placeholder="Numéro alternatif (+243… ou sans indicatif comme le champ principal)">
+            <span class="field-error" id="telUrgenceRequiredError"><i class="bi bi-exclamation-circle"></i> Ce champ est obligatoire</span>
             <p id="telUrgenceLiveFeedback" class="phone-live-feedback field-hint hidden" aria-live="polite"></p>
           </div>
           <div class="field" id="guardianNameField" data-reg-field="guardian_name">
-            <label class="field-label" for="guardianName">Nom du parent ou tuteur <span class="optional">(facultatif)</span></label>
+            <label class="field-label" for="guardianName" data-reg-label>Nom du parent ou tuteur <span class="optional">(facultatif)</span></label>
             <input type="text" id="guardianName" class="field-input" placeholder="Ex.: Marie Kabongo">
+            <span class="field-error"><i class="bi bi-exclamation-circle"></i> Ce champ est obligatoire</span>
             <p id="guardianNameLiveFeedback" class="phone-live-feedback field-hint hidden" aria-live="polite"></p>
           </div>
           <div class="field" id="guardianPhoneField" data-reg-field="guardian_phone">
-            <label class="field-label" for="guardianPhone">Téléphone du parent ou tuteur <span class="optional">(facultatif)</span></label>
+            <label class="field-label" for="guardianPhone" data-reg-label>Téléphone du parent ou tuteur <span class="optional">(facultatif)</span></label>
             <input type="tel" id="guardianPhone" class="field-input" placeholder="Même convention que téléphone d’urgence (+ ou indicatif commun)">
+            <span class="field-error"><i class="bi bi-exclamation-circle"></i> Ce champ est obligatoire</span>
             <p id="guardianPhoneLiveFeedback" class="phone-live-feedback field-hint hidden" aria-live="polite"></p>
           </div>
           <div class="field full hidden tutor-same-family-ack-wrap" id="tutorSameFamilyField">

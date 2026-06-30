@@ -48,15 +48,12 @@ class ChurchEventForm
                             ->helperText('Image affichée sur la bannière du formulaire d\'inscription public.')
                             ->directory(StoragePath::EVENTS_AFFICHES)
                             ->image()
-                            ->panelLayout('integrated')
-                            ->imagePreviewHeight('12rem')
-                            ->itemPanelAspectRatio(16 / 9)
-                            ->previewable(true)
+                            ->maxSize(8192)
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
                             ->openable(true)
                             ->downloadable(false)
-                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
-                            ->maxSize(8192)
-                            ->columnSpanFull(),
+                            ->columnSpanFull()
+                            ->extraFieldWrapperAttributes(['class' => 'cmp-event-affiche-upload']),
                     ])
                     ->columns(2),
                 Section::make('Inscriptions publiques en ligne')

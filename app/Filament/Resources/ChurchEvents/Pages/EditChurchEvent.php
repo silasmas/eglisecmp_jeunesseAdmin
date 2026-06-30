@@ -42,15 +42,16 @@ class EditChurchEvent extends EditRecord
                             ->sourceEventOptions($record->getKey()))
                         ->searchable()
                         ->required()
-                        ->helperText('Duplique les ateliers et chambres utilisés lors de la retraite choisie.'),
+                        ->helperText('Réutilise les ateliers et chambres de la retraite choisie (sans doublon). Seules les fiches manquantes sont créées.'),
                 ])
                 ->action(function (ChurchEvent $record, array $data): void {
                     $source = ChurchEvent::query()->findOrFail($data['source_event_id']);
-                    $result = app(RetreatLogisticsReplicationService::class)->replicateFromEvent($source, $record);
+                    $service = app(RetreatLogisticsReplicationService::class);
+                    $result = $service->replicateFromEvent($source, $record);
 
                     Notification::make()
                         ->title('Logistique reconduite')
-                        ->body("{$result['ateliers']} atelier(s) et {$result['chambres']} chambre(s) créés pour cette retraite.")
+                        ->body($service->summaryMessage($result))
                         ->success()
                         ->send();
                 }),
