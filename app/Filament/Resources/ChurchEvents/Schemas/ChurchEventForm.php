@@ -49,7 +49,8 @@ class ChurchEventForm
                             ->helperText('Selectionne ou charge une affiche depuis la mediatheque.')
                             ->directory(StoragePath::EVENTS_AFFICHES)
                             ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
-                            ->maxSize(8192),
+                            ->maxSize(8192)
+                            ->columnSpanFull(),
                     ])
                     ->columns(2),
                 Section::make('Inscriptions publiques en ligne')

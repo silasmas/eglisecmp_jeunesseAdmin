@@ -311,3 +311,29 @@ html.fi.fi-panel-admin.dark .cmp-login-brand__title {
     font-size: 1.25rem;
   }
 }
+
+/* ——— MediaPicker (affiche événement, etc.) ——— */
+html.fi.fi-panel-admin .cmp-media-picker-field {
+  min-width: 0;
+}
+
+html.fi.fi-panel-admin .cmp-media-picker-field .fi-fo-field-label-col {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem 0.75rem;
+}
+
+html.fi.fi-panel-admin .cmp-media-picker-field .fi-fo-file-upload {
+  width: 100%;
+  max-width: 28rem;
+}
+
+html.fi.fi-panel-admin .cmp-media-picker-field .filepond--root {
+  min-height: 10rem;
+}
+
+html.fi.fi-panel-admin .cmp-media-picker-field .filepond--drop-label,
+html.fi.fi-panel-admin .cmp-media-picker-field .filepond--drop-label label {
+  white-space: normal;
+  word-break: break-word;
+}

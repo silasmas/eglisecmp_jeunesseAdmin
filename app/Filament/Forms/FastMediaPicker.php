@@ -41,6 +41,17 @@ class FastMediaPicker extends MediaPicker
         // Le MediaPicker parent désactive fetchFileInformation : l’upload reste bloqué sur « En attente de taille ».
         $this->fetchFileInformation(true);
 
+        // Layout intégré avec aperçu image : évite le chevauchement du mode « compact » en grille Filament.
+        $this
+            ->image()
+            ->panelLayout('integrated')
+            ->imagePreviewHeight('12rem')
+            ->itemPanelAspectRatio(16 / 9)
+            ->previewable(true)
+            ->openable(true)
+            ->downloadable(false)
+            ->extraFieldWrapperAttributes(['class' => 'cmp-media-picker-field']);
+
         $this->saveUploadedFileUsing(static function (FastMediaPicker $component, TemporaryUploadedFile $file): ?string {
             $folderId = app(MediaFolderResolver::class)->resolveFolderId($component->getDirectory());
             $uniqueName = app(StoragePathService::class)->uniqueFilename($file);
