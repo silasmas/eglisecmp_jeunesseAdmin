@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ChurchEventHistories\Pages;
 
 use App\Filament\Resources\ChurchEventHistories\ChurchEventHistoryResource;
+use App\Filament\Resources\ChurchEventHistories\Support\RestoreArchivedChurchEventAction;
 use App\Filament\Resources\ChurchEventHistories\Widgets\ArchivedEventAteliersWidget;
 use App\Filament\Resources\ChurchEventHistories\Widgets\ArchivedEventChambresWidget;
 use App\Filament\Resources\ChurchEventHistories\Widgets\ArchivedEventParticipantsWidget;
@@ -16,6 +17,16 @@ use Filament\Schemas\Schema;
 class ViewChurchEventHistory extends ViewRecord
 {
     protected static string $resource = ChurchEventHistoryResource::class;
+
+    /**
+     * @return array<int, mixed>
+     */
+    protected function getHeaderActions(): array
+    {
+        return [
+            RestoreArchivedChurchEventAction::make(),
+        ];
+    }
 
     /**
      * @param  Schema  $schema Schéma Filament

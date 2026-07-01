@@ -2,7 +2,7 @@
 
 namespace App\Filament\Resources\ChurchEventHistories\Tables;
 
-use App\Models\ChurchEvent;
+use App\Filament\Resources\ChurchEventHistories\Support\RestoreArchivedChurchEventAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -45,9 +45,20 @@ class ChurchEventHistoriesTable
                     ->badge()
                     ->color('info')
                     ->sortable(),
+                TextColumn::make('ateliers_count')
+                    ->label('Ateliers')
+                    ->badge()
+                    ->color('gray')
+                    ->sortable(),
+                TextColumn::make('chambres_count')
+                    ->label('Chambres')
+                    ->badge()
+                    ->color('gray')
+                    ->sortable(),
             ])
             ->recordActions([
                 ViewAction::make(),
+                RestoreArchivedChurchEventAction::make(),
             ]);
     }
 }

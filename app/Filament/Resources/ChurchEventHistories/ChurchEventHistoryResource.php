@@ -40,7 +40,7 @@ class ChurchEventHistoryResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->withCount('participants')
+            ->withCount(['participants', 'ateliers', 'chambres'])
             ->whereNotNull('archived_at');
     }
 
