@@ -159,6 +159,97 @@ class RetreatLogisticsReplicationService
     }
 
     /**
+     * Estime la reconduction sans écrire en base.
+     *
+     * @param  ChurchEvent  $source Retraite source
+     * @param  ChurchEvent  $target Retraite cible
+     * @return array{
+     *   ateliers_total: int,
+     *   chambres_total: int,
+     *   ateliers_created: int,
+     *   ateliers_reused: int,
+     *   chambres_created: int,
+     *   chambres_reused: int
+     * }
+     */
+    public function previewReplication(ChurchEvent $source, ChurchEvent $target): array
+    {
+        $preview = [
+            'ateliers_total' => 0,
+            'chambres_total' => 0,
+            'ateliers_created' => 0,
+            'ateliers_reused' => 0,
+            'chambres_created' => 0,
+            'chambres_reused' => 0,
+        ];
+
+        foreach (RetreatAtelier::query()->where('event_id', $source->getKey())->get() as $atelier) {
+            $preview['ateliers_total']++;
+            $exists = RetreatAtelier::query()
+                ->where('event_id', $target->getKey())
+                ->where('numero', $atelier->numero)
+                ->where('responsable_user_id', $atelier->responsable_user_id)
+                ->exists();
+            $exists ? $preview['ateliers_reused']++ : $preview['ateliers_created']++;
+        }
+
+        foreach (RetreatChambre::query()->where('event_id', $source->getKey())->get() as $chambre) {
+            $preview['chambres_total']++;
+            $exists = RetreatChambre::query()
+                ->where('event_id', $target->getKey())
+                ->where('nom', $chambre->nom)
+                ->where('sexe', $chambre->sexe)
+                ->where('responsable_user_id', $chambre->responsable_user_id)
+                ->exists();
+            $exists ? $preview['chambres_reused']++ : $preview['chambres_created']++;
+        }
+
+        return $preview;
+    }
+
+    /**
+     * Texte d'aide sous le sélecteur de retraite source.
+     *
+     * @param  int  $sourceEventId Retraite source
+     * @param  int  $targetEventId Retraite cible
+     * @return string
+     */
+    public function describeReplicationChoice(int $sourceEventId, int $targetEventId): string
+    {
+        $source = ChurchEvent::query()
+            ->withCount(['ateliers', 'chambres'])
+            ->find($sourceEventId);
+        $target = ChurchEvent::query()->find($targetEventId);
+
+        if ($source === null || $target === null) {
+            return '';
+        }
+
+        $preview = $this->previewReplication($source, $target);
+
+        if ($preview['ateliers_total'] === 0 && $preview['chambres_total'] === 0) {
+            return sprintf(
+                'La retraite « %s » ne contient aucun atelier ni chambre à reconduire.',
+                $source->name,
+            );
+        }
+
+        return sprintf(
+            'Reconduction depuis « %s » : %d atelier(s) et %d chambre(s) au total. '
+            .'Sur « %s » → %d atelier(s) à créer, %d déjà présent(s) ; '
+            .'%d chambre(s) à créer, %d déjà présente(s).',
+            $source->name,
+            $preview['ateliers_total'],
+            $preview['chambres_total'],
+            $target->name,
+            $preview['ateliers_created'],
+            $preview['ateliers_reused'],
+            $preview['chambres_created'],
+            $preview['chambres_reused'],
+        );
+    }
+
+    /**
      * Liste les retraites éligibles comme source (avec logistique).
      *
      * @return array<int, string> id => label
@@ -167,13 +258,43 @@ class RetreatLogisticsReplicationService
     {
         return ChurchEvent::query()
             ->when($excludeEventId, fn ($q) => $q->whereKeyNot($excludeEventId))
+            ->withCount(['ateliers', 'chambres'])
             ->where(function ($query): void {
                 $query->whereHas('ateliers')
-                    ->orWhereHas('chambres')
-                    ->orWhereHas('participants');
+                    ->orWhereHas('chambres');
             })
             ->orderByDesc('start_at')
-            ->pluck('name', 'id')
+            ->get()
+            ->mapWithKeys(fn (ChurchEvent $event): array => [
+                $event->getKey() => $this->formatSourceEventOptionLabel($event),
+            ])
             ->all();
+    }
+
+    /**
+     * Libellé détaillé d'une retraite dans la liste de sélection.
+     *
+     * @param  ChurchEvent  $event Retraite candidate
+     * @return string
+     */
+    private function formatSourceEventOptionLabel(ChurchEvent $event): string
+    {
+        $ateliers = (int) ($event->ateliers_count ?? 0);
+        $chambres = (int) ($event->chambres_count ?? 0);
+        $status = match (true) {
+            $event->archived_at !== null => 'archivée',
+            $event->is_publicly_closed => 'clôturée',
+            default => 'opérationnelle',
+        };
+        $period = $event->start_at?->format('d/m/Y') ?? 'date inconnue';
+
+        return sprintf(
+            '%s — %d atelier(s), %d chambre(s) · %s · %s',
+            $event->name,
+            $ateliers,
+            $chambres,
+            $status,
+            $period,
+        );
     }
 }

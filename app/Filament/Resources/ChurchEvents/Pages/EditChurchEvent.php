@@ -14,6 +14,7 @@ use Filament\Actions\ViewAction;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Schemas\Components\Utilities\Get;
 use UnitEnum;
 
 /**
@@ -41,8 +42,18 @@ class EditChurchEvent extends EditRecord
                         ->options(fn (ChurchEvent $record): array => app(RetreatLogisticsReplicationService::class)
                             ->sourceEventOptions($record->getKey()))
                         ->searchable()
+                        ->live()
                         ->required()
-                        ->helperText('Réutilise les ateliers et chambres de la retraite choisie (sans doublon). Seules les fiches manquantes sont créées.'),
+                        ->helperText(function (Get $get, ChurchEvent $record): string {
+                            $sourceId = $get('source_event_id');
+
+                            if (blank($sourceId)) {
+                                return 'Chaque retraite affiche le nombre d\'ateliers et de chambres disponibles à reconduire.';
+                            }
+
+                            return app(RetreatLogisticsReplicationService::class)
+                                ->describeReplicationChoice((int) $sourceId, (int) $record->getKey());
+                        }),
                 ])
                 ->action(function (ChurchEvent $record, array $data): void {
                     $source = ChurchEvent::query()->findOrFail($data['source_event_id']);
