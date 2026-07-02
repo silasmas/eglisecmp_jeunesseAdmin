@@ -2,12 +2,13 @@
 
 namespace App\Filament\Pages;
 
-use App\Filament\Resources\RetreatAteliers\RetreatAtelierResource;
-use App\Filament\Resources\RetreatChambres\RetreatChambreResource;
+use App\Models\ChurchEvent;
 use App\Models\RetreatAtelier;
 use App\Models\RetreatChambre;
+use App\Support\RetreatActiveEventScope;
 use BackedEnum;
 use Filament\Pages\Page;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use UnitEnum;
 
@@ -29,6 +30,20 @@ class RetreatGroupsOverview extends Page
     protected static ?string $slug = 'repartition-groupes';
 
     protected string $view = 'filament.pages.retreat-groups-overview';
+
+    /**
+     * @return string|null
+     */
+    public function getSubheading(): ?string
+    {
+        $event = ChurchEvent::resolveOperationalLogisticsEvent();
+
+        if ($event === null) {
+            return 'Aucune retraite opérationnelle : seules les fiches de l\'édition courante sont affichées ici.';
+        }
+
+        return sprintf('Édition affichée : « %s » (ateliers et chambres de cette retraite uniquement).', $event->name);
+    }
 
     /**
      * Cache local des chambres pour limiter les requêtes.
@@ -57,12 +72,15 @@ class RetreatGroupsOverview extends Page
 
         $atelierMap = $this->ateliersMap();
 
-        $this->chambresCache = RetreatChambreResource::getEloquentQuery()
+        $this->chambresCache = $this->scopedChambresQuery()
             ->with([
                 'responsable:id,name',
-                'participants:id,nom,prenom,chambre_id,atelier_id,role_participant',
+                'event:id,name',
+                'participants' => fn ($query) => $this->scopeParticipantsQuery($query),
             ])
-            ->withCount('participants')
+            ->withCount([
+                'participants as participants_count' => fn ($query) => $this->scopeParticipantsQuery($query),
+            ])
             ->orderBy('nom')
             ->get()
             ->map(function (RetreatChambre $chambre) use ($atelierMap): array {
@@ -106,13 +124,16 @@ class RetreatGroupsOverview extends Page
 
         $chambreMap = $this->chambresMap();
 
-        $this->ateliersCache = RetreatAtelierResource::getEloquentQuery()
+        $this->ateliersCache = $this->scopedAteliersQuery()
             ->with([
                 'responsable:id,name',
                 'adjoint:id,name',
-                'participants:id,nom,prenom,chambre_id,atelier_id,role_participant,age',
+                'event:id,name',
+                'participants' => fn ($query) => $this->scopeParticipantsQuery($query),
             ])
-            ->withCount('participants')
+            ->withCount([
+                'participants as participants_count' => fn ($query) => $this->scopeParticipantsQuery($query),
+            ])
             ->orderBy('age_min')
             ->orderBy('numero')
             ->get()
@@ -227,7 +248,7 @@ class RetreatGroupsOverview extends Page
      */
     private function ateliersMap(): array
     {
-        return RetreatAtelierResource::getEloquentQuery()
+        return $this->scopedAteliersQuery()
             ->select(['id', 'numero'])
             ->get()
             ->mapWithKeys(fn (RetreatAtelier $atelier): array => [
@@ -243,13 +264,65 @@ class RetreatGroupsOverview extends Page
      */
     private function chambresMap(): array
     {
-        return RetreatChambreResource::getEloquentQuery()
+        return $this->scopedChambresQuery()
             ->select(['id', 'nom'])
             ->get()
             ->mapWithKeys(fn (RetreatChambre $chambre): array => [
                 (int) $chambre->id => ['nom' => $chambre->nom ? (string) $chambre->nom : null],
             ])
             ->all();
+    }
+
+    /**
+     * Chambres de l'édition opérationnelle courante (évite les doublons entre retraites).
+     *
+     * @return Builder<RetreatChambre>
+     */
+    private function scopedChambresQuery(): Builder
+    {
+        $query = RetreatActiveEventScope::applyToChambres(RetreatChambre::query());
+        $event = ChurchEvent::resolveOperationalLogisticsEvent();
+
+        if ($event !== null) {
+            $query->where('event_id', $event->getKey());
+        }
+
+        return $query;
+    }
+
+    /**
+     * Ateliers de l'édition opérationnelle courante (évite les doublons entre retraites).
+     *
+     * @return Builder<RetreatAtelier>
+     */
+    private function scopedAteliersQuery(): Builder
+    {
+        $query = RetreatActiveEventScope::applyToAteliers(RetreatAtelier::query());
+        $event = ChurchEvent::resolveOperationalLogisticsEvent();
+
+        if ($event !== null) {
+            $query->where('event_id', $event->getKey());
+        }
+
+        return $query;
+    }
+
+    /**
+     * Participants visibles dans les vues opérationnelles.
+     *
+     * @param  Builder<\App\Models\RetreatParticipant>  $query
+     * @return Builder<\App\Models\RetreatParticipant>
+     */
+    private function scopeParticipantsQuery(Builder $query): Builder
+    {
+        $query = RetreatActiveEventScope::applyToParticipants($query);
+        $event = ChurchEvent::resolveOperationalLogisticsEvent();
+
+        if ($event !== null) {
+            $query->where('event_id', $event->getKey());
+        }
+
+        return $query;
     }
 }
 
