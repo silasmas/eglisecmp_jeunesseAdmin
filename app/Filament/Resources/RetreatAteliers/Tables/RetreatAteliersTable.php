@@ -24,12 +24,16 @@ class RetreatAteliersTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn ($query) => $query
-                ->with(['responsable'])
+            ->modifyQueryUsing(fn ($query) => RetreatActiveEventScope::applyToAteliers($query)
+                ->with(['responsable', 'event'])
                 ->withCount([
                     'participants as participants_count' => fn ($participantQuery) => RetreatActiveEventScope::applyToParticipantCount($participantQuery),
                 ]))
             ->columns([
+                TextColumn::make('event.name')
+                    ->label('Retraite')
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('numero')
                     ->label('Numero atelier')
                     ->numeric()

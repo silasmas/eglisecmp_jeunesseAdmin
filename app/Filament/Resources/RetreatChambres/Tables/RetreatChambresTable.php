@@ -20,12 +20,16 @@ class RetreatChambresTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn ($query) => $query
-                ->with(['responsable'])
+            ->modifyQueryUsing(fn ($query) => RetreatActiveEventScope::applyToChambres($query)
+                ->with(['responsable', 'event'])
                 ->withCount([
                     'participants as participants_count' => fn ($participantQuery) => RetreatActiveEventScope::applyToParticipantCount($participantQuery),
                 ]))
             ->columns([
+                TextColumn::make('event.name')
+                    ->label('Retraite')
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('nom')
                     ->label('Chambre')
                     ->searchable(),

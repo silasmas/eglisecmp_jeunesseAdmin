@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\RetreatChambres\Schemas;
 
+use App\Models\ChurchEvent;
+use App\Support\RetreatLogisticsFormSupport;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -12,13 +14,28 @@ use Zvizvi\UserFields\Components\UserSelect;
 
 class RetreatChambreForm
 {
+    /**
+     * @param  Schema  $schema Schéma Filament
+     * @return Schema
+     */
     public static function configure(Schema $schema): Schema
     {
+        $logisticsForm = app(RetreatLogisticsFormSupport::class);
+
         return $schema
             ->components([
                 Section::make('Configuration de la chambre')
                     ->columnSpanFull()
                     ->schema([
+                        Select::make('event_id')
+                            ->label('Retraite (édition)')
+                            ->options(fn (): array => $logisticsForm->operationalEventOptions())
+                            ->default(fn (): ?int => ChurchEvent::resolveOperationalLogisticsEvent()?->getKey())
+                            ->searchable()
+                            ->required()
+                            ->disabledOn('edit')
+                            ->dehydrated()
+                            ->helperText('Chaque chambre appartient à une édition de retraite. Seules les retraites non archivées et non clôturées sont proposées.'),
                         TextInput::make('nom')
                             ->label('Nom / code chambre')
                             ->helperText('Code court de la chambre (ex: A, B, C).')
@@ -63,6 +80,7 @@ class RetreatChambreForm
                             ->columnSpanFull(),
                         Toggle::make('is_active')
                             ->label('Chambre active')
+                            ->default(true)
                             ->required(),
                     ])
                     ->columns(2),

@@ -3,12 +3,11 @@
 namespace App\Filament\Resources\RetreatAteliers\Pages;
 
 use App\Filament\Resources\RetreatAteliers\RetreatAtelierResource;
-use App\Models\ChurchEvent;
+use App\Support\RetreatLogisticsFormSupport;
 use Filament\Resources\Pages\CreateRecord;
-use Illuminate\Validation\ValidationException;
 
 /**
- * Création d'un atelier rattaché à l'événement retraite opérationnel.
+ * Création d'un atelier rattaché à une retraite opérationnelle.
  */
 class CreateRetreatAtelier extends CreateRecord
 {
@@ -20,17 +19,6 @@ class CreateRetreatAtelier extends CreateRecord
      */
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        $event = ChurchEvent::resolveOperationalLogisticsEvent();
-
-        if ($event === null) {
-            throw ValidationException::withMessages([
-                'numero' => 'Aucune retraite opérationnelle active : activez un événement non clôturé avant de créer un atelier.',
-            ]);
-        }
-
-        $data['event_id'] = $event->getKey();
-        $data['is_active'] = $data['is_active'] ?? true;
-
-        return $data;
+        return app(RetreatLogisticsFormSupport::class)->prepareCreateData($data);
     }
 }

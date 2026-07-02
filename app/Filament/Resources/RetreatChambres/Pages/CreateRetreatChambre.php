@@ -3,12 +3,11 @@
 namespace App\Filament\Resources\RetreatChambres\Pages;
 
 use App\Filament\Resources\RetreatChambres\RetreatChambreResource;
-use App\Models\ChurchEvent;
+use App\Support\RetreatLogisticsFormSupport;
 use Filament\Resources\Pages\CreateRecord;
-use Illuminate\Validation\ValidationException;
 
 /**
- * Création d'une chambre rattachée à l'événement retraite opérationnel.
+ * Création d'une chambre rattachée à une retraite opérationnelle.
  */
 class CreateRetreatChambre extends CreateRecord
 {
@@ -20,17 +19,6 @@ class CreateRetreatChambre extends CreateRecord
      */
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        $event = ChurchEvent::resolveOperationalLogisticsEvent();
-
-        if ($event === null) {
-            throw ValidationException::withMessages([
-                'nom' => 'Aucune retraite opérationnelle active : activez un événement non clôturé avant de créer une chambre.',
-            ]);
-        }
-
-        $data['event_id'] = $event->getKey();
-        $data['is_active'] = $data['is_active'] ?? true;
-
-        return $data;
+        return app(RetreatLogisticsFormSupport::class)->prepareCreateData($data);
     }
 }

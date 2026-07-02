@@ -3,8 +3,9 @@
 namespace App\Filament\Resources\RetreatAteliers\Widgets;
 
 use App\Filament\Pages\ManageRetreatAtelierQuarantine;
-use App\Filament\Resources\RetreatAteliers\RetreatAtelierResource;
 use App\Filament\Resources\RetreatParticipants\RetreatParticipantResource;
+use App\Models\RetreatAtelier;
+use App\Support\RetreatActiveEventScope;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -18,7 +19,7 @@ class RetreatAteliersStats extends StatsOverviewWidget
      */
     protected function getStats(): array
     {
-        $query = RetreatAtelierResource::getEloquentQuery();
+        $query = RetreatActiveEventScope::applyToAteliers(RetreatAtelier::query());
 
         return [
             Stat::make('Total ateliers', (string) (clone $query)->count()),

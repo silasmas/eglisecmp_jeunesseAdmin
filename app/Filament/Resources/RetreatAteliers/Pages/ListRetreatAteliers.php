@@ -7,6 +7,7 @@ use App\Filament\Resources\RetreatAteliers\RetreatAtelierResource;
 use App\Filament\Resources\RetreatAteliers\Widgets\RetreatAteliersStats;
 use App\Models\RetreatParticipant;
 use App\Support\RetreatActiveEventScope;
+use App\Support\RetreatLogisticsFormSupport;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
@@ -16,6 +17,14 @@ use Filament\Support\Enums\Width;
 class ListRetreatAteliers extends ListRecords
 {
     protected static string $resource = RetreatAtelierResource::class;
+
+    /**
+     * @return string|null
+     */
+    public function getSubheading(): ?string
+    {
+        return app(RetreatLogisticsFormSupport::class)->listContextMessage();
+    }
 
     protected function getHeaderActions(): array
     {
@@ -30,7 +39,12 @@ class ListRetreatAteliers extends ListRecords
                 ->color('warning')
                 ->url(fn (): string => ManageRetreatAtelierQuarantine::getUrl())
                 ->badge($quarantineCount > 0 ? (string) $quarantineCount : null),
-            CreateAction::make()->modal()->modalWidth(Width::SevenExtraLarge)->modalAlignment(Alignment::Center),
+            CreateAction::make()
+                ->modal()
+                ->modalWidth(Width::SevenExtraLarge)
+                ->modalAlignment(Alignment::Center)
+                ->mutateFormDataUsing(fn (array $data): array => app(RetreatLogisticsFormSupport::class)->prepareCreateData($data))
+                ->successRedirectUrl(fn (): string => RetreatAtelierResource::getUrl('index')),
         ];
     }
 

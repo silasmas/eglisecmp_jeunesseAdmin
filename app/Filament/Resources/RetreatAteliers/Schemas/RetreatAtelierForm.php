@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\RetreatAteliers\Schemas;
 
+use App\Models\ChurchEvent;
+use App\Support\RetreatLogisticsFormSupport;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -12,16 +14,31 @@ use Zvizvi\UserFields\Components\UserSelect;
 
 class RetreatAtelierForm
 {
+    /**
+     * @param  Schema  $schema Schéma Filament
+     * @return Schema
+     */
     public static function configure(Schema $schema): Schema
     {
+        $logisticsForm = app(RetreatLogisticsFormSupport::class);
+
         return $schema
             ->components([
                 Section::make("Configuration de l'atelier")
                     ->columnSpanFull()
                     ->schema([
+                        Select::make('event_id')
+                            ->label('Retraite (édition)')
+                            ->options(fn (): array => $logisticsForm->operationalEventOptions())
+                            ->default(fn (): ?int => ChurchEvent::resolveOperationalLogisticsEvent()?->getKey())
+                            ->searchable()
+                            ->required()
+                            ->disabledOn('edit')
+                            ->dehydrated()
+                            ->helperText('Chaque atelier appartient à une édition de retraite. Seules les retraites non archivées et non clôturées sont proposées.'),
                         TextInput::make('numero')
                             ->label('Numero atelier')
-                            ->helperText('Numero unique de reference de cet atelier.')
+                            ->helperText('Numero unique pour cette retraite (avec le responsable).')
                             ->required()
                             ->numeric(),
                         TextInput::make('age_min')
@@ -70,6 +87,7 @@ class RetreatAtelierForm
                             ->columnSpanFull(),
                         Toggle::make('is_active')
                             ->label('Atelier actif')
+                            ->default(true)
                             ->required(),
                     ])
                     ->columns(2),

@@ -2,7 +2,8 @@
 
 namespace App\Filament\Resources\RetreatChambres\Widgets;
 
-use App\Filament\Resources\RetreatChambres\RetreatChambreResource;
+use App\Models\RetreatChambre;
+use App\Support\RetreatActiveEventScope;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -16,7 +17,7 @@ class RetreatChambresStats extends StatsOverviewWidget
      */
     protected function getStats(): array
     {
-        $query = RetreatChambreResource::getEloquentQuery();
+        $query = RetreatActiveEventScope::applyToChambres(RetreatChambre::query());
 
         return [
             Stat::make('Total chambres', (string) (clone $query)->count()),

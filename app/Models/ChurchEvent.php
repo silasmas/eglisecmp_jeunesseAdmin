@@ -63,8 +63,8 @@ class ChurchEvent extends Model
         return RetreatActiveEventScope::operationalEvents(
             self::query()
                 ->where('type', ChurchEventType::Retraite->value)
-                ->where('is_active', true)
         )
+            ->orderByDesc('is_active')
             ->orderByDesc('start_at')
             ->first();
     }
