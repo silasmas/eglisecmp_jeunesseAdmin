@@ -11,10 +11,6 @@ use Illuminate\Validation\ValidationException;
  */
 final class RetreatLogisticsFormSupport
 {
-    private function __construct()
-    {
-    }
-
     /**
      * Retraites éligibles pour créer une chambre ou un atelier.
      *
