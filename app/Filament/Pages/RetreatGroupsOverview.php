@@ -9,6 +9,7 @@ use App\Support\RetreatActiveEventScope;
 use BackedEnum;
 use Filament\Pages\Page;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Collection;
 use UnitEnum;
 
@@ -310,12 +311,15 @@ class RetreatGroupsOverview extends Page
     /**
      * Participants visibles dans les vues opérationnelles.
      *
-     * @param  Builder<\App\Models\RetreatParticipant>  $query
-     * @return Builder<\App\Models\RetreatParticipant>
+     * Accepte un Builder ou une relation (HasMany) passée par with() / withCount().
+     *
+     * @param  Builder<\App\Models\RetreatParticipant>|Relation<\App\Models\RetreatParticipant, *, *>  $query
+     * @return Builder<\App\Models\RetreatParticipant>|Relation<\App\Models\RetreatParticipant, *, *>
      */
-    private function scopeParticipantsQuery(Builder $query): Builder
+    private function scopeParticipantsQuery(Builder|Relation $query): Builder|Relation
     {
-        $query = RetreatActiveEventScope::applyToParticipants($query);
+        $builder = $query instanceof Relation ? $query->getQuery() : $query;
+        RetreatActiveEventScope::applyToParticipants($builder);
         $event = ChurchEvent::resolveOperationalLogisticsEvent();
 
         if ($event !== null) {
