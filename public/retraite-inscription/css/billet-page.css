@@ -103,6 +103,18 @@ body.billet-page {
   margin: 0 0 1.25rem;
 }
 
+.billet-actions-group {
+  display: none;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.65rem;
+  width: 100%;
+}
+
+.billet-actions-group.is-active {
+  display: flex;
+}
+
 .billet-btn {
   display: inline-flex;
   align-items: center;
@@ -127,6 +139,12 @@ body.billet-page {
 
 .billet-btn-outline {
   color: var(--billet-primary);
+}
+
+.billet-btn-dark {
+  border-color: #1f1f1f;
+  background: #1f1f1f;
+  color: #fff;
 }
 
 .ticket-preview-stage {
@@ -349,17 +367,261 @@ body.billet-page {
   line-height: 1.55;
 }
 
+/* ── Objets à apporter (template fidèle) ── */
+.billet-objets-sheet {
+  padding: 0;
+  border: 0;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 18px 50px rgba(26, 16, 24, 0.08);
+  overflow: hidden;
+}
+
+.billet-objets-topbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 1rem;
+  padding: 1.1rem 1.35rem;
+  border-bottom: 1px solid #ece7e1;
+  background: #fff;
+}
+
+.billet-objets-back {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #4b5563;
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.billet-objets-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #111827;
+  text-align: center;
+}
+
+.billet-objets-topbar-actions {
+  justify-self: end;
+  display: inline-flex;
+  gap: 0.5rem;
+}
+
+.billet-objets-topbar-actions .billet-btn {
+  pointer-events: none;
+  min-height: 38px;
+  font-size: 0.82rem;
+}
+
+.billet-objets-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2rem;
+  padding: 1.75rem 1.75rem 1.25rem;
+}
+
+.billet-objets-kicker {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: #d97706;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.billet-objets-col h3 {
+  margin: 0 0 0.55rem;
+  font-size: clamp(1.45rem, 2.4vw, 1.85rem);
+  line-height: 1.05;
+  color: #7b1d3e;
+}
+
+.billet-objets-col.is-forbidden h3 {
+  color: #b91c1c;
+}
+
+.billet-objets-intro {
+  margin: 0 0 1.15rem;
+  color: #6b7280;
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.billet-objets-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem 1.15rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.billet-objets-col.is-forbidden .billet-objets-list {
+  grid-template-columns: 1fr;
+}
+
+.billet-objets-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  min-height: 2.5rem;
+}
+
+.billet-objets-icon {
+  position: relative;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #15803d;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.billet-objets-icon.is-forbidden {
+  color: #6b7280;
+}
+
+.billet-objets-ban {
+  position: absolute;
+  inset: -2px;
+  font-size: 2rem;
+  color: #dc2626;
+  opacity: 0.95;
+}
+
+.billet-objets-label {
+  display: block;
+  padding-top: 0.2rem;
+  color: #374151;
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.billet-objets-label small {
+  display: block;
+  margin-top: 0.15rem;
+  color: #9ca3af;
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.billet-objets-important {
+  margin: 0 1.75rem 1.75rem;
+  padding: 1rem 1.15rem;
+  border-radius: 12px;
+  background: #faf3e7;
+  border: 1px solid #ead9bc;
+}
+
+.billet-objets-important strong {
+  display: block;
+  margin-bottom: 0.45rem;
+  color: #d97706;
+  font-size: 0.92rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.billet-objets-important ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: #374151;
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.billet-doc-conclusion {
+  margin-top: 1rem;
+  margin-bottom: 0;
+}
+
+@media (max-width: 900px) {
+  .billet-objets-topbar {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+
+  .billet-objets-back,
+  .billet-objets-topbar-actions {
+    justify-self: center;
+  }
+
+  .billet-objets-columns {
+    grid-template-columns: 1fr;
+    gap: 2.25rem;
+  }
+
+  .billet-objets-list {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 720px) {
   .billet-shell { width: calc(100% - 1rem); }
   .billet-tab { min-width: 100%; }
 }
 
 @media print {
-  body.billet-page { background: #fff; }
+  @page {
+    margin: 12mm;
+  }
+
+  body.billet-page {
+    background: #fff !important;
+  }
+
   .billet-tabs,
   .billet-actions,
   .billet-hero,
-  .cmp-portail-footer { display: none !important; }
-  .billet-panel { display: none !important; }
-  .billet-panel[data-panel="billet"] { display: block !important; }
+  .billet-meta,
+  .billet-objets-topbar,
+  .billet-objets-topbar-actions,
+  .billet-objets-back,
+  .cmp-footer {
+    display: none !important;
+  }
+
+  .billet-shell {
+    width: 100%;
+    margin: 0;
+  }
+
+  .billet-panel {
+    display: none !important;
+  }
+
+  .billet-panel.is-active {
+    display: block !important;
+  }
+
+  .billet-panel.is-active .billet-print-area,
+  .billet-panel.is-active.billet-print-area {
+    display: block !important;
+  }
+
+  .billet-objets-sheet,
+  .billet-doc {
+    border: 0;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  .retreat-ticket-shell {
+    filter: none;
+    max-width: 100%;
+  }
+
+  .ticket-preview-stage {
+    padding: 0;
+  }
 }
