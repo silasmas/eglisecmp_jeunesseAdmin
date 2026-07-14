@@ -6,6 +6,7 @@ use App\Filament\Pages\ManageRetreatAtelierQuarantine;
 use App\Filament\Resources\RetreatParticipants\RetreatParticipantResource;
 use App\Models\RetreatParticipant;
 use App\Models\User;
+use App\Support\SuperAdminRecipientResolver;
 use Illuminate\Support\Collection;
 
 /**
@@ -15,6 +16,7 @@ class RetreatAtelierQuarantineNotifier
 {
     public function __construct(
         protected PanelNotificationDispatcher $dispatcher,
+        protected SuperAdminRecipientResolver $superAdminRecipients,
     ) {}
 
     /**
@@ -99,12 +101,7 @@ class RetreatAtelierQuarantineNotifier
      */
     protected function resolveSuperAdmins(): Collection
     {
-        $role = (string) config('filament-shield.super_admin.name', 'super_admin');
-
-        return User::query()
-            ->role($role)
-            ->where('is_active', true)
-            ->get();
+        return $this->superAdminRecipients->recipientsForPanelNotifications();
     }
 
     /**

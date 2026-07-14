@@ -14,6 +14,10 @@ use Illuminate\Support\Facades\Mail;
  */
 class RetreatStaffAssignmentNotifier
 {
+  public function __construct(
+    protected UserDashboardAccessProvisioner $accessProvisioner,
+  ) {}
+
   /**
    * Envoie la notification après affectation atelier (responsable ou adjoint).
    *
@@ -54,7 +58,16 @@ class RetreatStaffAssignmentNotifier
     }
 
     try {
-      Mail::to($user->email)->send(new RetreatStaffAssignmentMail($user, $type, $role, $assignment));
+      $credentials = $this->accessProvisioner->provisionForStaffAssignment($user);
+
+      Mail::to($user->email)->send(new RetreatStaffAssignmentMail(
+        user: $user,
+        assignmentType: $type,
+        roleLabel: $role,
+        assignment: $assignment,
+        plainPassword: $credentials['plainPassword'],
+        dashboardRole: $credentials['dashboardRole'],
+      ));
     } catch (\Throwable $e) {
       Log::warning('E-mail affectation retraite non envoyé', [
         'user_id' => $user->id,

@@ -7,6 +7,7 @@ use App\Mail\RetreatActivityAttendanceDeadlineReminderMail;
 use App\Models\RetreatActivityPlan;
 use App\Models\RetreatAtelier;
 use App\Models\User;
+use App\Support\SuperAdminRecipientResolver;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -18,6 +19,7 @@ class RetreatActivityAttendanceDeadlineNotifier
 {
     public function __construct(
         protected RetreatActivityPlanScheduleService $scheduleService,
+        protected SuperAdminRecipientResolver $superAdminRecipients,
     ) {}
 
     /**
@@ -73,13 +75,9 @@ class RetreatActivityAttendanceDeadlineNotifier
             return;
         }
 
-        $recipients = User::query()
-            ->role(['super_admin', 'panel_user'])
-            ->where('is_active', true)
-            ->whereNotNull('email')
-            ->get();
+        $recipients = $this->superAdminRecipients->resolveEmailAddressesForRoles(['super_admin', 'panel_user']);
 
-        if ($recipients->isEmpty()) {
+        if ($recipients === []) {
             Log::channel('daily')->info('Pointage activité en retard : aucun admin e-mail.', [
                 'activity_plan_id' => $plan->id,
             ]);
@@ -87,9 +85,9 @@ class RetreatActivityAttendanceDeadlineNotifier
             return;
         }
 
-        foreach ($recipients as $admin) {
+        foreach ($recipients as $email) {
             try {
-                Mail::to($admin->email)->send(
+                Mail::to($email)->send(
                     new RetreatActivityAttendanceDeadlineOverdueMail($plan, $deadline)
                 );
             } catch (\Throwable $e) {

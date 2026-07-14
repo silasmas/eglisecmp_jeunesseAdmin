@@ -7,8 +7,8 @@ use App\Mail\RetreatPaymentFailureMail;
 use App\Models\RetreatParticipant;
 use App\Models\RetreatPayment;
 use App\Models\RetreatPaymentFailureAlert;
-use App\Models\User;
 use App\Support\RetreatPaymentFailureAlertsSchema;
+use App\Support\SuperAdminRecipientResolver;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 
@@ -19,6 +19,7 @@ class RetreatPaymentFailureNotifier
 {
     public function __construct(
         protected PanelNotificationDispatcher $panelNotifications,
+        protected SuperAdminRecipientResolver $superAdminRecipients,
     ) {}
 
     /**
@@ -123,11 +124,7 @@ class RetreatPaymentFailureNotifier
         ?RetreatParticipant $participant,
         ?RetreatPayment $payment,
     ): void {
-        $admins = User::query()
-            ->role('super_admin')
-            ->where('is_active', true)
-            ->get()
-            ->all();
+        $admins = $this->superAdminRecipients->recipientsForPanelNotifications()->all();
 
         if ($admins === []) {
             return;
@@ -158,25 +155,33 @@ class RetreatPaymentFailureNotifier
         ?RetreatPayment $payment,
         bool $persistSentAt = true,
     ): void {
-        $recipient = (string) config('retraite.payment_failure_notify_email', '');
+        $recipients = $this->superAdminRecipients->normalizeEmails(array_merge(
+            $this->superAdminRecipients->resolveEmailAddresses(),
+            [(string) config('retraite.payment_failure_notify_email', '')],
+        ));
 
-        if (! filled($recipient)) {
+        if ($recipients === []) {
             return;
         }
 
-        try {
-            Mail::to($recipient)->send(
-                new RetreatPaymentFailureMail($alert, $participant, $payment)
-            );
+        $sentRecipients = [];
 
-            if ($persistSentAt && $alert->exists) {
-                $alert->update([
-                    'email_sent_at' => now(),
-                    'email_recipient' => $recipient,
-                ]);
+        foreach ($recipients as $recipient) {
+            try {
+                Mail::to($recipient)->send(
+                    new RetreatPaymentFailureMail($alert, $participant, $payment)
+                );
+                $sentRecipients[] = $recipient;
+            } catch (\Throwable $e) {
+                report($e);
             }
-        } catch (\Throwable $e) {
-            report($e);
+        }
+
+        if ($persistSentAt && $alert->exists && $sentRecipients !== []) {
+            $alert->update([
+                'email_sent_at' => now(),
+                'email_recipient' => implode(', ', $sentRecipients),
+            ]);
         }
     }
 

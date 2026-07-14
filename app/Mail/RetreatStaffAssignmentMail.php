@@ -7,6 +7,7 @@ use App\Models\RetreatChambre;
 use App\Models\User;
 use App\Support\CmpMailEnvelope;
 use App\Support\RetreatMailUrl;
+use App\Support\RetreatStaffAssignmentPresentation;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -24,14 +25,21 @@ class RetreatStaffAssignmentMail extends Mailable
    * @param 'atelier'|'chambre' $assignmentType Type d'affectation
    * @param 'responsable'|'adjoint' $roleLabel Rôle attribué
    * @param RetreatAtelier|RetreatChambre $assignment Cible (atelier ou chambre)
+   * @param string $plainPassword Mot de passe dashboard en clair
+   * @param string $dashboardRole Nom du rôle Spatie dans le tableau de bord
    */
   public function __construct(
     public User $user,
     public string $assignmentType,
     public string $roleLabel,
     public RetreatAtelier|RetreatChambre $assignment,
+    public string $plainPassword,
+    public string $dashboardRole,
   ) {}
 
+  /**
+   * @return Envelope Enveloppe de l'e-mail
+   */
   public function envelope(): Envelope
   {
     $label = $this->assignmentType === 'atelier'
@@ -42,10 +50,14 @@ class RetreatStaffAssignmentMail extends Mailable
       __('retraite.mail_staff_assignment_subject', [
         'role' => $this->roleLabelForMail(),
         'target' => $label,
+        'year' => RetreatStaffAssignmentPresentation::retreatYear($this->assignment),
       ])
     );
   }
 
+  /**
+   * @return Content Contenu Markdown de l'e-mail
+   */
   public function content(): Content
   {
     return new Content(
@@ -55,6 +67,11 @@ class RetreatStaffAssignmentMail extends Mailable
         'assignmentType' => $this->assignmentType,
         'roleLabel' => $this->roleLabelForMail(),
         'assignment' => $this->assignment,
+        'retreatTitle' => RetreatStaffAssignmentPresentation::retreatTitle($this->assignment),
+        'retreatYear' => RetreatStaffAssignmentPresentation::retreatYear($this->assignment),
+        'dashboardRoleLabel' => RetreatStaffAssignmentPresentation::dashboardRoleLabel($this->dashboardRole),
+        'loginEmail' => $this->user->email,
+        'plainPassword' => $this->plainPassword,
         'adminUrl' => RetreatMailUrl::admin(),
       ],
     );
@@ -62,6 +79,8 @@ class RetreatStaffAssignmentMail extends Mailable
 
   /**
    * Libellé lisible du rôle pour l'e-mail.
+   *
+   * @return string
    */
   protected function roleLabelForMail(): string
   {

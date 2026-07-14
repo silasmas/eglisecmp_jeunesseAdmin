@@ -60,6 +60,15 @@ return [
     'card_external_form_url' => env('RETRAITE_CARD_EXTERNAL_FORM_URL'),
 
     /*
+    | Adresses e-mail additionnelles notifiées comme les super_admin (séparées par des virgules).
+    | Ex. : Jeunesse@eglisecmp.com pour la boîte du département Jeunesse.
+    */
+    'admin_notify_emails' => array_values(array_filter(array_map(
+        static fn (string $email): string => trim($email),
+        explode(',', (string) env('RETRAITE_ADMIN_NOTIFY_EMAILS', 'Jeunesse@eglisecmp.com'))
+    ))),
+
+    /*
     | Numéros SMS supplémentaires pour alerter les admins (séparés par des virgules).
     | Les téléphones des comptes super_admin actifs sont aussi utilisés.
     */

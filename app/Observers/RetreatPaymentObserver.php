@@ -8,6 +8,7 @@ use App\Services\PanelNotificationDispatcher;
 use App\Services\RetreatPaymentFailureNotifier;
 use App\Services\RetreatRegistrationFulfillmentService;
 use App\Support\RetreatParticipantPaymentProof;
+use App\Support\SuperAdminRecipientResolver;
 use Illuminate\Support\Facades\Auth;
 
 class RetreatPaymentObserver
@@ -16,6 +17,7 @@ class RetreatPaymentObserver
         protected PanelNotificationDispatcher $dispatcher,
         protected RetreatRegistrationFulfillmentService $fulfillment,
         protected RetreatPaymentFailureNotifier $paymentFailureNotifier,
+        protected SuperAdminRecipientResolver $superAdminRecipients,
     ) {}
 
     public function updating(RetreatPayment $payment): void
@@ -112,11 +114,7 @@ class RetreatPaymentObserver
             return;
         }
 
-        $users = User::query()
-            ->role('super_admin')
-            ->where('is_active', true)
-            ->get()
-            ->all();
+        $users = $this->superAdminRecipients->recipientsForPanelNotifications()->all();
 
         $this->dispatcher->notify(
             $users,

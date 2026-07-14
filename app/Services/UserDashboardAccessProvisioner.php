@@ -138,4 +138,32 @@ class UserDashboardAccessProvisioner
 
     return $password;
   }
+
+  /**
+   * Génère un mot de passe, active le compte et assigne le rôle dashboard si absent.
+   * Ne déclenche pas d'e-mail séparé (identifiants inclus dans l'e-mail d'affectation).
+   *
+   * @param User $user Utilisateur encadreur
+   * @param string $defaultRole Rôle Spatie par défaut si aucun rôle n'est défini
+   * @return array{plainPassword: string, dashboardRole: string} Mot de passe en clair et rôle assigné
+   */
+  public function provisionForStaffAssignment(User $user, string $defaultRole = 'ouvrier'): array
+  {
+    $plainPassword = $this->generatePassword();
+    $dashboardRole = (string) ($user->roles()->where('guard_name', 'web')->value('name') ?? '');
+
+    if ($dashboardRole === '') {
+      $dashboardRole = $defaultRole;
+      $user->syncRoles([$dashboardRole]);
+    }
+
+    $user->password = $plainPassword;
+    $user->is_active = true;
+    $user->save();
+
+    return [
+      'plainPassword' => $plainPassword,
+      'dashboardRole' => $dashboardRole,
+    ];
+  }
 }

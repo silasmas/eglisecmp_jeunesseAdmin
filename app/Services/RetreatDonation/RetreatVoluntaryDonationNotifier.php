@@ -5,7 +5,7 @@ namespace App\Services\RetreatDonation;
 use App\Mail\RetreatVoluntaryDonationDonorMail;
 use App\Mail\RetreatVoluntaryDonationMail;
 use App\Models\RetreatVoluntaryDonation;
-use App\Models\User;
+use App\Support\SuperAdminRecipientResolver;
 use Illuminate\Support\Facades\Mail;
 
 /**
@@ -13,6 +13,10 @@ use Illuminate\Support\Facades\Mail;
  */
 class RetreatVoluntaryDonationNotifier
 {
+    public function __construct(
+        protected SuperAdminRecipientResolver $superAdminRecipients,
+    ) {}
+
     /**
      * Envoie un e-mail à tous les super_admin actifs (une seule fois par don).
      *
@@ -27,18 +31,7 @@ class RetreatVoluntaryDonationNotifier
 
         $donation->loadMissing(['event', 'vouchers']);
 
-        $admins = User::query()
-            ->role('super_admin')
-            ->where('is_active', true)
-            ->whereNotNull('email')
-            ->get();
-
-        foreach ($admins as $admin) {
-            $email = trim((string) $admin->email);
-            if ($email === '') {
-                continue;
-            }
-
+        foreach ($this->superAdminRecipients->resolveEmailAddresses() as $email) {
             Mail::to($email)->send(new RetreatVoluntaryDonationMail($donation));
         }
 
@@ -86,18 +79,7 @@ class RetreatVoluntaryDonationNotifier
     {
         $donation->loadMissing(['event']);
 
-        $admins = User::query()
-            ->role('super_admin')
-            ->where('is_active', true)
-            ->whereNotNull('email')
-            ->get();
-
-        foreach ($admins as $admin) {
-            $email = trim((string) $admin->email);
-            if ($email === '') {
-                continue;
-            }
-
+        foreach ($this->superAdminRecipients->resolveEmailAddresses() as $email) {
             Mail::to($email)->send(new RetreatVoluntaryDonationMail($donation));
         }
     }

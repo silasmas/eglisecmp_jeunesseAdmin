@@ -31,7 +31,7 @@ class RetreatCashPaymentAdminNotifier
     {
         $participant->loadMissing(['event']);
         $admins = $this->superAdminRecipients->recipientsForPanelNotifications();
-        $emailRecipients = $this->superAdminRecipients->recipientsForEmail();
+        $emailRecipients = $this->superAdminRecipients->resolveEmailAddresses();
         $title = 'Paiement cash à valider';
         $message = sprintf(
             '%s a soumis une preuve de paiement en espèces pour %s (réf. %s).',
@@ -56,9 +56,9 @@ class RetreatCashPaymentAdminNotifier
             );
         }
 
-        foreach ($emailRecipients as $admin) {
+        foreach ($this->superAdminRecipients->resolveEmailAddresses() as $email) {
             try {
-                Mail::to($admin->email)->send(
+                Mail::to($email)->send(
                     new RetreatCashPaymentAdminMail($participant, $payment, $event)
                 );
             } catch (\Throwable $e) {

@@ -56,10 +56,12 @@ return [
 
     'attendance_window_closed' => 'La fenêtre de pointage pour cette activité est terminée. Seul un administrateur peut encore modifier les présences.',
 
-    'mail_staff_assignment_subject' => 'Affectation retraite — :role :target',
+    'mail_staff_assignment_subject' => 'Affectation — :role :target — Grande retraite :year',
     'mail_staff_assignment_heading' => 'Nouvelle affectation encadrement',
-    'mail_staff_assignment_intro' => 'Vous avez été désigné **:role** de **:type :label** pour la retraite des jeunes.',
+    'mail_staff_assignment_retreat_title' => 'Grande retraite de la jeunesse :year',
+    'mail_staff_assignment_intro' => 'Vous avez été désigné **:role** de **:type :label** pour la **:retreat**.',
     'mail_staff_assignment_body' => 'Connectez-vous à l’espace d’administration pour consulter les participants, les présences et les consignes liées à votre mission.',
+    'mail_staff_assignment_credentials_heading' => '**Vos accès au tableau de bord**',
     'mail_staff_assignment_button' => 'Ouvrir l’administration',
     'mail_staff_assignment_type_atelier' => 'l’atelier',
     'mail_staff_assignment_type_chambre' => 'la chambre',
