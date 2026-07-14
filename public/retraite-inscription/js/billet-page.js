@@ -1,72 +1,26 @@
 'use strict';
 
 /**
- * Page billet : onglets, QR participant, export JPG/PDF, impression.
+ * Page billet intégrée : onglets, QR/export JPG, PDF documents (prototype retraite-jcmp-inscription).
  */
 (function () {
   var TICKET_SIZE = { width: 1603, height: 761 };
   var activeTab = 'billet';
 
   /**
-   * @param {number} ms Délai maximum
-   * @return {Promise<object|null>}
+   * @return {string}
    */
-  function waitForQrLibrary(ms) {
-    ms = ms || 8000;
+  function resolveTicketAsset(data) {
+    var bg = document.querySelector('.retreat-ticket-bg');
+    if (bg && bg.src) {
+      return bg.src;
+    }
 
-    return new Promise(function (resolve) {
-      var elapsed = 0;
-
-      function check() {
-        if (window.QRCode && typeof window.QRCode.toDataURL === 'function') {
-          resolve(window.QRCode);
-          return;
-        }
-
-        if (elapsed >= ms) {
-          resolve(null);
-          return;
-        }
-
-        elapsed += 50;
-        setTimeout(check, 50);
-      }
-
-      check();
-    });
+    return data.ticketAsset || document.body.dataset.ticketAsset || '';
   }
 
   /**
-   * @param {number} ms Délai maximum
-   * @return {Promise<object|null>}
-   */
-  function waitForHtml2Pdf(ms) {
-    ms = ms || 8000;
-
-    return new Promise(function (resolve) {
-      var elapsed = 0;
-
-      function check() {
-        if (window.html2pdf) {
-          resolve(window.html2pdf);
-          return;
-        }
-
-        if (elapsed >= ms) {
-          resolve(null);
-          return;
-        }
-
-        elapsed += 50;
-        setTimeout(check, 50);
-      }
-
-      check();
-    });
-  }
-
-  /**
-   * @param {string} src URL de l'image
+   * @param {string} src URL image
    * @return {Promise<HTMLImageElement>}
    */
   function loadImage(src) {
@@ -76,46 +30,107 @@
         return;
       }
 
-      fetch(src, { credentials: 'same-origin' })
-        .then(function (response) {
-          if (!response.ok) {
-            throw new Error('fetch failed');
-          }
-
-          return response.blob();
-        })
-        .then(function (blob) {
-          var objectUrl = URL.createObjectURL(blob);
-          var img = new Image();
-
-          img.onload = function () {
-            URL.revokeObjectURL(objectUrl);
-            resolve(img);
-          };
-
-          img.onerror = function () {
-            URL.revokeObjectURL(objectUrl);
-            reject(new Error('decode failed'));
-          };
-
-          img.src = objectUrl;
-        })
-        .catch(function () {
-          var fallback = new Image();
-          fallback.onload = function () { resolve(fallback); };
-          fallback.onerror = function () { reject(new Error('load failed: ' + src)); };
-          fallback.src = src;
-        });
+      var img = new Image();
+      img.onload = function () { resolve(img); };
+      img.onerror = function () { reject(new Error('Chargement image impossible')); };
+      img.src = src;
     });
   }
 
   /**
-   * @param {CanvasRenderingContext2D} ctx Contexte canvas
-   * @param {string} text Texte à dessiner
+   * @param {CanvasRenderingContext2D} ctx Contexte
+   * @param {string} payload Données QR
    * @param {number} x Position X
    * @param {number} y Position Y
+   * @param {number} size Taille
+   * @return {void}
+   */
+  function drawFallbackQr(ctx, payload, x, y, size) {
+    var cells = 29;
+    var cell = size / cells;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(x, y, size, size);
+    ctx.fillStyle = '#151515';
+
+    function finder(cx, cy) {
+      ctx.fillRect(x + cx * cell, y + cy * cell, cell * 7, cell * 7);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(x + (cx + 1) * cell, y + (cy + 1) * cell, cell * 5, cell * 5);
+      ctx.fillStyle = '#151515';
+      ctx.fillRect(x + (cx + 2) * cell, y + (cy + 2) * cell, cell * 3, cell * 3);
+    }
+
+    finder(1, 1);
+    finder(21, 1);
+    finder(1, 21);
+
+    var seed = 0;
+    var i;
+    for (i = 0; i < payload.length; i += 1) {
+      seed = (seed * 31 + payload.charCodeAt(i)) >>> 0;
+    }
+
+    var row;
+    var col;
+    for (row = 1; row < cells - 1; row += 1) {
+      for (col = 1; col < cells - 1; col += 1) {
+        var inFinder = (col < 9 && row < 9) || (col > 19 && row < 9) || (col < 9 && row > 19);
+        if (inFinder) {
+          continue;
+        }
+        seed = (seed * 1664525 + 1013904223) >>> 0;
+        if ((seed + row + col) % 3 === 0) {
+          ctx.fillRect(x + col * cell, y + row * cell, Math.ceil(cell), Math.ceil(cell));
+        }
+      }
+    }
+  }
+
+  /**
+   * @param {string} payload Contenu QR
+   * @param {number} size Taille
+   * @return {Promise<string>}
+   */
+  async function createQrDataUrl(payload, size) {
+    size = size || 300;
+    var canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+
+    if (window.QRCode && typeof window.QRCode.toCanvas === 'function') {
+      try {
+        await window.QRCode.toCanvas(canvas, payload, {
+          width: size,
+          margin: 1,
+          errorCorrectionLevel: 'M',
+          color: { dark: '#151515', light: '#ffffff' },
+        });
+        return canvas.toDataURL('image/png');
+      } catch (e) { /* fallback */ }
+    }
+
+    if (window.QRCode && typeof window.QRCode.toDataURL === 'function') {
+      try {
+        return await window.QRCode.toDataURL(payload, {
+          width: size,
+          margin: 1,
+          errorCorrectionLevel: 'M',
+          color: { dark: '#151515', light: '#ffffff' },
+        });
+      } catch (e) { /* fallback */ }
+    }
+
+    drawFallbackQr(canvas.getContext('2d'), payload, 0, 0, size);
+    return canvas.toDataURL('image/png');
+  }
+
+  /**
+   * @param {CanvasRenderingContext2D} ctx Contexte
+   * @param {string} text Texte
+   * @param {number} x X
+   * @param {number} y Y
    * @param {number} maxWidth Largeur max
-   * @param {object} options Options de style
+   * @param {object} options Options
    * @return {void}
    */
   function drawFittedText(ctx, text, x, y, maxWidth, options) {
@@ -143,29 +158,8 @@
   }
 
   /**
-   * @param {string} payload Contenu QR
-   * @param {number} size Taille
-   * @return {Promise<string>}
-   */
-  async function createQrDataUrl(payload, size) {
-    size = size || 300;
-    var QRCodeLib = await waitForQrLibrary();
-
-    if (!QRCodeLib || !payload) {
-      return '';
-    }
-
-    return QRCodeLib.toDataURL(payload, {
-      width: size,
-      margin: 1,
-      errorCorrectionLevel: 'M',
-      color: { dark: '#151515', light: '#ffffff' },
-    });
-  }
-
-  /**
    * @param {HTMLElement|null} mount Image QR
-   * @param {string} payload URL encodée
+   * @param {string} payload URL
    * @return {Promise<void>}
    */
   async function renderTicketQr(mount, payload) {
@@ -174,12 +168,8 @@
     }
 
     var dataUrl = await createQrDataUrl(payload, 360);
-    if (!dataUrl) {
-      return;
-    }
-
     mount.src = dataUrl;
-    mount.alt = 'QR code billet retraite';
+    mount.alt = 'Code QR du billet';
   }
 
   /**
@@ -193,9 +183,10 @@
       } catch (e) { /* ignore */ }
     }
 
-    var ticketAsset = data.ticketAsset || document.body.dataset.ticketAsset || '';
+    var ticketAsset = resolveTicketAsset(data);
+    var qrPayload = data.qrUrl || data.code || 'billet-cmp';
     var background = await loadImage(ticketAsset);
-    var qrDataUrl = await createQrDataUrl(data.qrUrl, 340);
+    var qrImage = await createQrDataUrl(qrPayload, 340).then(loadImage);
 
     var canvas = document.createElement('canvas');
     canvas.width = TICKET_SIZE.width;
@@ -207,7 +198,6 @@
     }
 
     ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
-
     drawFittedText(ctx, data.name, 145, 646, 510, { maxSize: 38, minSize: 18, weight: 900, color: '#ffffff' });
     drawFittedText(ctx, data.status, 570, 646, 230, { maxSize: 28, minSize: 15, weight: 800, color: '#f97316' });
     drawFittedText(ctx, data.hebergement, 835, 646, 220, { maxSize: 28, minSize: 15, weight: 800, color: '#ffffff' });
@@ -221,12 +211,7 @@
 
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(qrX - qrPadding, qrY - qrPadding, qrOuterSize, qrOuterSize);
-
-    if (qrDataUrl) {
-      var qrImage = await loadImage(qrDataUrl);
-      ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
-    }
-
+    ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
     drawFittedText(ctx, data.code, qrPanelCenterX, qrY + qrSize + 58, qrOuterSize + 50, {
       maxSize: 24,
       minSize: 12,
@@ -239,7 +224,7 @@
   }
 
   /**
-   * @param {HTMLElement|null} root Conteneur ticket
+   * @param {HTMLElement|null} root Racine ticket
    * @return {void}
    */
   function fitTicketPreviewText(root) {
@@ -273,11 +258,11 @@
       panel.classList.toggle('is-active', panel.getAttribute('data-billet-panel') === tab);
     });
 
-    document.querySelectorAll('[data-actions-for]').forEach(function (group) {
-      var isActive = group.getAttribute('data-actions-for') === tab;
-      group.classList.toggle('is-active', isActive);
-      group.hidden = !isActive;
-    });
+    var bar = document.getElementById('billetActionsBar');
+    if (bar) {
+      bar.classList.remove('is-tab-billet', 'is-tab-reglement', 'is-tab-objets');
+      bar.classList.add('is-tab-' + tab);
+    }
   }
 
   /**
@@ -294,88 +279,29 @@
   /**
    * @return {void}
    */
-  function initPrintButtons() {
-    document.querySelectorAll('[data-billet-print]').forEach(function (button) {
-      button.addEventListener('click', function () {
-        window.print();
-      });
-    });
-  }
-
-  /**
-   * @param {HTMLElement} element Zone à exporter
-   * @param {string} filename Nom du fichier
-   * @param {HTMLButtonElement|null} button Bouton déclencheur
-   * @return {Promise<void>}
-   */
-  async function downloadElementPdf(element, filename, button) {
-    var html2pdfLib = await waitForHtml2Pdf();
-
-    if (!element || !html2pdfLib) {
-      alert('Impossible de générer le PDF pour le moment.');
+  function patchDocumentAssetPaths() {
+    if (!window.RetreatDocuments || !window.RetreatDocuments.identity) {
       return;
     }
 
-    var original = button ? button.innerHTML : '';
-    if (button) {
-      button.disabled = true;
-      button.innerHTML = 'Génération…';
-    }
+    var base = (document.body.dataset.publicBase || '').replace(/\/$/, '');
+    var identity = window.RetreatDocuments.identity;
 
-    try {
-      await html2pdfLib()
-        .set({
-          margin: [8, 8, 8, 8],
-          filename: filename,
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: {
-            scale: 2,
-            useCORS: true,
-            backgroundColor: '#ffffff',
-            logging: false,
-          },
-          jsPDF: {
-            unit: 'mm',
-            format: 'a4',
-            orientation: 'portrait',
-          },
-          pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
-        })
-        .from(element)
-        .save();
-    } catch (err) {
-      alert('Erreur lors de la génération du PDF.');
-    } finally {
-      if (button) {
-        button.disabled = false;
-        button.innerHTML = original;
-      }
+    if (base) {
+      identity.logo = base + '/retraite-inscription/img/logo.jpg';
     }
   }
 
   /**
-   * @param {string} slug Slug participant
    * @return {void}
    */
-  function initPdfDownloads(slug) {
-    document.querySelectorAll('[data-billet-download-pdf]').forEach(function (button) {
-      button.addEventListener('click', async function () {
-        var kind = button.getAttribute('data-billet-download-pdf') || 'document';
-        var areaId = kind === 'objets' ? 'objetsPrintArea' : 'reglementPrintArea';
-        var element = document.getElementById(areaId);
+  function mountDocumentPanels() {
+    patchDocumentAssetPaths();
 
-        if (!element) {
-          alert('Contenu introuvable pour le PDF.');
-          return;
-        }
-
-        await downloadElementPdf(
-          element,
-          kind + '_retraite_' + (slug || 'participant') + '.pdf',
-          button,
-        );
-      });
-    });
+    if (window.RetreatBilletDocumentPanels) {
+      window.RetreatBilletDocumentPanels.mountReglement('reglementDocumentContent');
+      window.RetreatBilletDocumentPanels.mountObjets('objetsDocumentContent');
+    }
   }
 
   /**
@@ -391,15 +317,14 @@
     btn.addEventListener('click', async function () {
       var original = btn.innerHTML;
       btn.disabled = true;
-      btn.innerHTML = 'Génération…';
+      btn.innerHTML = '<i class="bi bi-hourglass-split" aria-hidden="true"></i> Génération…';
 
       try {
         var canvas = await renderTicketToCanvas(data);
-
         await new Promise(function (resolve, reject) {
           canvas.toBlob(function (blob) {
             if (!blob) {
-              reject(new Error('Blob vide'));
+              reject(new Error('Export JPG impossible'));
               return;
             }
 
@@ -421,12 +346,77 @@
     });
   }
 
-  document.addEventListener('DOMContentLoaded', function () {
+  /**
+   * @return {void}
+   */
+  function initPdfDownload() {
+    var btn = document.getElementById('downloadPdfBtn');
+    if (!btn) {
+      return;
+    }
+
+    btn.addEventListener('click', async function () {
+      var isObjets = activeTab === 'objets';
+      var pdfType = isObjets ? 'items' : 'rules';
+      var staticPdf = isObjets ? document.body.dataset.objetsPdf : document.body.dataset.reglementPdf;
+      var fileName = isObjets ? 'objets_grande_retraite.pdf' : 'reglement_grande_retraite.pdf';
+
+      if (staticPdf) {
+        var staticLink = document.createElement('a');
+        staticLink.href = staticPdf;
+        staticLink.download = fileName;
+        staticLink.target = '_blank';
+        staticLink.rel = 'noopener';
+        staticLink.click();
+        return;
+      }
+
+      if (window.RetreatDocumentPdf && typeof window.RetreatDocumentPdf.download === 'function') {
+        var original = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-hourglass-split" aria-hidden="true"></i> Génération…';
+
+        try {
+          await window.RetreatDocumentPdf.download(pdfType);
+        } catch (err) {
+          console.error(err);
+          alert('Impossible de générer le PDF pour le moment.');
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = original;
+        }
+        return;
+      }
+
+      alert('Impossible de générer le PDF pour le moment.');
+    });
+  }
+
+  /**
+   * @return {void}
+   */
+  function initPrintButton() {
+    var btn = document.getElementById('billetPrintBtn');
+    if (!btn) {
+      return;
+    }
+
+    btn.addEventListener('click', function () {
+      window.print();
+    });
+  }
+
+  /**
+   * @return {void}
+   */
+  function bootstrap() {
     initTabs();
-    initPrintButtons();
+    initPrintButton();
+    mountDocumentPanels();
 
     var payload = document.getElementById('billetPayload');
     if (!payload) {
+      setActiveTab('billet');
       return;
     }
 
@@ -434,15 +424,20 @@
     try {
       data = JSON.parse(payload.textContent || '{}');
     } catch (e) {
+      setActiveTab('billet');
       return;
     }
 
-    var slug = data.slug || document.body.dataset.participantSlug || 'participant';
-
-    renderTicketQr(document.getElementById('ticketQrImage'), data.qrUrl);
+    renderTicketQr(document.getElementById('ticketQrImage'), data.qrUrl || data.code);
     fitTicketPreviewText(document.getElementById('ticketPreview'));
     initTicketDownload(data);
-    initPdfDownloads(slug);
+    initPdfDownload();
     setActiveTab('billet');
-  });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootstrap);
+  } else {
+    bootstrap();
+  }
 })();

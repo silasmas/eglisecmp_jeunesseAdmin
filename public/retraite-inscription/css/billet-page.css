@@ -115,6 +115,24 @@ body.billet-page {
   display: flex;
 }
 
+.billet-actions [data-billet-action] {
+  display: none;
+}
+
+.billet-actions [data-billet-action="portail"] {
+  display: inline-flex;
+}
+
+.billet-actions.is-tab-billet [data-billet-action="print"],
+.billet-actions.is-tab-billet [data-billet-action="jpg"] {
+  display: inline-flex;
+}
+
+.billet-actions.is-tab-reglement [data-billet-action="pdf"],
+.billet-actions.is-tab-objets [data-billet-action="pdf"] {
+  display: inline-flex;
+}
+
 .billet-btn {
   display: inline-flex;
   align-items: center;

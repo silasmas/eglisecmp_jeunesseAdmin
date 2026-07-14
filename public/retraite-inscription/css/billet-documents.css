@@ -1,0 +1,252 @@
+/* Styles documents retraite — issus du prototype retraite-jcmp-inscription (pages.css) */
+
+.document-reading {
+  background: #fff;
+  border: 1px solid #e6e0da;
+  border-radius: 18px;
+  padding: clamp(1.35rem, 4vw, 2.6rem);
+  box-shadow: 0 18px 54px rgba(37, 25, 27, 0.08);
+}
+
+.document-reading-rules {
+  max-width: 820px;
+  margin: 0 auto;
+}
+
+.document-preamble {
+  max-width: 76ch;
+  margin: 0 0 2rem;
+  padding-left: 1.1rem;
+  border-left: 3px solid #b7792f;
+  color: #6f6667;
+  font-size: 0.98rem;
+  line-height: 1.75;
+  font-style: italic;
+}
+
+.document-article-list {
+  display: grid;
+  gap: 1.2rem;
+}
+
+.document-rule-article {
+  display: grid;
+  grid-template-columns: 3.1rem minmax(0, 1fr);
+  gap: 1rem;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.document-rule-number {
+  padding-top: 0.05rem;
+  color: #b7792f;
+  font-size: 0.88rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.document-rule-article h2 {
+  margin: 0 0 0.28rem;
+  color: #25191b;
+  font-size: 0.94rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.document-rule-article p {
+  margin: 0;
+  color: #6f6667;
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+.document-rule-article ul {
+  margin: 0.45rem 0 0;
+  padding-left: 1.1rem;
+  color: #6f6667;
+  font-size: 0.94rem;
+  line-height: 1.65;
+}
+
+.document-conclusion {
+  margin: 2.2rem 0 0;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e6e0da;
+  text-align: center;
+  color: #b7792f;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.document-reading-items {
+  padding-top: clamp(1.3rem, 3vw, 2rem);
+}
+
+.document-items-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(1.4rem, 4vw, 3rem);
+}
+
+.document-item-section {
+  min-width: 0;
+}
+
+.document-section-kicker {
+  color: #b7792f;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 0.28rem;
+}
+
+.document-item-section h2 {
+  margin: 0;
+  color: #25191b;
+  font-size: clamp(1.18rem, 2vw, 1.55rem);
+  font-weight: 800;
+}
+
+.document-item-section > p {
+  margin: 0.45rem 0 1.35rem;
+  color: #6f6667;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.document-item-section.is-danger .document-section-kicker,
+.document-item-section.is-danger h2 {
+  color: #c62828;
+}
+
+.document-item-list {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.25rem;
+  margin: 0;
+  padding: 0;
+}
+
+.document-item {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  gap: 0.85rem;
+  align-items: center;
+  min-height: 86px;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e6e0da;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.document-item-art {
+  position: relative;
+  width: 4.5rem;
+  height: 4.5rem;
+  display: grid;
+  place-items: center;
+  color: #2e7d32;
+}
+
+.document-item.is-prohibited .document-item-art {
+  color: #6f6667;
+}
+
+.document-item-svg {
+  width: 4.15rem;
+  height: 4.15rem;
+}
+
+.document-prohibited-mark {
+  position: absolute;
+  inset: 0.1rem;
+  border: 2px solid #c62828;
+  border-radius: 50%;
+}
+
+.document-prohibited-mark::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 2px;
+  height: 110%;
+  background: #c62828;
+  transform: translate(-50%, -50%) rotate(45deg);
+  border-radius: 2px;
+}
+
+.document-item strong {
+  display: block;
+  color: #25191b;
+  font-size: 0.9rem;
+  line-height: 1.28;
+  white-space: pre-line;
+}
+
+.document-item span {
+  display: block;
+  margin-top: 0.2rem;
+  color: #6f6667;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  white-space: pre-line;
+}
+
+.document-notice {
+  margin-top: 2.2rem;
+  padding: 1.15rem 1.35rem;
+  background: linear-gradient(90deg, rgba(183, 121, 47, 0.11), rgba(244, 233, 218, 0.42));
+  border-left: 4px solid #b7792f;
+  border-radius: 0 12px 12px 0;
+}
+
+.document-notice h2 {
+  margin: 0 0 0.55rem;
+  color: #b7792f;
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.document-notice ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: #25191b;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.document-notice li {
+  white-space: pre-line;
+}
+
+@media (max-width: 900px) {
+  .document-items-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .document-item-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media print {
+  .document-reading {
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+    box-shadow: none;
+  }
+
+  .document-rule-article,
+  .document-item,
+  .document-notice {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
