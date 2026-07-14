@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\RetreatChambres\Pages;
 
 use App\Filament\Resources\RetreatChambres\RetreatChambreResource;
+use App\Filament\Support\ResendStaffAccessCredentialsFilamentAction;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
 
@@ -13,6 +14,7 @@ class ViewRetreatChambre extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            ResendStaffAccessCredentialsFilamentAction::make(),
             EditAction::make(),
         ];
     }

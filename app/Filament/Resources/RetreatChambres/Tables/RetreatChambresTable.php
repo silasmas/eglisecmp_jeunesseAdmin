@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\RetreatChambres\Tables;
 
 use App\Filament\Tables\Columns\UserStackedColumn;
+use App\Filament\Support\ResendStaffAccessCredentialsFilamentAction;
 use App\Support\RetreatActiveEventScope;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -85,6 +86,7 @@ class RetreatChambresTable
             ])
             ->recordActions([
                 ViewAction::make()->modal()->modalWidth(Width::FiveExtraLarge)->modalAlignment(Alignment::Center),
+                ResendStaffAccessCredentialsFilamentAction::make(),
                 EditAction::make()->modal()->modalWidth(Width::SevenExtraLarge)->modalAlignment(Alignment::Center),
             ])
             ->toolbarActions([

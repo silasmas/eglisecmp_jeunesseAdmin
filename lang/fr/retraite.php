@@ -65,4 +65,18 @@ return [
     'mail_staff_assignment_type_chambre' => 'la chambre',
     'mail_staff_assignment_atelier' => 'Atelier n° :numero',
     'mail_staff_assignment_chambre' => 'Chambre :nom',
+
+    'mail_staff_access_subject' => 'Jeunesse CMP — Vos accès au tableau de bord',
+    'mail_staff_access_heading' => 'Identifiants d\'accès encadrement',
+    'mail_staff_access_intro' => 'Voici vos identifiants pour vous connecter au tableau de bord d\'administration de la retraite des jeunes CMP.',
+    'mail_staff_access_assignment_label' => 'Affectation',
+    'mail_staff_access_role_label' => 'Rôle dans le tableau de bord',
+    'mail_staff_access_role_responsable' => 'Responsable',
+    'mail_staff_access_email_label' => 'Adresse e-mail',
+    'mail_staff_access_password_label' => 'Mot de passe',
+    'mail_staff_access_security' => 'Conservez ce message en lieu sûr. Pour des raisons de sécurité, changez votre mot de passe après votre première connexion si l\'administration le permet.',
+    'mail_staff_access_button' => 'Ouvrir le tableau de bord',
+    'mail_staff_access_role_super_admin' => 'Super administrateur',
+    'mail_staff_access_role_panel_user' => 'Utilisateur panel',
+    'mail_staff_access_role_ouvrier' => 'Encadreur (ouvrier)',
 ];

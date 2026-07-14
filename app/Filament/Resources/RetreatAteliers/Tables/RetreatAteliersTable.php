@@ -4,6 +4,7 @@ namespace App\Filament\Resources\RetreatAteliers\Tables;
 
 use App\Filament\Pages\ManageRetreatAtelierQuarantine;
 use App\Filament\Tables\Columns\UserStackedColumn;
+use App\Filament\Support\ResendStaffAccessCredentialsFilamentAction;
 use App\Services\RetreatPlacementAssignmentService;
 use App\Support\RetreatActiveEventScope;
 use Filament\Actions\Action;
@@ -88,6 +89,7 @@ class RetreatAteliersTable
             ])
             ->recordActions([
                 ViewAction::make()->modal()->modalWidth(Width::FiveExtraLarge)->modalAlignment(Alignment::Center),
+                ResendStaffAccessCredentialsFilamentAction::make(),
                 Action::make('moveMismatchedToQuarantine')
                     ->label('Hors tranche → quarantaine')
                     ->icon('heroicon-o-shield-exclamation')

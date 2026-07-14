@@ -4,6 +4,7 @@ namespace App\Filament\Resources\RetreatAteliers\Pages;
 
 use App\Filament\Pages\ManageRetreatAtelierQuarantine;
 use App\Filament\Resources\RetreatAteliers\RetreatAtelierResource;
+use App\Filament\Support\ResendStaffAccessCredentialsFilamentAction;
 use App\Services\RetreatPlacementAssignmentService;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
@@ -20,6 +21,7 @@ class ViewRetreatAtelier extends ViewRecord
         $mismatchCount = $placement->countMismatchedParticipantsForAtelier($this->getRecord());
 
         return [
+            ResendStaffAccessCredentialsFilamentAction::make(),
             Action::make('moveMismatchedToQuarantine')
                 ->label('Mettre hors tranche en quarantaine')
                 ->icon('heroicon-o-shield-exclamation')
