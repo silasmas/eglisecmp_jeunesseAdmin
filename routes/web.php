@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\RetreatAdminParticipantBilletController;
 use App\Http\Controllers\RetreatAdminPaymentProofController;
 use App\Http\Controllers\ProductionBaseSyncController;
 use App\Http\Controllers\RetreatBadgeStudioApiController;
@@ -64,6 +65,11 @@ Route::get('/', function () {
 Route::get('/admin/retreat-participants/{participant}/payment-proof', [RetreatAdminPaymentProofController::class, 'show'])
     ->middleware(['auth'])
     ->name('retreat.admin.payment-proof');
+
+/** Aperçu billet participant (admin — même page que le lien public) */
+Route::get('/admin/retreat-participants/{participant}/billet-preview', [RetreatAdminParticipantBilletController::class, 'show'])
+    ->middleware(['auth'])
+    ->name('retreat.admin.billet-preview');
 
 /** Formulaire public Grande Retraite des Jeunes (UI Blade + assets dans public/retraite-inscription) */
 Route::view('/inscription-retraite', 'retraite-inscription.index')->name('retraite.inscription');

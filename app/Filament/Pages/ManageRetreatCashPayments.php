@@ -2,10 +2,10 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Support\RetreatPaymentProofFilamentAction;
 use App\Models\RetreatPayment;
 use App\Models\User;
 use App\Support\RetreatParticipantPaymentProof;
-use App\Support\RetreatPaymentProofUrl;
 use App\Services\RetreatParticipantRegistrationService;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -67,6 +67,8 @@ class ManageRetreatCashPayments extends Page implements HasTable
      */
     public function table(Table $table): Table
     {
+        $viewProofAction = RetreatPaymentProofFilamentAction::make('voir_preuve');
+
         return $table
             ->query(
                 RetreatPayment::query()
@@ -112,9 +114,8 @@ class ManageRetreatCashPayments extends Page implements HasTable
                 TextColumn::make('participant.preuve_paiement')
                     ->label('Preuve')
                     ->formatStateUsing(fn (?string $state, RetreatPayment $record): string => RetreatParticipantPaymentProof::hasViewableProof($record->participant) ? 'Voir' : '—')
-                    ->url(fn (RetreatPayment $record): ?string => RetreatPaymentProofUrl::forParticipant($record->participant))
-                    ->openUrlInNewTab()
-                    ->color('primary'),
+                    ->color(fn (?string $state, RetreatPayment $record): ?string => RetreatParticipantPaymentProof::hasViewableProof($record->participant) ? 'primary' : null)
+                    ->action(Action::make('voir_preuve')),
                 TextColumn::make('updated_at')
                     ->label('Mis à jour')
                     ->dateTime('d/m/Y H:i')
@@ -130,12 +131,7 @@ class ManageRetreatCashPayments extends Page implements HasTable
                     ]),
             ])
             ->recordActions([
-                Action::make('voir_preuve')
-                    ->label('Preuve')
-                    ->icon('heroicon-o-document-magnifying-glass')
-                    ->url(fn (RetreatPayment $record): ?string => RetreatPaymentProofUrl::forParticipant($record->participant))
-                    ->openUrlInNewTab()
-                    ->visible(fn (RetreatPayment $record): bool => RetreatParticipantPaymentProof::hasViewableProof($record->participant)),
+                $viewProofAction,
                 Action::make('valider_cash')
                     ->label('Valider')
                     ->icon('heroicon-o-check-circle')

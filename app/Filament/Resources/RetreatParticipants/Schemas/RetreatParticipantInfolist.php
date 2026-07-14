@@ -6,8 +6,9 @@ use App\Filament\Resources\RetreatParticipants\RetreatParticipantResource;
 use App\Filament\Resources\RetreatVoluntaryDonations\RetreatVoluntaryDonationResource;
 use App\Models\RetreatParticipant;
 use App\Services\PublicStorageUrl;
+use App\Filament\Support\RetreatPaymentProofFilamentAction;
+use App\Support\RetreatBilletPageBuilder;
 use App\Support\RetreatParticipantPaymentProof;
-use App\Support\RetreatPaymentProofUrl;
 use App\Services\RetreatInscriptionFunnelService;
 use App\Support\AvatarFallback;
 use Filament\Infolists\Components\IconEntry;
@@ -62,12 +63,31 @@ class RetreatParticipantInfolist
                     ->schema([
                         TextEntry::make('preuve_paiement')
                             ->label('Preuve paiement')
-                            ->placeholder('-')
-                            ->url(fn (RetreatParticipant $record): ?string => RetreatPaymentProofUrl::forParticipant($record))
+                            ->placeholder('—')
+                            ->formatStateUsing(fn (?string $state, RetreatParticipant $record): string => RetreatParticipantPaymentProof::hasViewableProof($record) ? 'Fichier disponible' : '—')
+                            ->suffixAction(
+                                RetreatPaymentProofFilamentAction::make('voir_preuve_paiement')
+                                    ->label('Consulter')
+                            ),
+                        IconEntry::make('paiement_valide')->boolean(),
+                        TextEntry::make('download_token')
+                            ->label('Lien billet public')
+                            ->placeholder('—')
+                            ->copyable()
+                            ->copyMessage('Lien copié')
+                            ->state(fn (RetreatParticipant $record): ?string => RetreatBilletPageBuilder::publicUrl($record))
+                            ->url(fn (RetreatParticipant $record): ?string => RetreatBilletPageBuilder::publicUrl($record))
                             ->openUrlInNewTab()
                             ->color('primary')
-                            ->formatStateUsing(fn (?string $state, RetreatParticipant $record): string => RetreatParticipantPaymentProof::hasViewableProof($record) ? 'Consulter la preuve' : '-'),
-                        IconEntry::make('paiement_valide')->boolean(),
+                            ->formatStateUsing(fn (?string $state): string => filled($state) ? 'Ouvrir le billet' : '—')
+                            ->visible(fn (RetreatParticipant $record): bool => (bool) $record->paiement_valide),
+                        TextEntry::make('id')
+                            ->label('Aperçu admin billet')
+                            ->formatStateUsing(fn (): string => 'Prévisualiser')
+                            ->url(fn (RetreatParticipant $record): string => route('retreat.admin.billet-preview', ['participant' => $record->id]))
+                            ->openUrlInNewTab()
+                            ->color('info')
+                            ->visible(fn (RetreatParticipant $record): bool => (bool) $record->paiement_valide),
                         TextEntry::make('sponsorshipVoucher.code')
                             ->label('Code prise en charge')
                             ->badge()

@@ -49,7 +49,9 @@ class RetreatAdminPaymentProofController extends Controller
             abort(404, 'Fichier de preuve introuvable sur le serveur.');
         }
 
-        return Storage::disk($disk)->response($path);
+        return Storage::disk($disk)->response($path, null, [
+            'Content-Disposition' => 'inline; filename="'.basename($path).'"',
+        ]);
     }
 
     /**
