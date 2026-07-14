@@ -30,6 +30,8 @@ final class RetreatPaymentProofFilamentAction
             ->modalContent(fn ($record) => view('filament.partials.payment-proof-modal', [
                 'participant' => self::resolveParticipant($record),
                 'proofUrl' => self::proofUrl($record),
+                'downloadUrl' => RetreatPaymentProofUrl::forParticipant(self::resolveParticipant($record), true),
+                'filename' => basename((string) (self::resolveParticipant($record)?->preuve_paiement ?? 'preuve-paiement')),
                 'mediaKind' => self::mediaKind($record),
             ]))
             ->visible(fn ($record): bool => self::hasViewableProof($record));
