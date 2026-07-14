@@ -34,10 +34,6 @@ class RetreatAdminParticipantBilletController extends Controller
       return RetreatPublicPortalGate::participantEventClosedView($participant);
     }
 
-    if (! $participant->paiement_valide) {
-      throw new AccessDeniedHttpException('Le billet est disponible uniquement après validation du paiement.');
-    }
-
     return RetreatBilletPageBuilder::render($participant);
   }
 

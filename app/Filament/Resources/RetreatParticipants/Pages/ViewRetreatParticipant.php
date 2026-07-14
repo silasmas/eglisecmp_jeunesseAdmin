@@ -3,7 +3,9 @@
 namespace App\Filament\Resources\RetreatParticipants\Pages;
 
 use App\Filament\Resources\RetreatParticipants\RetreatParticipantResource;
+use App\Filament\Support\RetreatBilletPreviewFilamentAction;
 use App\Models\User;
+use App\Support\RetreatBilletPageBuilder;
 use App\Services\RetreatParticipantRegistrationService;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
@@ -18,6 +20,10 @@ class ViewRetreatParticipant extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            RetreatBilletPreviewFilamentAction::make('preview_billet')
+                ->label('Prévisualiser le billet')
+                ->url(fn (): ?string => RetreatBilletPageBuilder::adminPreviewUrl($this->getRecord()))
+                ->visible(fn (): bool => RetreatBilletPreviewFilamentAction::canPreview($this->getRecord())),
             Action::make('marquer_badge_remis')
                 ->label('Marquer badge remis')
                 ->icon('heroicon-o-identification')

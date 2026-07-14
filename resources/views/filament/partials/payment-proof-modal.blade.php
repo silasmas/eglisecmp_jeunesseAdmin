@@ -127,23 +127,51 @@
   id="{{ $viewerId }}"
   class="cmp-payment-proof-viewer"
   data-cmp-payment-proof-viewer
+  data-rotation="0"
+  data-scale="1"
   data-media-kind="{{ $mediaKind }}"
+  wire:ignore
 >
   @if(filled($proofUrl))
     <div class="cmp-payment-proof-toolbar" role="toolbar" aria-label="Outils preuve de paiement">
-      <button type="button" class="cmp-payment-proof-btn" data-action="rotate-left" title="Pivoter à gauche">
+      <button
+        type="button"
+        class="cmp-payment-proof-btn"
+        data-cmp-proof-action="rotate-left"
+        title="Pivoter à gauche"
+      >
         ↺ Gauche
       </button>
-      <button type="button" class="cmp-payment-proof-btn" data-action="rotate-right" title="Pivoter à droite">
+      <button
+        type="button"
+        class="cmp-payment-proof-btn"
+        data-cmp-proof-action="rotate-right"
+        title="Pivoter à droite"
+      >
         ↻ Droite
       </button>
-      <button type="button" class="cmp-payment-proof-btn" data-action="zoom-out" title="Zoom arrière">
+      <button
+        type="button"
+        class="cmp-payment-proof-btn"
+        data-cmp-proof-action="zoom-out"
+        title="Zoom arrière"
+      >
         − Zoom
       </button>
-      <button type="button" class="cmp-payment-proof-btn" data-action="zoom-in" title="Zoom avant">
+      <button
+        type="button"
+        class="cmp-payment-proof-btn"
+        data-cmp-proof-action="zoom-in"
+        title="Zoom avant"
+      >
         + Zoom
       </button>
-      <button type="button" class="cmp-payment-proof-btn" data-action="reset" title="Réinitialiser">
+      <button
+        type="button"
+        class="cmp-payment-proof-btn"
+        data-cmp-proof-action="reset"
+        title="Réinitialiser"
+      >
         ⟲ Réinitialiser
       </button>
       @if(filled($downloadUrl))
@@ -155,23 +183,26 @@
           ⬇ Télécharger
         </a>
       @endif
-      <span class="cmp-payment-proof-zoom-label" data-zoom-label>100%</span>
+      <span class="cmp-payment-proof-zoom-label" data-cmp-proof-zoom-label>100%</span>
     </div>
 
-    <div class="cmp-payment-proof-viewport" data-viewport tabindex="0" aria-label="Aperçu de la preuve de paiement">
-      <div class="cmp-payment-proof-stage" data-stage>
+    <div
+      class="cmp-payment-proof-viewport"
+      data-cmp-proof-viewport
+      tabindex="0"
+      aria-label="Aperçu de la preuve de paiement"
+    >
+      <div class="cmp-payment-proof-stage" data-cmp-proof-stage>
         @if($mediaKind === 'image')
           <img
             src="{{ $proofUrl }}"
             alt="Preuve de paiement — {{ $participantName }}"
-            data-proof-media
             draggable="false"
           >
         @else
           <iframe
             src="{{ $proofUrl }}"
             title="Preuve de paiement — {{ $participantName }}"
-            data-proof-media
           ></iframe>
         @endif
       </div>
@@ -187,92 +218,3 @@
     </p>
   @endif
 </div>
-
-<script>
-  (function () {
-    var root = document.getElementById(@json($viewerId));
-
-    if (!root) {
-      return;
-    }
-
-    var stage = root.querySelector('[data-stage]');
-    var viewport = root.querySelector('[data-viewport]');
-    var zoomLabel = root.querySelector('[data-zoom-label]');
-
-    if (!stage || !viewport) {
-      return;
-    }
-
-    var rotation = 0;
-    var scale = 1;
-    var minScale = 0.35;
-    var maxScale = 3;
-    var scaleStep = 0.2;
-
-    /**
-     * Applique rotation et zoom sur la preuve.
-     * @return {void}
-     */
-    function applyTransform() {
-      stage.style.transform = 'rotate(' + rotation + 'deg) scale(' + scale + ')';
-
-      if (zoomLabel) {
-        zoomLabel.textContent = Math.round(scale * 100) + '%';
-      }
-    }
-
-    /**
-     * Modifie le niveau de zoom.
-     * @param {number} delta Variation de zoom
-     * @return {void}
-     */
-    function changeZoom(delta) {
-      scale = Math.min(maxScale, Math.max(minScale, +(scale + delta).toFixed(2)));
-      applyTransform();
-    }
-
-    root.addEventListener('click', function (event) {
-      var button = event.target.closest('[data-action]');
-
-      if (!button || !root.contains(button)) {
-        return;
-      }
-
-      var action = button.getAttribute('data-action');
-
-      if (action === 'rotate-left') {
-        rotation = (rotation - 90 + 360) % 360;
-        applyTransform();
-      }
-
-      if (action === 'rotate-right') {
-        rotation = (rotation + 90) % 360;
-        applyTransform();
-      }
-
-      if (action === 'zoom-in') {
-        changeZoom(scaleStep);
-      }
-
-      if (action === 'zoom-out') {
-        changeZoom(-scaleStep);
-      }
-
-      if (action === 'reset') {
-        rotation = 0;
-        scale = 1;
-        applyTransform();
-        viewport.scrollTop = 0;
-        viewport.scrollLeft = 0;
-      }
-    });
-
-    viewport.addEventListener('wheel', function (event) {
-      event.preventDefault();
-      changeZoom(event.deltaY < 0 ? scaleStep : -scaleStep);
-    }, { passive: false });
-
-    applyTransform();
-  })();
-</script>

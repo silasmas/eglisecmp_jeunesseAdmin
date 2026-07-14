@@ -17,6 +17,7 @@ use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Assets\Css;
+use Filament\Support\Assets\Js;
 use Filament\Support\Colors\Color;
 use App\Filament\Widgets\RetreatPaymentFailuresWidget;
 use Filament\Widgets\AccountWidget;
@@ -123,6 +124,7 @@ class AdminPanelProvider extends PanelProvider
                 Css::make('filament-retreat-groups', asset('css/filament-retreat-groups.css')),
                 Css::make('media-manager-plain-compiled', asset('css/media-manager-plain.css')),
                 Css::make('filament-rich-select-badges', asset('css/filament-rich-select-badges.css')),
+                Js::make('filament-payment-proof-viewer', asset('js/filament-payment-proof-viewer.js')),
             ], 'app')
             ->bootUsing(function (Panel $panel): void {
                 if ($panel->getId() === 'admin') {

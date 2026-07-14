@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Support\RetreatBilletPreviewFilamentAction;
 use App\Filament\Support\RetreatPaymentProofFilamentAction;
 use App\Models\RetreatPayment;
 use App\Models\User;
@@ -132,6 +133,7 @@ class ManageRetreatCashPayments extends Page implements HasTable
             ])
             ->recordActions([
                 $viewProofAction,
+                RetreatBilletPreviewFilamentAction::make('preview_billet'),
                 Action::make('valider_cash')
                     ->label('Valider')
                     ->icon('heroicon-o-check-circle')

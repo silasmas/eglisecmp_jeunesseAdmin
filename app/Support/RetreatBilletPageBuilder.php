@@ -63,4 +63,19 @@ final class RetreatBilletPageBuilder
       'token' => $participant->download_token,
     ]);
   }
+
+  /**
+   * URL admin de prévisualisation (même rendu que le billet public).
+   *
+   * @param RetreatParticipant|null $participant Participant
+   * @return string|null
+   */
+  public static function adminPreviewUrl(?RetreatParticipant $participant): ?string
+  {
+    if ($participant === null || blank($participant->download_token)) {
+      return null;
+    }
+
+    return route('retreat.admin.billet-preview', ['participant' => $participant->id]);
+  }
 }

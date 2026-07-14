@@ -15,6 +15,7 @@ use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\Checkbox;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
+use App\Filament\Support\RetreatBilletPreviewFilamentAction;
 use App\Filament\Support\RetreatParticipantDeletionActions;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
@@ -419,11 +420,17 @@ class RetreatParticipantsTable
                     }),
             ])
             ->recordActions([
+                RetreatBilletPreviewFilamentAction::make('preview_billet')
+                    ->iconButton()
+                    ->tooltip('Prévisualiser le billet'),
                 ActionGroup::make([
                     ViewAction::make()
                         ->modal()
                         ->modalWidth(Width::SevenExtraLarge)
-                        ->modalAlignment(Alignment::Center),
+                        ->modalAlignment(Alignment::Center)
+                        ->extraModalFooterActions([
+                            RetreatBilletPreviewFilamentAction::make('preview_billet_modal'),
+                        ]),
                     EditAction::make(),
                     WatchAction::make(),
                     UnwatchAction::make(),

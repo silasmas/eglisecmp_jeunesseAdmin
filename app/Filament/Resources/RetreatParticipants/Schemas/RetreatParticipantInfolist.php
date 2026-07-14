@@ -6,6 +6,7 @@ use App\Filament\Resources\RetreatParticipants\RetreatParticipantResource;
 use App\Filament\Resources\RetreatVoluntaryDonations\RetreatVoluntaryDonationResource;
 use App\Models\RetreatParticipant;
 use App\Services\PublicStorageUrl;
+use App\Filament\Support\RetreatBilletPreviewFilamentAction;
 use App\Filament\Support\RetreatPaymentProofFilamentAction;
 use App\Support\RetreatBilletPageBuilder;
 use App\Support\RetreatParticipantPaymentProof;
@@ -79,15 +80,16 @@ class RetreatParticipantInfolist
                             ->url(fn (RetreatParticipant $record): ?string => RetreatBilletPageBuilder::publicUrl($record))
                             ->openUrlInNewTab()
                             ->color('primary')
-                            ->formatStateUsing(fn (?string $state): string => filled($state) ? 'Ouvrir le billet' : '—')
+                            ->formatStateUsing(fn (?string $state): string => filled($state) ? 'Ouvrir le billet public' : '—')
                             ->visible(fn (RetreatParticipant $record): bool => (bool) $record->paiement_valide),
-                        TextEntry::make('id')
-                            ->label('Aperçu admin billet')
-                            ->formatStateUsing(fn (): string => 'Prévisualiser')
-                            ->url(fn (RetreatParticipant $record): string => route('retreat.admin.billet-preview', ['participant' => $record->id]))
+                        TextEntry::make('billet_preview')
+                            ->label('Aperçu billet (admin)')
+                            ->formatStateUsing(fn (): string => 'Prévisualiser la page billet')
+                            ->url(fn (RetreatParticipant $record): ?string => RetreatBilletPageBuilder::adminPreviewUrl($record))
                             ->openUrlInNewTab()
                             ->color('info')
-                            ->visible(fn (RetreatParticipant $record): bool => (bool) $record->paiement_valide),
+                            ->icon('heroicon-o-ticket')
+                            ->visible(fn (RetreatParticipant $record): bool => RetreatBilletPreviewFilamentAction::canPreview($record)),
                         TextEntry::make('sponsorshipVoucher.code')
                             ->label('Code prise en charge')
                             ->badge()
