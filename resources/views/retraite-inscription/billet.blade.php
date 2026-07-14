@@ -2,11 +2,13 @@
   $reference = $payment?->reference ?: '#'.$participant->id.'-'.substr((string) $participant->download_token, 0, 8);
   $reglementPdf = collect($participantDocuments)->firstWhere('key', 'reglement');
   $ticketAsset = \App\Support\RetreatMailUrl::base().'/retraite-inscription/assets/billet-grande-retraite.jpg';
+  $heroBackground = asset('retraite-inscription/assets/fond-retraite.jpg');
   $publicBase = \App\Support\RetreatMailUrl::base();
   $reglementStaticPdf = asset('retraite-inscription/assets/reglement_grande_retraite.pdf');
   $objetsStaticPdf = asset('retraite-inscription/assets/objets_grande_retraite.pdf');
   $billetPayload = [
-    'qrUrl' => $accessUrl,
+    'qrUrl' => $qrScanUrl,
+    'qrImageDataUrl' => $qrImageDataUri,
     'name' => $ticketName,
     'status' => $ticketStatus,
     'hebergement' => $ticketHebergement,
@@ -28,7 +30,6 @@
   <link rel="stylesheet" href="{{ asset('retraite-inscription/css/billet-documents.css') }}">
   <link rel="stylesheet" href="{{ asset('cmp-portail/css/cmp-layout.css') }}">
   <link rel="stylesheet" href="{{ asset('cmp-portail/css/cmp-footer.css') }}">
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="{{ asset('retraite-inscription/js/document-data.js') }}"></script>
   <script src="{{ asset('retraite-inscription/js/document-ui.js') }}"></script>
@@ -37,31 +38,40 @@
 </head>
 <body
   class="billet-page cmp-page-shell"
+  style="--billet-hero-bg: url('{{ $heroBackground }}')"
   data-ticket-asset="{{ $ticketAsset }}"
   data-public-base="{{ $publicBase }}"
   data-reglement-pdf="{{ ($reglementPdf['url'] ?? null) ?: $reglementStaticPdf }}"
   data-objets-pdf="{{ $objetsStaticPdf }}"
   data-participant-slug="{{ $billetPayload['slug'] }}"
 >
-  <header class="billet-hero">
-    <div class="billet-hero-badge">
-      <i class="bi bi-ticket-perforated" aria-hidden="true"></i>
-      Billet officiel
+  <header class="hero billet-hero-banner">
+    <div class="hero-content">
+      <div class="hero-badge">
+        <i class="bi bi-calendar-event" aria-hidden="true"></i>
+        Jeunesse CMP — Gombe
+      </div>
+      <h1>Grande Retraite <span>des Jeunes</span></h1>
+      <p class="hero-sub">
+        <strong>Centre Missionnaire Philadelphie</strong> · Département de la Jeunesse
+      </p>
+      <div class="hero-divider"></div>
     </div>
-    <h1>Votre <span>billet</span></h1>
-    <p class="billet-hero-sub">
-      <strong>{{ $participant->event?->name ?? 'Grande Retraite des Jeunes' }}</strong>
-      · Centre Missionnaire Philadelphie
-    </p>
   </header>
 
-  <div class="billet-shell">
-    <nav class="billet-tabs" aria-label="Sections du billet">
-      <button type="button" class="billet-tab is-active" data-billet-tab="billet">Billet</button>
-      <button type="button" class="billet-tab" data-billet-tab="reglement">Règlement</button>
-      <button type="button" class="billet-tab" data-billet-tab="objets">Objets à apporter</button>
-    </nav>
+  <nav class="billet-page-nav" aria-label="Sections du billet">
+    <button type="button" class="billet-page-nav-link is-active" data-billet-tab="billet">
+      <i class="bi bi-ticket-perforated" aria-hidden="true"></i> Billet
+    </button>
+    <button type="button" class="billet-page-nav-link" data-billet-tab="reglement">
+      <i class="bi bi-shield-check" aria-hidden="true"></i> Règlement
+    </button>
+    <button type="button" class="billet-page-nav-link" data-billet-tab="objets">
+      <i class="bi bi-bag-check" aria-hidden="true"></i> Objets à apporter
+    </button>
+  </nav>
 
+  <div class="billet-shell">
     <div class="billet-actions is-tab-billet" id="billetActionsBar">
       <a class="billet-btn billet-btn-outline" data-billet-action="portail" href="{{ url('/') }}">
         <i class="bi bi-house" aria-hidden="true"></i> Portail
@@ -97,7 +107,12 @@
                   <strong class="retreat-ticket-fit">{{ $ticketHebergement }}</strong>
                 </div>
               </div>
-              <img class="retreat-ticket-qr" id="ticketQrImage" src="" alt="Code QR du billet">
+              <img
+                class="retreat-ticket-qr"
+                id="ticketQrImage"
+                src="{{ $qrImageDataUri }}"
+                alt="Code QR du billet — {{ $participant->full_name }}"
+              >
               <div class="retreat-ticket-qr-code" title="{{ $ticketCode }}">{{ $ticketCode }}</div>
             </div>
           </div>

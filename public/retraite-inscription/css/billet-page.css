@@ -17,10 +17,156 @@
 body.billet-page {
   margin: 0;
   color: var(--billet-ink);
-  background:
-    linear-gradient(180deg, rgba(246, 244, 241, 0.76), var(--billet-bg) 22rem),
-    var(--billet-bg);
+  background: var(--cream);
   font-family: Poppins, ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ── Bannière prototype (hero + fond retraite) ── */
+.billet-page .hero.billet-hero-banner {
+  background:
+    linear-gradient(180deg, rgba(26, 16, 24, 0.68) 0%, rgba(26, 16, 24, 0.9) 78%, #1a1018 100%),
+    linear-gradient(90deg, rgba(26, 16, 24, 0.92) 0%, rgba(45, 31, 23, 0.54) 48%, rgba(26, 16, 24, 0.88) 100%),
+    var(--billet-hero-bg) center 30% / cover no-repeat;
+  padding: 3.2rem 2rem 2.45rem;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.billet-page .hero.billet-hero-banner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 36%),
+    linear-gradient(90deg, rgba(212, 119, 44, 0.18), rgba(201, 151, 62, 0.1), rgba(220, 38, 38, 0.14));
+  mix-blend-mode: screen;
+  opacity: 0.74;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.billet-page .hero.billet-hero-banner::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201, 151, 62, 0.72), transparent);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.billet-page .hero-content {
+  position: relative;
+  z-index: 1;
+  max-width: 760px;
+  margin: 0 auto;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.36);
+}
+
+.billet-page .hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(212, 119, 44, 0.22);
+  color: #f8d18d;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 6px 16px;
+  border-radius: 50px;
+  border: 1px solid rgba(201, 151, 62, 0.34);
+  margin-bottom: 1rem;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(10px);
+}
+
+.billet-page .hero h1 {
+  color: #fff;
+  font-size: clamp(1.55rem, 4vw, 2.35rem);
+  font-weight: 800;
+  line-height: 1.25;
+  margin: 0 0 0.5rem;
+}
+
+.billet-page .hero h1 span {
+  background: linear-gradient(135deg, var(--primary-light), var(--gold-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.billet-page .hero-sub {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.92rem;
+  font-weight: 400;
+  margin: 0;
+}
+
+.billet-page .hero-sub strong {
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 600;
+}
+
+.billet-page .hero-divider {
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(90deg, var(--primary), var(--gold));
+  border-radius: 3px;
+  margin: 1rem auto 0;
+}
+
+/* ── Onglets pilules (prototype page-nav) ── */
+.billet-page-nav {
+  max-width: 980px;
+  margin: -1.2rem auto 0;
+  padding: 0 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  justify-content: center;
+  position: relative;
+  z-index: 2;
+}
+
+.billet-page-nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.7rem 1.3rem;
+  border: 1px solid var(--border);
+  border-radius: 50px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-fast);
+}
+
+.billet-page-nav-link i {
+  color: var(--primary);
+  font-size: 1rem;
+}
+
+.billet-page-nav-link:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary);
+  box-shadow: var(--shadow-md);
+}
+
+.billet-page-nav-link.is-active {
+  border-color: var(--primary);
+  background: #fff7ed;
+  box-shadow: var(--shadow-glow);
+}
+
+.billet-page-nav-link.is-active i {
+  color: var(--primary-dark);
 }
 
 .billet-hero {
@@ -57,34 +203,7 @@ body.billet-page {
 
 .billet-shell {
   width: min(980px, calc(100% - 2rem));
-  margin: 0 auto 2.5rem;
-}
-
-.billet-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-}
-
-.billet-tab {
-  flex: 1 1 auto;
-  min-width: 140px;
-  padding: 0.75rem 1rem;
-  border: 1px solid var(--billet-border);
-  border-radius: 12px;
-  background: var(--billet-paper);
-  color: var(--billet-ink);
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
-}
-
-.billet-tab.is-active {
-  border-color: var(--billet-primary);
-  background: var(--billet-primary);
-  color: #fff;
+  margin: 1.5rem auto 2.5rem;
 }
 
 .billet-panel {
@@ -586,7 +705,7 @@ body.billet-page {
 
 @media (max-width: 720px) {
   .billet-shell { width: calc(100% - 1rem); }
-  .billet-tab { min-width: 100%; }
+  .billet-page-nav-link { flex: 1 1 100%; justify-content: center; }
 }
 
 @media print {
@@ -598,9 +717,9 @@ body.billet-page {
     background: #fff !important;
   }
 
-  .billet-tabs,
+  .billet-page-nav,
+  .billet-hero-banner,
   .billet-actions,
-  .billet-hero,
   .billet-meta,
   .billet-objets-topbar,
   .billet-objets-topbar-actions,

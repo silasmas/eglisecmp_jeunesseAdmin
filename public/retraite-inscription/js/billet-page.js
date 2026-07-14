@@ -1,13 +1,14 @@
 'use strict';
 
 /**
- * Page billet intégrée : onglets, QR/export JPG, PDF documents (prototype retraite-jcmp-inscription).
+ * Page billet : onglets, export JPG (QR serveur), PDF documents.
  */
 (function () {
   var TICKET_SIZE = { width: 1603, height: 761 };
   var activeTab = 'billet';
 
   /**
+   * @param {object} data Données billet
    * @return {string}
    */
   function resolveTicketAsset(data) {
@@ -17,6 +18,19 @@
     }
 
     return data.ticketAsset || document.body.dataset.ticketAsset || '';
+  }
+
+  /**
+   * @param {object} data Données billet
+   * @return {string}
+   */
+  function resolveQrImageSrc(data) {
+    var mount = document.getElementById('ticketQrImage');
+    if (mount && mount.src) {
+      return mount.src;
+    }
+
+    return data.qrImageDataUrl || '';
   }
 
   /**
@@ -38,97 +52,10 @@
   }
 
   /**
-   * @param {CanvasRenderingContext2D} ctx Contexte
-   * @param {string} payload Données QR
+   * @param {CanvasRenderingContext2D} ctx Contexte canvas
+   * @param {string} text Texte
    * @param {number} x Position X
    * @param {number} y Position Y
-   * @param {number} size Taille
-   * @return {void}
-   */
-  function drawFallbackQr(ctx, payload, x, y, size) {
-    var cells = 29;
-    var cell = size / cells;
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(x, y, size, size);
-    ctx.fillStyle = '#151515';
-
-    function finder(cx, cy) {
-      ctx.fillRect(x + cx * cell, y + cy * cell, cell * 7, cell * 7);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(x + (cx + 1) * cell, y + (cy + 1) * cell, cell * 5, cell * 5);
-      ctx.fillStyle = '#151515';
-      ctx.fillRect(x + (cx + 2) * cell, y + (cy + 2) * cell, cell * 3, cell * 3);
-    }
-
-    finder(1, 1);
-    finder(21, 1);
-    finder(1, 21);
-
-    var seed = 0;
-    var i;
-    for (i = 0; i < payload.length; i += 1) {
-      seed = (seed * 31 + payload.charCodeAt(i)) >>> 0;
-    }
-
-    var row;
-    var col;
-    for (row = 1; row < cells - 1; row += 1) {
-      for (col = 1; col < cells - 1; col += 1) {
-        var inFinder = (col < 9 && row < 9) || (col > 19 && row < 9) || (col < 9 && row > 19);
-        if (inFinder) {
-          continue;
-        }
-        seed = (seed * 1664525 + 1013904223) >>> 0;
-        if ((seed + row + col) % 3 === 0) {
-          ctx.fillRect(x + col * cell, y + row * cell, Math.ceil(cell), Math.ceil(cell));
-        }
-      }
-    }
-  }
-
-  /**
-   * @param {string} payload Contenu QR
-   * @param {number} size Taille
-   * @return {Promise<string>}
-   */
-  async function createQrDataUrl(payload, size) {
-    size = size || 300;
-    var canvas = document.createElement('canvas');
-    canvas.width = size;
-    canvas.height = size;
-
-    if (window.QRCode && typeof window.QRCode.toCanvas === 'function') {
-      try {
-        await window.QRCode.toCanvas(canvas, payload, {
-          width: size,
-          margin: 1,
-          errorCorrectionLevel: 'M',
-          color: { dark: '#151515', light: '#ffffff' },
-        });
-        return canvas.toDataURL('image/png');
-      } catch (e) { /* fallback */ }
-    }
-
-    if (window.QRCode && typeof window.QRCode.toDataURL === 'function') {
-      try {
-        return await window.QRCode.toDataURL(payload, {
-          width: size,
-          margin: 1,
-          errorCorrectionLevel: 'M',
-          color: { dark: '#151515', light: '#ffffff' },
-        });
-      } catch (e) { /* fallback */ }
-    }
-
-    drawFallbackQr(canvas.getContext('2d'), payload, 0, 0, size);
-    return canvas.toDataURL('image/png');
-  }
-
-  /**
-   * @param {CanvasRenderingContext2D} ctx Contexte
-   * @param {string} text Texte
-   * @param {number} x X
-   * @param {number} y Y
    * @param {number} maxWidth Largeur max
    * @param {object} options Options
    * @return {void}
@@ -158,21 +85,6 @@
   }
 
   /**
-   * @param {HTMLElement|null} mount Image QR
-   * @param {string} payload URL
-   * @return {Promise<void>}
-   */
-  async function renderTicketQr(mount, payload) {
-    if (!mount || !payload) {
-      return;
-    }
-
-    var dataUrl = await createQrDataUrl(payload, 360);
-    mount.src = dataUrl;
-    mount.alt = 'Code QR du billet';
-  }
-
-  /**
    * @param {object} data Données billet
    * @return {Promise<HTMLCanvasElement>}
    */
@@ -184,9 +96,14 @@
     }
 
     var ticketAsset = resolveTicketAsset(data);
-    var qrPayload = data.qrUrl || data.code || 'billet-cmp';
+    var qrImageSrc = resolveQrImageSrc(data);
+
+    if (!qrImageSrc) {
+      throw new Error('QR code indisponible');
+    }
+
     var background = await loadImage(ticketAsset);
-    var qrImage = await createQrDataUrl(qrPayload, 340).then(loadImage);
+    var qrImage = await loadImage(qrImageSrc);
 
     var canvas = document.createElement('canvas');
     canvas.width = TICKET_SIZE.width;
@@ -224,7 +141,7 @@
   }
 
   /**
-   * @param {HTMLElement|null} root Racine ticket
+   * @param {HTMLElement|null} root Conteneur ticket
    * @return {void}
    */
   function fitTicketPreviewText(root) {
@@ -251,7 +168,8 @@
     activeTab = tab;
 
     document.querySelectorAll('[data-billet-tab]').forEach(function (item) {
-      item.classList.toggle('is-active', item.getAttribute('data-billet-tab') === tab);
+      var isActive = item.getAttribute('data-billet-tab') === tab;
+      item.classList.toggle('is-active', isActive);
     });
 
     document.querySelectorAll('[data-billet-panel]').forEach(function (panel) {
@@ -285,10 +203,8 @@
     }
 
     var base = (document.body.dataset.publicBase || '').replace(/\/$/, '');
-    var identity = window.RetreatDocuments.identity;
-
     if (base) {
-      identity.logo = base + '/retraite-inscription/img/logo.jpg';
+      window.RetreatDocuments.identity.logo = base + '/retraite-inscription/img/logo.jpg';
     }
   }
 
@@ -428,7 +344,6 @@
       return;
     }
 
-    renderTicketQr(document.getElementById('ticketQrImage'), data.qrUrl || data.code);
     fitTicketPreviewText(document.getElementById('ticketPreview'));
     initTicketDownload(data);
     initPdfDownload();

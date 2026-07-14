@@ -21,11 +21,14 @@ final class RetreatBilletPageBuilder
     $payment = $participant->payments->sortByDesc('id')->first();
     $showPlacements = RetreatPlacementVisibility::shouldReveal($participant);
     $paymentReference = $payment?->reference;
+    $qrScanUrl = RetreatBilletQr::scanUrl($participant);
 
     return [
       'participant' => $participant,
       'payment' => $payment,
       'accessUrl' => route('retraite.inscription.acces', ['token' => $participant->download_token], absolute: true),
+      'qrScanUrl' => $qrScanUrl,
+      'qrImageDataUri' => RetreatBilletQr::imageDataUri($participant),
       'showPlacements' => $showPlacements,
       'placementsPendingMessage' => $showPlacements ? null : RetreatPlacementVisibility::pendingMessage($participant),
       'participantDocuments' => ChurchEventParticipantDocuments::entries($participant->event),
