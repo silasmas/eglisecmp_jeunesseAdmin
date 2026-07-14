@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\PanelNotificationDispatcher;
 use App\Services\RetreatPaymentFailureNotifier;
 use App\Services\RetreatRegistrationFulfillmentService;
+use App\Support\RetreatParticipantPaymentProof;
 use Illuminate\Support\Facades\Auth;
 
 class RetreatPaymentObserver
@@ -66,7 +67,7 @@ class RetreatPaymentObserver
             $participant->update([
                 'paiement_valide' => true,
                 'registration_status' => 'completed',
-                'preuve_paiement' => $payment->provider_reference ?? $payment->reference,
+                'preuve_paiement' => RetreatParticipantPaymentProof::resolveAfterPayment($participant, $payment),
             ]);
         }
 

@@ -2,9 +2,9 @@
 
 namespace App\Mail;
 
+use App\Support\CmpMailEnvelope;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -20,19 +20,13 @@ class RetreatWorkerOtpMail extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(
-            subject: 'Code de verification - Portail retraite CMP',
-            from: new Address(
-                (string) config('mail.from.address'),
-                (string) config('mail.from.name')
-            ),
-        );
+        return CmpMailEnvelope::make(__('retraite.mail_otp_worker_subject'));
     }
 
     public function content(): Content
     {
         return new Content(
-            view: 'emails.retreat-worker-otp',
+            markdown: 'emails.retreat-worker-otp',
             with: [
                 'otp' => $this->otp,
                 'expiresInMinutes' => $this->expiresInMinutes,

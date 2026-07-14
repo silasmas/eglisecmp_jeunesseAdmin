@@ -13,6 +13,7 @@ use App\Models\RetreatPayment;
 use App\Models\RetreatPolicy;
 use App\Models\RetreatSession;
 use App\Support\RetreatActiveEventScope;
+use App\Support\RetreatParticipantPaymentProof;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -436,7 +437,7 @@ class RetreatIntegrationController extends Controller
         if ($payment->etat === 'payee' || $payment->access_granted) {
             $participant->update([
                 'paiement_valide' => true,
-                'preuve_paiement' => $payment->provider_reference ?? $payment->reference,
+                'preuve_paiement' => RetreatParticipantPaymentProof::resolveAfterPayment($participant, $payment),
                 'registration_status' => 'completed',
             ]);
         }

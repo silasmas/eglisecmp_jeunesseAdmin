@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\RetreatParticipant;
 use App\Models\RetreatPayment;
 use App\Models\User;
+use App\Support\RetreatParticipantPaymentProof;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -63,8 +64,7 @@ class RetreatParticipantRegistrationService
         $participant->update([
             'paiement_valide' => true,
             'registration_status' => 'completed',
-            'preuve_paiement' => $participant->preuve_paiement
-                ?: ($payment->provider_reference ?? $payment->reference),
+            'preuve_paiement' => RetreatParticipantPaymentProof::resolveAfterPayment($participant, $payment),
         ]);
 
         $this->fulfillment->fulfillIfNeeded($payment->fresh(['participant', 'event']));
@@ -153,8 +153,9 @@ class RetreatParticipantRegistrationService
         $participant->update([
             'paiement_valide' => true,
             'registration_status' => 'completed',
-            'preuve_paiement' => $participant->preuve_paiement
-                ?: ($payment?->provider_reference ?? $payment?->reference),
+            'preuve_paiement' => $payment
+                ? RetreatParticipantPaymentProof::resolveAfterPayment($participant, $payment)
+                : $participant->preuve_paiement,
         ]);
 
         if ($payment) {

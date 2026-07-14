@@ -6,6 +6,7 @@ use App\Filament\Resources\RetreatParticipants\RetreatParticipantResource;
 use App\Filament\Resources\RetreatVoluntaryDonations\RetreatVoluntaryDonationResource;
 use App\Models\RetreatParticipant;
 use App\Services\PublicStorageUrl;
+use App\Support\RetreatParticipantPaymentProof;
 use App\Support\RetreatPaymentProofUrl;
 use App\Services\RetreatInscriptionFunnelService;
 use App\Support\AvatarFallback;
@@ -65,7 +66,7 @@ class RetreatParticipantInfolist
                             ->url(fn (RetreatParticipant $record): ?string => RetreatPaymentProofUrl::forParticipant($record))
                             ->openUrlInNewTab()
                             ->color('primary')
-                            ->formatStateUsing(fn (?string $state): string => filled($state) ? 'Consulter la preuve' : '-'),
+                            ->formatStateUsing(fn (?string $state, RetreatParticipant $record): string => RetreatParticipantPaymentProof::hasViewableProof($record) ? 'Consulter la preuve' : '-'),
                         IconEntry::make('paiement_valide')->boolean(),
                         TextEntry::make('sponsorshipVoucher.code')
                             ->label('Code prise en charge')

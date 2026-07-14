@@ -1,4 +1,6 @@
 <x-mail::message>
+@include('emails.partials.jeunesse-cmp-mail-header')
+
 # {{ __('retraite.mail_admin_cash_heading') }}
 
 {{ __('retraite.mail_greeting', ['name' => '']) }}
@@ -11,5 +13,6 @@
 
 {{ __('retraite.mail_admin_cash_action') }}
 
-{{ __('retraite.mail_footer') }}
+@include('emails.partials.cmp-mail-footer')
+
 </x-mail::message>

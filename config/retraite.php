@@ -10,6 +10,13 @@ return [
     'public_base_url' => env('RETRAITE_PUBLIC_BASE_URL', env('APP_URL')),
 
     /*
+    | Adresse de réponse affichée aux participants (évite les réponses vers noreply).
+    */
+    'mail_reply_to' => env('RETRAITE_MAIL_REPLY_TO', 'Jeunesse@eglisecmp.com'),
+
+    'mail_reply_to_name' => env('RETRAITE_MAIL_REPLY_TO_NAME', 'Jeunesse CMP'),
+
+    /*
     |--------------------------------------------------------------------------
     | Paiements Mobile Money — opérateurs affichés + type API FlexPay
     |--------------------------------------------------------------------------

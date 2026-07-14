@@ -5,10 +5,10 @@ namespace App\Mail;
 use App\Models\RetreatAtelier;
 use App\Models\RetreatChambre;
 use App\Models\User;
+use App\Support\CmpMailEnvelope;
 use App\Support\RetreatMailUrl;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -38,15 +38,11 @@ class RetreatStaffAssignmentMail extends Mailable
       ? __('retraite.mail_staff_assignment_atelier', ['numero' => $this->assignment->numero])
       : __('retraite.mail_staff_assignment_chambre', ['nom' => $this->assignment->nom]);
 
-    return new Envelope(
-      subject: __('retraite.mail_staff_assignment_subject', [
+    return CmpMailEnvelope::make(
+      __('retraite.mail_staff_assignment_subject', [
         'role' => $this->roleLabelForMail(),
         'target' => $label,
-      ]),
-      from: new Address(
-        (string) config('mail.from.address'),
-        (string) config('mail.from.name')
-      ),
+      ])
     );
   }
 

@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Models\RetreatPayment;
 use App\Models\User;
+use App\Support\RetreatParticipantPaymentProof;
 use App\Support\RetreatPaymentProofUrl;
 use App\Services\RetreatParticipantRegistrationService;
 use BackedEnum;
@@ -110,7 +111,7 @@ class ManageRetreatCashPayments extends Page implements HasTable
                     }),
                 TextColumn::make('participant.preuve_paiement')
                     ->label('Preuve')
-                    ->formatStateUsing(fn (?string $state): string => filled($state) ? 'Voir' : '—')
+                    ->formatStateUsing(fn (?string $state, RetreatPayment $record): string => RetreatParticipantPaymentProof::hasViewableProof($record->participant) ? 'Voir' : '—')
                     ->url(fn (RetreatPayment $record): ?string => RetreatPaymentProofUrl::forParticipant($record->participant))
                     ->openUrlInNewTab()
                     ->color('primary'),
@@ -134,7 +135,7 @@ class ManageRetreatCashPayments extends Page implements HasTable
                     ->icon('heroicon-o-document-magnifying-glass')
                     ->url(fn (RetreatPayment $record): ?string => RetreatPaymentProofUrl::forParticipant($record->participant))
                     ->openUrlInNewTab()
-                    ->visible(fn (RetreatPayment $record): bool => filled($record->participant?->preuve_paiement)),
+                    ->visible(fn (RetreatPayment $record): bool => RetreatParticipantPaymentProof::hasViewableProof($record->participant)),
                 Action::make('valider_cash')
                     ->label('Valider')
                     ->icon('heroicon-o-check-circle')

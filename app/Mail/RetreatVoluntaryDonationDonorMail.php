@@ -3,9 +3,9 @@
 namespace App\Mail;
 
 use App\Models\RetreatVoluntaryDonation;
+use App\Support\CmpMailEnvelope;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -38,13 +38,7 @@ class RetreatVoluntaryDonationDonorMail extends Mailable
             default => "Confirmation de votre don — {$eventName}",
         };
 
-        return new Envelope(
-            subject: $subject,
-            from: new Address(
-                (string) config('mail.from.address'),
-                (string) config('mail.from.name')
-            ),
-        );
+        return CmpMailEnvelope::make($subject);
     }
 
     /**

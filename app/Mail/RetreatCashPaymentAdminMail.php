@@ -5,9 +5,9 @@ namespace App\Mail;
 use App\Models\ChurchEvent;
 use App\Models\RetreatParticipant;
 use App\Models\RetreatPayment;
+use App\Support\CmpMailEnvelope;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -27,12 +27,8 @@ class RetreatCashPaymentAdminMail extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(
-            subject: __('retraite.mail_admin_cash_subject', ['event' => $this->event->name]),
-            from: new Address(
-                (string) config('mail.from.address'),
-                (string) config('mail.from.name')
-            ),
+        return CmpMailEnvelope::make(
+            __('retraite.mail_admin_cash_subject', ['event' => $this->event->name])
         );
     }
 

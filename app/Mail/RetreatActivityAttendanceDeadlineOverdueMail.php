@@ -3,11 +3,11 @@
 namespace App\Mail;
 
 use App\Models\RetreatActivityPlan;
+use App\Support\CmpMailEnvelope;
 use App\Support\RetreatMailUrl;
 use Carbon\CarbonInterface;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -26,14 +26,10 @@ class RetreatActivityAttendanceDeadlineOverdueMail extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(
-            subject: __('retraite.mail_attendance_overdue_subject', [
+        return CmpMailEnvelope::make(
+            __('retraite.mail_attendance_overdue_subject', [
                 'activity' => $this->activityPlan->title,
-            ]),
-            from: new Address(
-                (string) config('mail.from.address'),
-                (string) config('mail.from.name')
-            ),
+            ])
         );
     }
 

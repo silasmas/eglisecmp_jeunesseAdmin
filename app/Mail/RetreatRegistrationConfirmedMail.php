@@ -8,9 +8,9 @@ use App\Models\RetreatPayment;
 use App\Support\RetreatMailUrl;
 use App\Support\ChurchEventParticipantDocuments;
 use App\Support\RetreatPlacementVisibility;
+use App\Support\CmpMailEnvelope;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -28,12 +28,8 @@ class RetreatRegistrationConfirmedMail extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(
-            subject: __('retraite.mail_registration_subject', ['event' => $this->event->name]),
-            from: new Address(
-                (string) config('mail.from.address'),
-                (string) config('mail.from.name')
-            ),
+        return CmpMailEnvelope::make(
+            __('retraite.mail_registration_subject', ['event' => $this->event->name])
         );
     }
 

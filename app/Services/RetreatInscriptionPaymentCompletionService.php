@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\RetreatPayment;
+use App\Support\RetreatParticipantPaymentProof;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -37,7 +38,9 @@ class RetreatInscriptionPaymentCompletionService
             $payment->participant?->update([
                 'paiement_valide' => true,
                 'registration_status' => 'completed',
-                'preuve_paiement' => $payment->provider_reference ?? $payment->reference,
+                'preuve_paiement' => $payment->participant
+                    ? RetreatParticipantPaymentProof::resolveAfterPayment($payment->participant, $payment)
+                    : null,
             ]);
         });
 

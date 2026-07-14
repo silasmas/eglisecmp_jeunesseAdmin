@@ -18,6 +18,15 @@ return [
     'mail_button_billet' => 'Voir mon billet',
     'mail_footer' => 'Merci de conserver cet e-mail. En cas de question, contactez le département de la Jeunesse.',
 
+    'mail_otp_parent_subject' => 'Jeunesse CMP — Code de vérification parent/tuteur',
+    'mail_otp_parent_heading' => 'Vérification parent ou tuteur',
+    'mail_otp_parent_intro' => 'Utilisez le code ci-dessous pour confirmer l’adresse e-mail saisie lors de l’inscription à la retraite des jeunes.',
+    'mail_otp_worker_subject' => 'Jeunesse CMP — Code portail encadreur',
+    'mail_otp_worker_heading' => 'Accès portail de vérification',
+    'mail_otp_worker_intro' => 'Voici votre code de vérification pour accéder au portail encadreur de la retraite des jeunes CMP.',
+    'mail_otp_expires' => 'Ce code expire dans **:minutes** minute(s).',
+    'mail_assignment_confirmation' => 'Cette opération d’affectation a bien été enregistrée dans le système d’administration.',
+
     'mail_admin_cash_subject' => 'Paiement cash à valider — :event',
     'mail_admin_cash_heading' => 'Nouvelle preuve de paiement en espèces',
     'mail_admin_cash_intro' => '**:name** vient de soumettre une preuve de paiement cash pour **:event**.',

@@ -5,9 +5,9 @@ namespace App\Mail;
 use App\Models\RetreatParticipant;
 use App\Models\RetreatPayment;
 use App\Models\RetreatPaymentFailureAlert;
+use App\Support\CmpMailEnvelope;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -39,15 +39,11 @@ class RetreatPaymentFailureMail extends Mailable
             ?? $this->participant?->event?->name
             ?? 'Retraite';
 
-        return new Envelope(
-            subject: __('retraite.mail_payment_failure_subject', [
+        return CmpMailEnvelope::make(
+            __('retraite.mail_payment_failure_subject', [
                 'event' => $eventName,
                 'reference' => $this->alert->reference,
-            ]),
-            from: new Address(
-                (string) config('mail.from.address'),
-                (string) config('mail.from.name')
-            ),
+            ])
         );
     }
 

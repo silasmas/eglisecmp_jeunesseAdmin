@@ -1,0 +1,365 @@
+/* Page billet participant — style prototype retraite-jcmp-inscription */
+
+:root {
+  --billet-ink: #25191b;
+  --billet-muted: #6f6667;
+  --billet-accent: #b7792f;
+  --billet-accent-light: #f4e9da;
+  --billet-danger: #c62828;
+  --billet-bg: #f6f4f1;
+  --billet-paper: #fff;
+  --billet-border: #e6e0da;
+  --billet-primary: #7b1d3e;
+}
+
+* { box-sizing: border-box; }
+
+body.billet-page {
+  margin: 0;
+  color: var(--billet-ink);
+  background:
+    linear-gradient(180deg, rgba(246, 244, 241, 0.76), var(--billet-bg) 22rem),
+    var(--billet-bg);
+  font-family: Poppins, ui-sans-serif, system-ui, sans-serif;
+}
+
+.billet-hero {
+  padding: 2.5rem 1.5rem 1.5rem;
+  text-align: center;
+}
+
+.billet-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.75rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  background: var(--billet-accent-light);
+  color: var(--billet-accent);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.billet-hero h1 {
+  margin: 0 0 0.35rem;
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  line-height: 1.1;
+}
+
+.billet-hero h1 span { color: var(--billet-primary); }
+
+.billet-hero-sub {
+  margin: 0;
+  color: var(--billet-muted);
+  font-size: 0.95rem;
+}
+
+.billet-shell {
+  width: min(980px, calc(100% - 2rem));
+  margin: 0 auto 2.5rem;
+}
+
+.billet-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.billet-tab {
+  flex: 1 1 auto;
+  min-width: 140px;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--billet-border);
+  border-radius: 12px;
+  background: var(--billet-paper);
+  color: var(--billet-ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.billet-tab.is-active {
+  border-color: var(--billet-primary);
+  background: var(--billet-primary);
+  color: #fff;
+}
+
+.billet-panel {
+  display: none;
+}
+
+.billet-panel.is-active {
+  display: block;
+}
+
+.billet-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.65rem;
+  margin: 0 0 1.25rem;
+}
+
+.billet-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 42px;
+  padding: 0 1rem;
+  border: 1px solid var(--billet-border);
+  border-radius: 10px;
+  background: var(--billet-paper);
+  color: var(--billet-ink);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.billet-btn-primary {
+  border-color: var(--billet-primary);
+  background: var(--billet-primary);
+  color: #fff;
+}
+
+.billet-btn-outline {
+  color: var(--billet-primary);
+}
+
+.ticket-preview-stage {
+  padding: 0.5rem 0 1rem;
+}
+
+.retreat-ticket-shell {
+  width: min(100%, 980px);
+  margin: 0 auto;
+  filter: drop-shadow(0 24px 70px rgba(26, 16, 24, 0.22));
+}
+
+.retreat-ticket {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1603 / 761;
+  overflow: hidden;
+  background: #21171a;
+}
+
+.retreat-ticket-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.retreat-ticket-info {
+  position: absolute;
+  left: 9.1%;
+  bottom: 6.7%;
+  width: 52.5%;
+  min-height: 8.8%;
+  display: grid;
+  grid-template-columns: minmax(0, 1.75fr) minmax(0, 0.95fr) minmax(0, 1.05fr);
+  gap: 4.2%;
+  align-items: start;
+  z-index: 2;
+  color: #fff;
+}
+
+.retreat-ticket-info > div { min-width: 0; }
+
+.retreat-ticket-label {
+  display: block;
+  margin-bottom: 0.12rem;
+  color: rgba(255, 255, 255, 0.56);
+  font-size: clamp(0.34rem, 0.78vw, 0.58rem);
+  font-weight: 800;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.retreat-ticket-info strong {
+  display: block;
+  color: #fff;
+  font-size: var(--ticket-fit-size, clamp(0.48rem, 1.18vw, 0.88rem));
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.retreat-ticket-info > div:nth-child(2) strong { color: #f97316; }
+
+.retreat-ticket-qr {
+  position: absolute;
+  right: 4.95%;
+  top: 28.4%;
+  width: 19.35%;
+  aspect-ratio: 1;
+  z-index: 2;
+  padding: 1%;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.22);
+}
+
+.retreat-ticket-qr-code {
+  position: absolute;
+  right: 4.55%;
+  top: 73.6%;
+  width: 20.55%;
+  z-index: 2;
+  color: #fff;
+  text-align: center;
+  font-size: clamp(0.48rem, 1.1vw, 0.88rem);
+  font-weight: 800;
+  letter-spacing: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.billet-meta {
+  margin-top: 1rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--billet-border);
+  border-radius: 14px;
+  background: var(--billet-paper);
+  color: var(--billet-muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.billet-doc {
+  padding: 1.5rem;
+  border: 1px solid var(--billet-border);
+  border-radius: 16px;
+  background: var(--billet-paper);
+}
+
+.billet-doc-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.billet-doc-toolbar h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--billet-primary);
+}
+
+.billet-doc-preamble {
+  margin: 0 0 1.25rem;
+  padding: 0.85rem 1rem;
+  border-left: 3px solid var(--billet-accent);
+  color: var(--billet-muted);
+  background: #faf8f5;
+  line-height: 1.6;
+}
+
+.billet-article {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--billet-border);
+}
+
+.billet-article:last-child { border-bottom: 0; }
+
+.billet-article-num {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: var(--billet-accent-light);
+  color: var(--billet-accent);
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.billet-article h3 {
+  margin: 0 0 0.45rem;
+  font-size: 1rem;
+}
+
+.billet-article p {
+  margin: 0 0 0.45rem;
+  line-height: 1.6;
+  color: var(--billet-muted);
+}
+
+.billet-article ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--billet-muted);
+  line-height: 1.55;
+}
+
+.billet-items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.billet-items-grid li {
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--billet-border);
+  border-radius: 12px;
+  background: #faf8f5;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.billet-items-grid.is-danger li {
+  border-color: #f3c4c4;
+  background: #fff5f5;
+  color: #8b1e1e;
+}
+
+.billet-section-title {
+  margin: 1.5rem 0 0.75rem;
+  font-size: 1.05rem;
+  color: var(--billet-primary);
+}
+
+.billet-notice {
+  margin-top: 1.25rem;
+  padding: 1rem;
+  border-radius: 12px;
+  background: #fff8eb;
+  border: 1px solid #f0d9a8;
+}
+
+.billet-notice ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1.1rem;
+  line-height: 1.55;
+}
+
+@media (max-width: 720px) {
+  .billet-shell { width: calc(100% - 1rem); }
+  .billet-tab { min-width: 100%; }
+}
+
+@media print {
+  body.billet-page { background: #fff; }
+  .billet-tabs,
+  .billet-actions,
+  .billet-hero,
+  .cmp-portail-footer { display: none !important; }
+  .billet-panel { display: none !important; }
+  .billet-panel[data-panel="billet"] { display: block !important; }
+}
