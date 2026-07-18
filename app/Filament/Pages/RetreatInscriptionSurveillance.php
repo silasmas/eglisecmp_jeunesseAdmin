@@ -6,6 +6,7 @@ use App\Filament\Resources\RetreatParticipants\RetreatParticipantResource;
 use App\Models\RetreatParticipant;
 use App\Services\RetreatInscriptionFunnelService;
 use BackedEnum;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Actions\Action;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\EmbeddedTable;
@@ -16,7 +17,6 @@ use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
 /**
@@ -24,6 +24,7 @@ use UnitEnum;
  */
 class RetreatInscriptionSurveillance extends Page implements HasTable
 {
+    use HasPageShield;
     use InteractsWithTable {
         makeTable as makeBaseTable;
     }
@@ -39,15 +40,6 @@ class RetreatInscriptionSurveillance extends Page implements HasTable
     protected static ?int $navigationSort = 11;
 
     protected static ?string $slug = 'surveillance-inscriptions';
-
-  /**
-   * @param array<string, mixed> $parameters Paramètres de route
-   * @return bool Accès si l’utilisateur peut voir les participants
-   */
-    public static function canAccess(array $parameters = []): bool
-    {
-        return Auth::check();
-    }
 
   /**
    * Badge : nombre de parcours non finalisés.

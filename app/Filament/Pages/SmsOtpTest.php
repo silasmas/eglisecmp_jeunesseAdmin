@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Filament\Resources\SmsMessageLogs\SmsMessageLogResource;
 use App\Services\KeccelSmsService;
 use BackedEnum;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -14,6 +15,8 @@ use UnitEnum;
 
 class SmsOtpTest extends Page
 {
+    use HasPageShield;
+
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-chat-bubble-left-right';
 
     protected static ?string $navigationLabel = 'Test OTP SMS';

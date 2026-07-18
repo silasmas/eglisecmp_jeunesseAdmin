@@ -49,6 +49,24 @@ final class ShieldPermissionNames
             'RetreatAtelier',
             'RetreatActivityPlan',
             'RetreatActivityAttendance',
+            'SmsOperator',
+            'SmsMessageLog',
+            'RetreatVoluntaryDonation',
+            'ApiDocs',
+        ];
+    }
+
+    /**
+     * Pages Filament contrôlées par Shield (préfixe View:).
+     *
+     * @return list<string>
+     */
+    public static function filamentPages(): array
+    {
+        return [
+            'SmsOtpTest',
+            'RetreatInscriptionSurveillance',
+            'MyWatchesPage',
         ];
     }
 
@@ -61,7 +79,6 @@ final class ShieldPermissionNames
     {
         return [
             'View:MediaManager',
-            'View:MyWatchesPage',
         ];
     }
 
@@ -76,6 +93,10 @@ final class ShieldPermissionNames
             foreach (self::policyMethods() as $method) {
                 $names[] = "{$method}:{$resource}";
             }
+        }
+
+        foreach (self::filamentPages() as $page) {
+            $names[] = "View:{$page}";
         }
 
         return $names;

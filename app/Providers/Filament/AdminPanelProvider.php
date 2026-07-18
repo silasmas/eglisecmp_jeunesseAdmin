@@ -108,6 +108,7 @@ class AdminPanelProvider extends PanelProvider
                     ->placeholder('Rechercher dans l\'administration...')
                     ->resultLimitPerCategory(8),
                 FilamentRecordWatcherPlugin::make()
+                    ->registerMyWatchesPage(false)
                     ->navigationGroup('Notifications')
                     ->navigationIcon('heroicon-o-bell-alert'),
                 TabbedPlugin::make()

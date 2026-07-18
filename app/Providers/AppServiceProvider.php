@@ -10,13 +10,16 @@ use App\Observers\RetreatAtelierObserver;
 use App\Observers\RetreatChambreObserver;
 use App\Observers\RetreatParticipantObserver;
 use App\Observers\RetreatPaymentObserver;
+use App\Policies\ApiDocsPolicy;
 use App\Services\StoragePathService;
 use App\Support\RetreatMailUrl;
 use Filament\Forms\Components\FileUpload;
 use Filament\Support\Facades\FilamentView;
 use Filament\View\PanelsRenderHook;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
+use ZPMLabs\FilamentApiDocsBuilder\Models\ApiDocs;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -33,6 +36,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Gate::policy(ApiDocs::class, ApiDocsPolicy::class);
+
         $publicBaseUrl = RetreatMailUrl::base();
         if ($publicBaseUrl !== '') {
             URL::forceRootUrl($publicBaseUrl);
