@@ -137,13 +137,13 @@ class FlexPayTestService
         $token = (string) config('services.flexpay.token');
         $url = (string) config('services.flexpay.gateway_card');
         $merchant = (string) config('services.flexpay.merchant');
-        $appUrl = rtrim((string) config('app.url'), '/');
+        $publicBase = RetreatMailUrl::base();
 
         if ($token === '' || $url === '' || $merchant === '') {
             return $this->configurationError('card');
         }
 
-        $baseRedirectUrl = "{$appUrl}/inscription-retraite/paiement-carte/{$reference}/{$amount}/{$currency}";
+        $baseRedirectUrl = "{$publicBase}/inscription-retraite/paiement-carte/{$reference}/{$amount}/{$currency}";
 
         $body = [
             'authorization' => 'Bearer '.$token,
@@ -156,7 +156,7 @@ class FlexPayTestService
             'approve_url' => "{$baseRedirectUrl}/success",
             'cancel_url' => "{$baseRedirectUrl}/cancel",
             'decline_url' => "{$baseRedirectUrl}/decline",
-            'home_url' => "{$appUrl}/",
+            'home_url' => RetreatMailUrl::portal(),
         ];
 
         $result = $this->executeRequest(
