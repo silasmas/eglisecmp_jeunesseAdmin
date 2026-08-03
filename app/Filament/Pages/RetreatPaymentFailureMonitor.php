@@ -3,14 +3,16 @@
 namespace App\Filament\Pages;
 
 use App\Filament\Resources\RetreatPayments\RetreatPaymentResource;
-use App\Models\RetreatPaymentFailureAlert;
-use App\Models\User;
+use App\Filament\Support\RetreatInscriptionResumeFilamentAction;
 use App\Filament\Support\RetreatPaymentFlexPayFilamentActions;
+use App\Models\RetreatPaymentFailureAlert;
+use App\Support\RetreatInscriptionResumeUrl;
+use App\Models\User;
+use App\Support\RetreatPaymentFailureAlertsSchema;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use App\Support\RetreatPaymentFailureAlertsSchema;
 use Filament\Schemas\Components\EmbeddedTable;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
@@ -129,8 +131,25 @@ class RetreatPaymentFailureMonitor extends Page implements HasTable
                     ->placeholder('—'),
                 TextColumn::make('reference')
                     ->label('Référence')
-                    ->searchable()
-                    ->copyable(),
+                    ->searchable(),
+                TextColumn::make('resume_payment_url')
+                    ->label('Lien reprise')
+                    ->state(function (RetreatPaymentFailureAlert $record): ?string {
+                        if ($record->payment === null) {
+                            return null;
+                        }
+
+                        return RetreatInscriptionResumeUrl::canResumeForPayment($record->payment)
+                            ? RetreatInscriptionResumeUrl::urlForPayment($record->payment)
+                            : null;
+                    })
+                    ->copyable()
+                    ->copyableState(fn (?string $state): ?string => $state)
+                    ->copyMessage('Lien copié')
+                    ->limit(36)
+                    ->tooltip(fn (?string $state): ?string => $state)
+                    ->placeholder('—')
+                    ->toggleable(),
                 TextColumn::make('channel')
                     ->label('Canal')
                     ->badge()
@@ -185,17 +204,19 @@ class RetreatPaymentFailureMonitor extends Page implements HasTable
                     ]),
             ])
             ->recordActions([
-                Action::make('resumePaymentLink')
-                    ->label('Lien reprise')
-                    ->icon('heroicon-o-link')
-                    ->color('primary')
-                    ->visible(fn (RetreatPaymentFailureAlert $record): bool => $record->payment !== null
-                        && \App\Support\RetreatInscriptionResumeUrl::canResumeForPayment($record->payment))
-                    ->url(fn (RetreatPaymentFailureAlert $record): ?string => $record->payment_id
-                        ? RetreatPaymentResource::getUrl('view', ['record' => $record->payment_id])
-                        : null)
-                    ->openUrlInNewTab()
-                    ->tooltip('Ouvrir le paiement pour copier le lien de reprise'),
+                RetreatInscriptionResumeFilamentAction::makeCopyModal(
+                    name: 'resumePaymentLink',
+                    label: 'Lien reprise',
+                    resolveUrl: fn (RetreatPaymentFailureAlert $record): ?string => $record->payment !== null
+                        ? RetreatInscriptionResumeUrl::urlForPayment($record->payment)
+                        : null,
+                    visible: fn (RetreatPaymentFailureAlert $record): bool => $record->payment !== null
+                        && RetreatInscriptionResumeUrl::canResumeForPayment($record->payment),
+                    modalDescription: fn (RetreatPaymentFailureAlert $record): string => sprintf(
+                        'Envoyez ce lien complet à %s pour qu’il ou elle reprenne l’inscription à l’étape paiement.',
+                        $record->participant?->full_name ?? 'le participant',
+                    ),
+                ),
                 Action::make('voir_paiement')
                     ->label('Paiement')
                     ->icon('heroicon-o-banknotes')

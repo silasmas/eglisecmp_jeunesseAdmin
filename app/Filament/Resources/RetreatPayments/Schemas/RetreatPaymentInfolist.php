@@ -31,6 +31,7 @@ class RetreatPaymentInfolist
                             ->placeholder('—')
                             ->copyable()
                             ->copyMessage('Lien copié')
+                            ->copyableState(fn (?string $state): ?string => filled($state) ? $state : null)
                             ->state(fn (RetreatPayment $record): ?string => RetreatInscriptionResumeUrl::urlForPayment($record))
                             ->url(fn (RetreatPayment $record): ?string => RetreatInscriptionResumeUrl::urlForPayment($record))
                             ->openUrlInNewTab()

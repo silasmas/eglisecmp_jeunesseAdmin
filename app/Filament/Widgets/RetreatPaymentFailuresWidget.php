@@ -5,6 +5,7 @@ namespace App\Filament\Widgets;
 use App\Filament\Pages\RetreatPaymentFailureMonitor;
 use App\Models\RetreatPaymentFailureAlert;
 use App\Models\User;
+use App\Support\RetreatInscriptionResumeUrl;
 use App\Support\RetreatPaymentFailureAlertsSchema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -72,8 +73,24 @@ class RetreatPaymentFailuresWidget extends TableWidget
                     ->label('Participant')
                     ->placeholder('—'),
                 TextColumn::make('reference')
-                    ->label('Référence')
-                    ->copyable(),
+                    ->label('Référence'),
+                TextColumn::make('resume_payment_url')
+                    ->label('Lien reprise')
+                    ->state(function (RetreatPaymentFailureAlert $record): ?string {
+                        if ($record->payment === null) {
+                            return null;
+                        }
+
+                        return RetreatInscriptionResumeUrl::canResumeForPayment($record->payment)
+                            ? RetreatInscriptionResumeUrl::urlForPayment($record->payment)
+                            : null;
+                    })
+                    ->copyable()
+                    ->copyableState(fn (?string $state): ?string => $state)
+                    ->copyMessage('Lien copié')
+                    ->limit(32)
+                    ->tooltip(fn (?string $state): ?string => $state)
+                    ->placeholder('—'),
                 TextColumn::make('channel')
                     ->label('Canal')
                     ->badge()

@@ -77,6 +77,7 @@ class RetreatParticipantInfolist
                             ->placeholder('—')
                             ->copyable()
                             ->copyMessage('Lien copié')
+                            ->copyableState(fn (?string $state): ?string => filled($state) ? $state : null)
                             ->state(fn (RetreatParticipant $record): ?string => RetreatInscriptionResumeUrl::urlForParticipant($record))
                             ->url(fn (RetreatParticipant $record): ?string => RetreatInscriptionResumeUrl::urlForParticipant($record))
                             ->openUrlInNewTab()
