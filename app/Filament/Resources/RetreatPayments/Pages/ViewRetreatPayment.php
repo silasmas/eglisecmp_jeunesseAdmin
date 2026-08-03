@@ -4,6 +4,7 @@ namespace App\Filament\Resources\RetreatPayments\Pages;
 
 use App\Filament\Resources\RetreatPayments\RetreatPaymentResource;
 use App\Filament\Support\RetreatPaymentFlexPayFilamentActions;
+use App\Filament\Support\RetreatInscriptionResumeFilamentAction;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
 
@@ -20,6 +21,7 @@ class ViewRetreatPayment extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            RetreatInscriptionResumeFilamentAction::make(),
             RetreatPaymentFlexPayFilamentActions::recheckAction(),
             RetreatPaymentFlexPayFilamentActions::relaunchAction(),
             EditAction::make(),

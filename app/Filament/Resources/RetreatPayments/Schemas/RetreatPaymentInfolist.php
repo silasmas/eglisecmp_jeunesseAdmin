@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\RetreatPayments\Schemas;
 
+use App\Models\RetreatPayment;
+use App\Support\RetreatInscriptionResumeUrl;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
@@ -24,6 +26,18 @@ class RetreatPaymentInfolist
                         TextEntry::make('etat')
                             ->label('Etat')
                             ->badge(),
+                        TextEntry::make('resume_inscription_url')
+                            ->label('Lien reprise inscription')
+                            ->placeholder('—')
+                            ->copyable()
+                            ->copyMessage('Lien copié')
+                            ->state(fn (RetreatPayment $record): ?string => RetreatInscriptionResumeUrl::urlForPayment($record))
+                            ->url(fn (RetreatPayment $record): ?string => RetreatInscriptionResumeUrl::urlForPayment($record))
+                            ->openUrlInNewTab()
+                            ->color('primary')
+                            ->formatStateUsing(fn (?string $state): string => filled($state) ? 'Copier / ouvrir le lien de reprise' : '—')
+                            ->columnSpanFull()
+                            ->visible(fn (RetreatPayment $record): bool => RetreatInscriptionResumeUrl::canResumeForPayment($record)),
                     ])
                     ->columns(2),
                 Section::make('Montants')

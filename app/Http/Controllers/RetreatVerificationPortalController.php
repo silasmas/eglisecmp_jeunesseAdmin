@@ -14,6 +14,7 @@ use App\Services\RetreatActivityAtelierReportService;
 use App\Services\RetreatAtelierAttendancePanelService;
 use App\Services\RetreatAtelierAuthorizationService;
 use App\Services\RetreatParticipantRegistrationService;
+use App\Support\RetreatInscriptionResumeUrl;
 use App\Support\RetreatPublicPortalGate;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -807,9 +808,7 @@ class RetreatVerificationPortalController extends Controller
         $status = $participant->paiement_valide
             ? 'completed'
             : (($participant->registration_status === 'pending_payment' || $payment?->etat === 'en_cours') ? 'pending' : ($participant->registration_status ?? 'pending'));
-        $canResumePayment = ! $participant->paiement_valide
-            && in_array($status, ['pending', 'pending_payment'], true)
-            && filled($payment?->reference);
+        $canResumePayment = $payment !== null && RetreatInscriptionResumeUrl::canResumeForPayment($payment);
 
         return [
             'full_name' => $participant->full_name,
@@ -834,8 +833,8 @@ class RetreatVerificationPortalController extends Controller
                 ? route('retraite.inscription.justificatif', ['token' => $participant->download_token])
                 : null,
             'can_resume_payment' => $canResumePayment,
-            'resume_payment_url' => $canResumePayment
-                ? route('retraite.inscription', ['resume_payment_ref' => $payment?->reference])
+            'resume_payment_url' => $canResumePayment && $payment
+                ? RetreatInscriptionResumeUrl::urlForPayment($payment)
                 : null,
         ];
     }

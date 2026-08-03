@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\RetreatPayments\Tables;
 
 use App\Filament\Resources\RetreatPayments\RetreatPaymentResource;
+use App\Filament\Support\RetreatInscriptionResumeFilamentAction;
 use App\Filament\Support\RetreatPaymentFlexPayFilamentActions;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -145,6 +146,7 @@ class RetreatPaymentsTable
                 ActionGroup::make([
                     ViewAction::make(),
                     EditAction::make(),
+                    RetreatInscriptionResumeFilamentAction::make(),
                     RetreatPaymentFlexPayFilamentActions::recheckAction(),
                     RetreatPaymentFlexPayFilamentActions::relaunchAction(),
                     WatchAction::make(),

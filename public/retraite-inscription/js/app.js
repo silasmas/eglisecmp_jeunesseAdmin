@@ -85,11 +85,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     const params = new URLSearchParams(window.location.search);
     const resumeRef = params.get('resume_payment_ref');
-    if (resumeRef && typeof resumeAfterCardPayment === 'function') {
-      await resumeAfterCardPayment(resumeRef);
+    if (resumeRef) {
+      window.__retraiteResumePaymentRef = resumeRef;
     }
   } catch (e) {
-    console.warn('Reprise paiement carte', e);
+    console.warn('Paramètre reprise paiement', e);
   }
 
   /* ─── Flux formulaire uniquement si un événement est ouvert ─── */
@@ -156,6 +156,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   initProofUpload();
   restoreState();
   updateStepper();
+
+  try {
+    const resumeRef = window.__retraiteResumePaymentRef;
+    if (resumeRef && typeof resumeAfterCardPayment === 'function') {
+      await resumeAfterCardPayment(resumeRef);
+      delete window.__retraiteResumePaymentRef;
+    }
+  } catch (e) {
+    console.warn('Reprise inscription paiement', e);
+  }
 
   if (typeof resumeInscriptionPaymentPollIfNeeded === 'function') {
     await resumeInscriptionPaymentPollIfNeeded();

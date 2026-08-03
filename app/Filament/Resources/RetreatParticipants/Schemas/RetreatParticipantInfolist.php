@@ -9,6 +9,7 @@ use App\Services\PublicStorageUrl;
 use App\Filament\Support\RetreatBilletPreviewFilamentAction;
 use App\Filament\Support\RetreatPaymentProofFilamentAction;
 use App\Support\RetreatBilletPageBuilder;
+use App\Support\RetreatInscriptionResumeUrl;
 use App\Support\RetreatParticipantPaymentProof;
 use App\Services\RetreatInscriptionFunnelService;
 use App\Support\AvatarFallback;
@@ -71,6 +72,18 @@ class RetreatParticipantInfolist
                                     ->label('Consulter')
                             ),
                         IconEntry::make('paiement_valide')->boolean(),
+                        TextEntry::make('resume_inscription_url')
+                            ->label('Lien reprise paiement')
+                            ->placeholder('—')
+                            ->copyable()
+                            ->copyMessage('Lien copié')
+                            ->state(fn (RetreatParticipant $record): ?string => RetreatInscriptionResumeUrl::urlForParticipant($record))
+                            ->url(fn (RetreatParticipant $record): ?string => RetreatInscriptionResumeUrl::urlForParticipant($record))
+                            ->openUrlInNewTab()
+                            ->color('primary')
+                            ->formatStateUsing(fn (?string $state): string => filled($state) ? 'Copier / ouvrir le lien de reprise' : '—')
+                            ->helperText('À envoyer au participant pour qu’il continue son inscription à l’étape paiement.')
+                            ->visible(fn (RetreatParticipant $record): bool => RetreatInscriptionResumeUrl::canResumeForParticipant($record)),
                         TextEntry::make('download_token')
                             ->label('Lien billet public')
                             ->placeholder('—')

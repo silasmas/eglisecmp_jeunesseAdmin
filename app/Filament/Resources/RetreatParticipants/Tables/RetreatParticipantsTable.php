@@ -16,6 +16,7 @@ use Filament\Forms\Components\Checkbox;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use App\Filament\Support\RetreatBilletPreviewFilamentAction;
+use App\Filament\Support\RetreatInscriptionResumeFilamentAction;
 use App\Filament\Support\RetreatParticipantDeletionActions;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
@@ -432,6 +433,7 @@ class RetreatParticipantsTable
                             RetreatBilletPreviewFilamentAction::make('preview_billet_modal'),
                         ]),
                     EditAction::make(),
+                    RetreatInscriptionResumeFilamentAction::make(),
                     WatchAction::make(),
                     UnwatchAction::make(),
                     Action::make('affecter_chambre')

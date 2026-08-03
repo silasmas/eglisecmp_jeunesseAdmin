@@ -185,6 +185,17 @@ class RetreatPaymentFailureMonitor extends Page implements HasTable
                     ]),
             ])
             ->recordActions([
+                Action::make('resumePaymentLink')
+                    ->label('Lien reprise')
+                    ->icon('heroicon-o-link')
+                    ->color('primary')
+                    ->visible(fn (RetreatPaymentFailureAlert $record): bool => $record->payment !== null
+                        && \App\Support\RetreatInscriptionResumeUrl::canResumeForPayment($record->payment))
+                    ->url(fn (RetreatPaymentFailureAlert $record): ?string => $record->payment_id
+                        ? RetreatPaymentResource::getUrl('view', ['record' => $record->payment_id])
+                        : null)
+                    ->openUrlInNewTab()
+                    ->tooltip('Ouvrir le paiement pour copier le lien de reprise'),
                 Action::make('voir_paiement')
                     ->label('Paiement')
                     ->icon('heroicon-o-banknotes')

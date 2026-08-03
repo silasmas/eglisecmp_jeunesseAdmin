@@ -1428,10 +1428,13 @@ async function resumeAfterCardPayment(reference) {
   }
 
   retraiteNotifyToast(
-    'Le paiement n’est pas encore enregistré comme encaissé. Patientez ou repassez à l’étape paiement.',
-    'warning'
+    participant && participant.full_name
+      ? `Bon retour ${participant.full_name} — reprenez votre paiement ci-dessous.`
+      : 'Reprenez votre paiement ci-dessous.',
+    'info'
   );
   if (typeof goToStep === 'function') goToStep(4);
+  if (typeof resetRetraiteUrlParams === 'function') resetRetraiteUrlParams();
 }
 
 /**
