@@ -71,4 +71,20 @@ class RetreatPaymentPolicy
     {
         return $authUser->can('Reorder:RetreatPayment');
     }
+
+    /**
+     * Vérifier le statut FlexPay d'un paiement en attente.
+     */
+    public function recheckFlexPay(AuthUser $authUser, RetreatPayment $retreatPayment): bool
+    {
+        return $authUser->can('Update:RetreatPayment');
+    }
+
+    /**
+     * Relancer une demande FlexPay pour un paiement non abouti.
+     */
+    public function relaunchFlexPay(AuthUser $authUser, RetreatPayment $retreatPayment): bool
+    {
+        return $authUser->can('Update:RetreatPayment');
+    }
 }

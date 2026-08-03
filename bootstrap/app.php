@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureBadgeStudioAccess;
 use App\Http\Middleware\EnsureSuperAdmin;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
@@ -24,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'super_admin' => EnsureSuperAdmin::class,
+            'badge_studio' => EnsureBadgeStudioAccess::class,
         ]);
 
         $middleware->redirectGuestsTo(fn (): string => url('/admin/login'));

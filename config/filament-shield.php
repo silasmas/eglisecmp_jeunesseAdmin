@@ -234,6 +234,7 @@ return [
 
     'custom_permissions' => [
         'View:MediaManager' => 'Mediatheque',
+        'View:BadgeStudio' => 'Studio badges participants',
     ],
 
     /*

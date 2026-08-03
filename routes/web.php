@@ -98,10 +98,10 @@ Route::get('/inscription-retraite/paiement-carte/{reference}/{amount}/{currency}
     ->whereIn('status', ['success', 'cancel', 'decline', 'failure', 'failed', 'error'])
     ->name('retraite.inscription.card-return');
 
-/** Studio badges participants (React + Vite, super_admin uniquement) */
+/** Studio badges participants (React + Vite, permission View:BadgeStudio) */
 Route::prefix('studio-badge')
     ->name('studio-badge.')
-    ->middleware(['auth', 'super_admin'])
+    ->middleware(['auth', 'badge_studio'])
     ->group(function (): void {
         Route::get('/', RetreatBadgeStudioController::class)->name('index');
         Route::get('api/participants', [RetreatBadgeStudioApiController::class, 'participants'])

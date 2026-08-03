@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\RetreatPayments\Tables;
 
 use App\Filament\Resources\RetreatPayments\RetreatPaymentResource;
+use App\Filament\Support\RetreatPaymentFlexPayFilamentActions;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
@@ -11,6 +12,7 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use TinusG\FilamentHoverImageColumn\HoverImageColumn;
 use Wezlo\FilamentRecordWatcher\Actions\UnwatchAction;
@@ -121,12 +123,30 @@ class RetreatPaymentsTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                SelectFilter::make('etat')
+                    ->label('État')
+                    ->options([
+                        'init' => 'Initialisé',
+                        'en_cours' => 'En attente',
+                        'echouee' => 'Échoué',
+                        'annulee' => 'Annulé',
+                        'payee' => 'Payé',
+                        'remboursee' => 'Remboursé',
+                    ]),
+                SelectFilter::make('channel')
+                    ->label('Canal')
+                    ->options([
+                        'mobile_money' => 'Mobile Money',
+                        'card' => 'Carte',
+                        'cash' => 'Espèces',
+                    ]),
             ])
             ->recordActions([
                 ActionGroup::make([
                     ViewAction::make(),
                     EditAction::make(),
+                    RetreatPaymentFlexPayFilamentActions::recheckAction(),
+                    RetreatPaymentFlexPayFilamentActions::relaunchAction(),
                     WatchAction::make(),
                     UnwatchAction::make(),
                     Action::make('open_in_new_tab')

@@ -79,6 +79,7 @@ final class ShieldPermissionNames
     {
         return [
             'View:MediaManager',
+            'View:BadgeStudio',
         ];
     }
 

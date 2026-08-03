@@ -16,6 +16,7 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
+use Filament\Navigation\NavigationItem;
 use Filament\Support\Assets\Css;
 use Filament\Support\Assets\Js;
 use Filament\Support\Colors\Color;
@@ -65,6 +66,15 @@ class AdminPanelProvider extends PanelProvider
             ->widgets([
                 AccountWidget::class,
                 RetreatPaymentFailuresWidget::class,
+            ])
+            ->navigationItems([
+                NavigationItem::make('Studio badges')
+                    ->url(fn (): string => route('studio-badge.index'))
+                    ->icon('heroicon-o-identification')
+                    ->group('Gestion pastorale')
+                    ->sort(12)
+                    ->visible(fn (): bool => auth()->user()?->can('View:BadgeStudio') ?? false)
+                    ->openUrlInNewTab(),
             ])
             ->middleware([
                 EncryptCookies::class,

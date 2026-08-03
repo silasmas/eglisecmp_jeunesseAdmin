@@ -2,8 +2,10 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Resources\RetreatPayments\RetreatPaymentResource;
 use App\Models\RetreatPaymentFailureAlert;
 use App\Models\User;
+use App\Filament\Support\RetreatPaymentFlexPayFilamentActions;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -183,6 +185,58 @@ class RetreatPaymentFailureMonitor extends Page implements HasTable
                     ]),
             ])
             ->recordActions([
+                Action::make('voir_paiement')
+                    ->label('Paiement')
+                    ->icon('heroicon-o-banknotes')
+                    ->url(fn (RetreatPaymentFailureAlert $record): ?string => $record->payment_id
+                        ? RetreatPaymentResource::getUrl('view', ['record' => $record->payment_id])
+                        : null)
+                    ->visible(fn (RetreatPaymentFailureAlert $record): bool => $record->payment_id !== null)
+                    ->openUrlInNewTab(),
+                Action::make('recheckFlexPay')
+                    ->label('Vérifier FlexPay')
+                    ->icon('heroicon-o-magnifying-glass')
+                    ->color('info')
+                    ->requiresConfirmation()
+                    ->visible(fn (RetreatPaymentFailureAlert $record): bool => $record->payment !== null
+                        && app(\App\Services\RetreatPaymentFlexPayService::class)->canRecheck($record->payment))
+                    ->action(function (RetreatPaymentFailureAlert $record): void {
+                        if ($record->payment === null) {
+                            return;
+                        }
+
+                        RetreatPaymentFlexPayFilamentActions::handleRecheck($record->payment);
+                    }),
+                Action::make('relaunchFlexPay')
+                    ->label('Relancer FlexPay')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->visible(fn (RetreatPaymentFailureAlert $record): bool => $record->payment !== null
+                        && app(\App\Services\RetreatPaymentFlexPayService::class)->canRelaunch($record->payment))
+                    ->form(function (RetreatPaymentFailureAlert $record): array {
+                        if ($record->payment === null || $record->payment->channel !== 'mobile_money') {
+                            return [];
+                        }
+
+                        return [
+                            \Filament\Forms\Components\TextInput::make('phone')
+                                ->label('Téléphone Mobile Money')
+                                ->placeholder('24389XXXXXXX')
+                                ->default($record->payment->phone)
+                                ->required(),
+                        ];
+                    })
+                    ->action(function (RetreatPaymentFailureAlert $record, array $data): void {
+                        if ($record->payment === null) {
+                            return;
+                        }
+
+                        RetreatPaymentFlexPayFilamentActions::handleRelaunch(
+                            $record->payment,
+                            isset($data['phone']) ? (string) $data['phone'] : null,
+                        );
+                    }),
                 Action::make('voir_participant')
                     ->label('Participant')
                     ->icon('heroicon-o-user')

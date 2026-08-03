@@ -39,9 +39,9 @@
         </span>
       </a>
       @auth
-        @if(auth()->user()->hasRole(config('filament-shield.super_admin.name', 'super_admin')))
+        @can('View:BadgeStudio')
           <a class="admin-link" href="{{ route('studio-badge.index') }}">Studio badges</a>
-        @endif
+        @endcan
       @endauth
       <a class="admin-link" href="{{ url('/admin') }}">Administration</a>
     </nav>
