@@ -26,7 +26,7 @@ class RetreatPaymentInfolist
                         TextEntry::make('etat')
                             ->label('Etat')
                             ->badge(),
-                        TextEntry::make('resume_inscription_url')
+                        TextEntry::make('resume_payment_link')
                             ->label('Lien reprise inscription')
                             ->placeholder('—')
                             ->copyable()
@@ -35,7 +35,7 @@ class RetreatPaymentInfolist
                             ->url(fn (RetreatPayment $record): ?string => RetreatInscriptionResumeUrl::urlForPayment($record))
                             ->openUrlInNewTab()
                             ->color('primary')
-                            ->formatStateUsing(fn (?string $state): string => filled($state) ? 'Copier / ouvrir le lien de reprise' : '—')
+                            ->wrap()
                             ->columnSpanFull()
                             ->visible(fn (RetreatPayment $record): bool => RetreatInscriptionResumeUrl::canResumeForPayment($record)),
                     ])

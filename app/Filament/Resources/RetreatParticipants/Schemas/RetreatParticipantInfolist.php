@@ -72,7 +72,7 @@ class RetreatParticipantInfolist
                                     ->label('Consulter')
                             ),
                         IconEntry::make('paiement_valide')->boolean(),
-                        TextEntry::make('resume_inscription_url')
+                        TextEntry::make('resume_payment_link')
                             ->label('Lien reprise paiement')
                             ->placeholder('—')
                             ->copyable()
@@ -81,7 +81,7 @@ class RetreatParticipantInfolist
                             ->url(fn (RetreatParticipant $record): ?string => RetreatInscriptionResumeUrl::urlForParticipant($record))
                             ->openUrlInNewTab()
                             ->color('primary')
-                            ->formatStateUsing(fn (?string $state): string => filled($state) ? 'Copier / ouvrir le lien de reprise' : '—')
+                            ->wrap()
                             ->helperText('À envoyer au participant pour qu’il continue son inscription à l’étape paiement.')
                             ->visible(fn (RetreatParticipant $record): bool => RetreatInscriptionResumeUrl::canResumeForParticipant($record)),
                         TextEntry::make('download_token')

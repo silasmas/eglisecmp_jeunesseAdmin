@@ -78,7 +78,7 @@ class RetreatInscriptionResumeUrl
             return null;
         }
 
-        return route('retraite.inscription', [
+        return RetreatMailUrl::route('retraite.inscription', [
             'resume_payment_ref' => $payment->reference,
         ]);
     }

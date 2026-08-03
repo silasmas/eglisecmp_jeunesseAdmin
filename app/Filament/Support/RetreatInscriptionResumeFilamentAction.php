@@ -7,6 +7,8 @@ use App\Models\RetreatPayment;
 use App\Support\RetreatInscriptionResumeUrl;
 use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
+use Livewire\Component;
 
 /**
  * Action Filament : afficher et copier le lien de reprise d'inscription (étape paiement).
@@ -26,19 +28,41 @@ class RetreatInscriptionResumeFilamentAction
             ->visible(fn (RetreatParticipant|RetreatPayment $record): bool => self::isVisible($record))
             ->modalHeading('Lien pour reprendre l’inscription')
             ->modalDescription(fn (RetreatParticipant|RetreatPayment $record): string => sprintf(
-                'Envoyez ce lien à %s (SMS, WhatsApp, e-mail…) pour qu’il ou elle reprenne directement à l’étape paiement.',
+                'Envoyez ce lien complet à %s (SMS, WhatsApp, e-mail…) pour qu’il ou elle reprenne directement à l’étape paiement.',
                 self::recipientLabel($record),
             ))
-            ->form(fn (RetreatParticipant|RetreatPayment $record): array => [
+            ->fillForm(fn (RetreatParticipant|RetreatPayment $record): array => [
+                'resume_url' => self::resolveUrl($record) ?? '',
+            ])
+            ->form([
                 TextInput::make('resume_url')
                     ->label('Lien à partager')
-                    ->default(fn (): ?string => self::resolveUrl($record))
                     ->readOnly()
                     ->copyable(copyMessage: 'Lien copié')
                     ->columnSpanFull(),
             ])
-            ->modalSubmitAction(false)
-            ->modalCancelActionLabel('Fermer')
+            ->modalSubmitActionLabel('Copier le lien')
+            ->action(function (array $data, Component $livewire): void {
+                $url = trim((string) ($data['resume_url'] ?? ''));
+
+                if ($url === '') {
+                    Notification::make()
+                        ->title('Lien indisponible')
+                        ->body('Impossible de générer le lien de reprise pour ce dossier.')
+                        ->danger()
+                        ->send();
+
+                    return;
+                }
+
+                $livewire->js('navigator.clipboard.writeText('.json_encode($url).')');
+
+                Notification::make()
+                    ->title('Lien copié')
+                    ->body('Collez-le dans un SMS, WhatsApp ou un e-mail.')
+                    ->success()
+                    ->send();
+            })
             ->extraModalFooterActions(fn (RetreatParticipant|RetreatPayment $record): array => [
                 Action::make('openResumeLink')
                     ->label('Ouvrir le lien')
