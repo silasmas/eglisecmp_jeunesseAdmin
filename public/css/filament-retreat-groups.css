@@ -33,6 +33,14 @@
   font-weight: 700;
 }
 
+.cmp-groups-hint {
+  margin: 0.45rem 0 0;
+  max-width: 42rem;
+  color: var(--cmp-muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
 .cmp-groups-actions {
   display: flex;
   flex-wrap: wrap;
@@ -86,6 +94,29 @@
   margin: 0.3rem 0 0;
   color: var(--cmp-text);
   font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.cmp-stat-card--alert {
+  border-color: #f0b4a4;
+  background: #fff7f4;
+}
+
+.cmp-stat-card--alert .cmp-stat-value {
+  color: #b91c1c;
+}
+
+.cmp-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  margin-left: 0.35rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: #fecaca;
+  color: #991b1b;
+  font-size: 0.68rem;
   font-weight: 700;
 }
 
@@ -164,6 +195,17 @@
   background: var(--cmp-surface);
   box-shadow: var(--cmp-shadow);
   overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.cmp-group-card.has-mismatch {
+  border-color: #f0b4a4;
+}
+
+.cmp-group-card.is-drop-target {
+  border-color: var(--cmp-primary);
+  background: #fff8f1;
+  box-shadow: 0 0 0 3px var(--cmp-primary-soft);
 }
 
 .cmp-group-card__header {
@@ -187,6 +229,13 @@
   font-size: 0.75rem;
 }
 
+.cmp-card-pills {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3rem;
+}
+
 .cmp-card-pill {
   display: inline-flex;
   align-items: center;
@@ -199,11 +248,21 @@
   white-space: nowrap;
 }
 
+.cmp-card-pill--danger {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
 .cmp-list {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
   padding: 0.7rem;
+  min-height: 3.5rem;
+}
+
+.cmp-drop-zone {
+  min-height: 4.5rem;
 }
 
 .cmp-list-item {
@@ -217,16 +276,77 @@
   padding: 0.45rem 0.6rem;
   color: var(--cmp-text);
   font-size: 0.8rem;
+  background: #fff;
 }
 
-.cmp-list-item:hover {
-  border-color: var(--cmp-primary);
+.cmp-list-item a {
+  color: inherit;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.cmp-list-item a:hover {
   color: var(--cmp-primary);
+}
+
+.cmp-list-item--draggable {
+  cursor: grab;
+}
+
+.cmp-list-item--draggable:active {
+  cursor: grabbing;
+  opacity: 0.75;
+}
+
+.cmp-list-item.is-mismatch {
+  border-color: #f0b4a4;
+  background: #fff7f4;
+}
+
+.cmp-list-item__main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.cmp-drag-handle {
+  color: #b0a39a;
+  font-size: 0.85rem;
+  line-height: 1;
+  user-select: none;
+}
+
+.cmp-age-chip {
+  color: var(--cmp-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.cmp-mismatch-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: #fecaca;
+  color: #991b1b;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.cmp-drop-empty {
+  border: 1px dashed var(--cmp-border);
+  border-radius: 0.6rem;
+  padding: 0.7rem;
+  text-align: center;
 }
 
 .cmp-list-meta {
   color: var(--cmp-muted);
   font-size: 0.72rem;
+  flex: 0 0 auto;
 }
 
 .cmp-tranche-title {

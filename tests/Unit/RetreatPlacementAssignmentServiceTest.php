@@ -60,4 +60,57 @@ class RetreatPlacementAssignmentServiceTest extends TestCase
         $this->assertFalse($this->service->matchesAtelierAgeRange($atelier, 18));
         $this->assertTrue($this->service->hasAgeRangeDefined($atelier));
     }
+
+    /**
+     * Un participant de 20 ans dans un atelier 30+ doit être signalé hors tranche,
+     * même avec un rôle « volontaire » (affichage / détection pure sur l'âge).
+     */
+    public function test_age_outside_atelier_range_ignores_role_exemption(): void
+    {
+        $atelier = new RetreatAtelier([
+            'numero' => 27,
+            'age_min' => 30,
+            'age_max' => null,
+        ]);
+
+        $participant = new RetreatParticipant([
+            'age' => 20,
+            'role_participant' => 'volontaire',
+        ]);
+
+        $this->assertTrue($this->service->isAgeOutsideAtelierRange($participant, $atelier));
+        $this->assertTrue($this->service->isParticipantEligibleForAtelier($participant, $atelier));
+    }
+
+    public function test_age_inside_open_ended_atelier_range(): void
+    {
+        $atelier = new RetreatAtelier([
+            'numero' => 27,
+            'age_min' => 30,
+            'age_max' => null,
+        ]);
+
+        $participant = new RetreatParticipant([
+            'age' => 32,
+            'role_participant' => 'participant',
+        ]);
+
+        $this->assertFalse($this->service->isAgeOutsideAtelierRange($participant, $atelier));
+        $this->assertTrue($this->service->isParticipantEligibleForAtelier($participant, $atelier));
+    }
+
+    public function test_legacy_atelier_number_mismatch_without_age_bounds(): void
+    {
+        $atelier = new RetreatAtelier([
+            'numero' => 27,
+            'age_min' => null,
+            'age_max' => null,
+        ]);
+
+        $tooYoung = new RetreatParticipant(['age' => 20, 'role_participant' => 'participant']);
+        $ok = new RetreatParticipant(['age' => 35, 'role_participant' => 'participant']);
+
+        $this->assertTrue($this->service->isAgeOutsideAtelierRange($tooYoung, $atelier));
+        $this->assertFalse($this->service->isAgeOutsideAtelierRange($ok, $atelier));
+    }
 }

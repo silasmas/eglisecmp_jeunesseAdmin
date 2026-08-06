@@ -227,7 +227,7 @@ class RetreatPlacementAssignmentService
         $atelier->loadMissing('participants');
 
         return $atelier->participants
-            ->filter(fn (RetreatParticipant $participant): bool => ! $this->isParticipantEligibleForAtelier($participant, $atelier))
+            ->filter(fn (RetreatParticipant $participant): bool => $this->isAgeOutsideAtelierRange($participant, $atelier))
             ->values();
     }
 
@@ -295,7 +295,7 @@ class RetreatPlacementAssignmentService
 
         $atelier->loadMissing('participants');
         $stats['skipped'] = $atelier->participants
-            ->filter(fn (RetreatParticipant $participant): bool => $this->isParticipantEligibleForAtelier($participant, $atelier))
+            ->filter(fn (RetreatParticipant $participant): bool => ! $this->isAgeOutsideAtelierRange($participant, $atelier))
             ->count();
 
         return $stats;
@@ -706,7 +706,24 @@ class RetreatPlacementAssignmentService
             return true;
         }
 
-        return $this->atelierMatchesParticipantAge($atelier, (int) $participant->age);
+        return ! $this->isAgeOutsideAtelierRange($participant, $atelier);
+    }
+
+    /**
+     * Indique si l'âge du participant est hors tranche de l'atelier (affichage / contrôle).
+     * Ne tient pas compte des exemptions de rôle (ouvrier, staff…) — utile pour signaler les mauvaises affectations.
+     *
+     * @param RetreatParticipant $participant Participant
+     * @param RetreatAtelier $atelier Atelier
+     * @return bool Vrai si hors tranche ou âge manquant
+     */
+    public function isAgeOutsideAtelierRange(RetreatParticipant $participant, RetreatAtelier $atelier): bool
+    {
+        if ($participant->age === null || $participant->age === '') {
+            return true;
+        }
+
+        return ! $this->atelierMatchesParticipantAge($atelier, (int) $participant->age);
     }
 
     /**

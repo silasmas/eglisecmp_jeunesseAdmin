@@ -1,19 +1,22 @@
 @php
+    use App\Models\RetreatAtelier;
     use App\Services\RetreatAtelierProposalService;
     use App\Services\RetreatPlacementAssignmentService;
 
     $record = $getRecord();
     $placement = app(RetreatPlacementAssignmentService::class);
     $proposals = app(RetreatAtelierProposalService::class);
-    $isAtelier = $record instanceof \App\Models\RetreatAtelier;
+    $isAtelier = $record instanceof RetreatAtelier;
     $atelierRange = $isAtelier ? $placement->describeAtelierAgeRange($record) : null;
 
-    $participants = method_exists($record, 'participants')
+    $participants = $isAtelier
         ? $record->participants()->with(['chambre', 'atelier'])->orderBy('nom')->orderBy('prenom')->get()
-        : collect();
+        : (method_exists($record, 'participants')
+            ? $record->participants()->with(['chambre', 'atelier'])->orderBy('nom')->orderBy('prenom')->get()
+            : collect());
 
     $mismatchCount = $isAtelier
-        ? $participants->filter(fn ($p) => ! $placement->isParticipantEligibleForAtelier($p, $record))->count()
+        ? $participants->filter(fn ($p) => $placement->isAgeOutsideAtelierRange($p, $record))->count()
         : 0;
 @endphp
 
@@ -56,7 +59,7 @@
             <tbody>
                 @foreach ($participants as $participant)
                     @php
-                        $isMismatch = $isAtelier && ! $placement->isParticipantEligibleForAtelier($participant, $record);
+                        $isMismatch = $isAtelier && $placement->isAgeOutsideAtelierRange($participant, $record);
                         $proposalSummary = $isMismatch
                             ? $proposals->summaryForParticipant($participant)
                             : null;
@@ -74,7 +77,7 @@
                         <td style="padding: .65rem; border-bottom: 1px solid #f3f4f6;">
                             @if ($isMismatch)
                                 <span style="display:inline-block;background:#fecaca;color:#991b1b;border-radius:999px;padding:.15rem .55rem;font-weight:700;font-size:.75rem;">
-                                    Hors tranche
+                                    Possibilité de réaffecter
                                 </span>
                             @else
                                 <span style="display:inline-block;background:#dcfce7;color:#166534;border-radius:999px;padding:.15rem .55rem;font-weight:600;font-size:.75rem;">
