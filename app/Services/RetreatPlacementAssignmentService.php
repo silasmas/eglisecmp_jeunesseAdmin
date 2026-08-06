@@ -217,24 +217,64 @@ class RetreatPlacementAssignmentService
     }
 
     /**
-     * Réaffecte les participants hors tranche d'un atelier donné.
+     * Participants d'un atelier dont l'âge ne correspond pas à la tranche.
      *
      * @param RetreatAtelier $atelier Atelier source
-     * @return array{reassigned: int, quarantined: int, skipped: int}
+     * @return Collection<int, RetreatParticipant>
      */
-    public function reassignMismatchedAtelierParticipants(RetreatAtelier $atelier): array
+    public function mismatchedParticipantsForAtelier(RetreatAtelier $atelier): Collection
     {
+        $atelier->loadMissing('participants');
+
+        return $atelier->participants
+            ->filter(fn (RetreatParticipant $participant): bool => ! $this->isParticipantEligibleForAtelier($participant, $atelier))
+            ->values();
+    }
+
+    /**
+     * Réaffecte intelligemment les participants hors tranche (atelier compatible),
+     * sinon les place en quarantaine pour validation admin.
+     *
+     * @param RetreatAtelier $atelier Atelier source
+     * @param bool $preferAutoReassign Tenter d'abord une réaffectation automatique
+     * @return array{reassigned: int, quarantined: int, skipped: int, proposals: list<array{participant_id: int, full_name: string, age: int|null, action: string, detail: string}>}
+     */
+    public function reassignMismatchedAtelierParticipants(
+        RetreatAtelier $atelier,
+        bool $preferAutoReassign = true,
+    ): array {
         $stats = [
             'reassigned' => 0,
             'quarantined' => 0,
             'skipped' => 0,
+            'proposals' => [],
         ];
 
-        $atelier->loadMissing('participants');
+        foreach ($this->mismatchedParticipantsForAtelier($atelier) as $participant) {
+            if ($preferAutoReassign) {
+                $result = $this->reassignParticipantAtelier($participant, true);
 
-        foreach ($atelier->participants as $participant) {
-            if ($this->isParticipantEligibleForAtelier($participant, $atelier)) {
-                $stats['skipped']++;
+                if ($result['success']) {
+                    $stats['reassigned']++;
+                    $stats['proposals'][] = [
+                        'participant_id' => (int) $participant->id,
+                        'full_name' => (string) $participant->full_name,
+                        'age' => $participant->age !== null ? (int) $participant->age : null,
+                        'action' => 'reassigned',
+                        'detail' => $result['message'],
+                    ];
+
+                    continue;
+                }
+
+                $stats['quarantined']++;
+                $stats['proposals'][] = [
+                    'participant_id' => (int) $participant->id,
+                    'full_name' => (string) $participant->full_name,
+                    'age' => $participant->age !== null ? (int) $participant->age : null,
+                    'action' => 'quarantined',
+                    'detail' => $result['message'],
+                ];
 
                 continue;
             }
@@ -244,9 +284,32 @@ class RetreatPlacementAssignmentService
                 sprintf('Retiré de l\'atelier n°%s : tranche d\'âge incompatible.', $atelier->numero)
             );
             $stats['quarantined']++;
+            $stats['proposals'][] = [
+                'participant_id' => (int) $participant->id,
+                'full_name' => (string) $participant->full_name,
+                'age' => $participant->age !== null ? (int) $participant->age : null,
+                'action' => 'quarantined',
+                'detail' => sprintf('Mis en quarantaine depuis l\'atelier n°%s.', $atelier->numero),
+            ];
         }
 
+        $atelier->loadMissing('participants');
+        $stats['skipped'] = $atelier->participants
+            ->filter(fn (RetreatParticipant $participant): bool => $this->isParticipantEligibleForAtelier($participant, $atelier))
+            ->count();
+
         return $stats;
+    }
+
+    /**
+     * Place uniquement en quarantaine les participants hors tranche (sans réaffectation auto).
+     *
+     * @param RetreatAtelier $atelier Atelier source
+     * @return array{reassigned: int, quarantined: int, skipped: int, proposals: list<array{participant_id: int, full_name: string, age: int|null, action: string, detail: string}>}
+     */
+    public function quarantineMismatchedAtelierParticipants(RetreatAtelier $atelier): array
+    {
+        return $this->reassignMismatchedAtelierParticipants($atelier, preferAutoReassign: false);
     }
 
     /**
@@ -430,11 +493,44 @@ class RetreatPlacementAssignmentService
      */
     public function countMismatchedParticipantsForAtelier(RetreatAtelier $atelier): int
     {
-        $atelier->loadMissing('participants');
+        return $this->mismatchedParticipantsForAtelier($atelier)->count();
+    }
 
-        return $atelier->participants
-            ->filter(fn (RetreatParticipant $participant): bool => ! $this->isParticipantEligibleForAtelier($participant, $atelier))
-            ->count();
+    /**
+     * Résumé court des hors tranche pour affichage admin (tooltip / colonne).
+     *
+     * @param RetreatAtelier $atelier Atelier
+     * @return string
+     */
+    public function summarizeMismatchedParticipantsForAtelier(RetreatAtelier $atelier): string
+    {
+        $mismatched = $this->mismatchedParticipantsForAtelier($atelier);
+
+        if ($mismatched->isEmpty()) {
+            return 'Aucune mauvaise affectation détectée.';
+        }
+
+        $range = $this->describeAtelierAgeRange($atelier);
+        $names = $mismatched
+            ->take(5)
+            ->map(fn (RetreatParticipant $participant): string => sprintf(
+                '%s (%s ans)',
+                $participant->full_name,
+                $participant->age ?? '?'
+            ))
+            ->implode(', ');
+
+        $more = $mismatched->count() > 5
+            ? sprintf('… +%d autre(s)', $mismatched->count() - 5)
+            : '';
+
+        return trim(sprintf(
+            '%d hors tranche %s : %s %s',
+            $mismatched->count(),
+            $range,
+            $names,
+            $more,
+        ));
     }
 
     /**

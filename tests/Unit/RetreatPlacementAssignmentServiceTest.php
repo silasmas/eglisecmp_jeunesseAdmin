@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Models\RetreatAtelier;
 use App\Models\RetreatParticipant;
+use App\Services\RetreatAtelierQuarantineNotifier;
 use App\Services\RetreatPlacementAssignmentService;
 use PHPUnit\Framework\TestCase;
 
@@ -14,7 +15,8 @@ class RetreatPlacementAssignmentServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->service = new RetreatPlacementAssignmentService;
+        $notifier = $this->createMock(RetreatAtelierQuarantineNotifier::class);
+        $this->service = new RetreatPlacementAssignmentService($notifier);
     }
 
     public function test_participant_type_from_hebergement(): void

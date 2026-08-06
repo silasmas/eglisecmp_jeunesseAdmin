@@ -385,17 +385,36 @@ function hidePaymentProgressPanel() {
   hidePaymentPollRelaunchUi();
 }
 
-function mountFlexpayProviders(providers) {
+/**
+ * Affiche les cartes opérateurs Mobile Money.
+ *
+ * @param {Array<{type?: string, code?: string, label?: string}>} providers Liste opérateurs
+ * @param {{requireChoice?: boolean}} [options] Si requireChoice, aucun opérateur n’est pré-sélectionné
+ * @return {void}
+ */
+function mountFlexpayProviders(providers, options) {
   const mount = document.getElementById('flexpayProvidersMount');
   if (!mount) return;
   mount.innerHTML = '';
-  App.selectedFlexpayType = providers && providers[0] ? String(providers[0].type) : null;
+  const requireChoice = !!(options && options.requireChoice);
+  const list = providers || [];
 
-  (providers || []).forEach((p, i) => {
+  if (!list.length) {
+    App.selectedFlexpayType = null;
+    mount.innerHTML =
+      '<p class="field-hint">Aucun opérateur Mobile Money n’est configuré pour cet événement. Utilisez la carte ou les espèces, ou contactez l’organisation.</p>';
+    return;
+  }
+
+  App.selectedFlexpayType = requireChoice ? null : String(list[0].type);
+
+  list.forEach((p, i) => {
     const card = document.createElement('button');
     card.type = 'button';
-    card.className = 'payment-card' + (i === 0 ? ' flexpay-prov-active' : '');
+    card.className = 'payment-card' + (!requireChoice && i === 0 ? ' flexpay-prov-active' : '');
     card.dataset.flexpayType = String(p.type);
+    card.setAttribute('role', 'option');
+    card.setAttribute('aria-selected', (!requireChoice && i === 0) ? 'true' : 'false');
     const code = (p.code || '').toLowerCase();
     const iconKind = code.includes('airtel') || code.includes('afri')
       ? 'airtel'
@@ -405,11 +424,15 @@ function mountFlexpayProviders(providers) {
     card.innerHTML = `
       <div class="payment-card-icon ${iconKind}"><i class="bi bi-phone"></i></div>
       <div class="payment-card-name">${escapeHtml(p.label || p.code || '')}</div>
-      <div class="payment-card-number">Paiement mobile · réseau ${escapeHtml(p.label || 'sélectionné')}</div>
+      <div class="payment-card-number">Touchez pour choisir · ${escapeHtml(p.label || 'opérateur')}</div>
     `;
     card.addEventListener('click', () => {
-      mount.querySelectorAll('.payment-card').forEach(c => c.classList.remove('flexpay-prov-active'));
+      mount.querySelectorAll('.payment-card').forEach(c => {
+        c.classList.remove('flexpay-prov-active');
+        c.setAttribute('aria-selected', 'false');
+      });
       card.classList.add('flexpay-prov-active');
+      card.setAttribute('aria-selected', 'true');
       App.selectedFlexpayType = card.dataset.flexpayType;
       syncFlexpayMsisdnFormatHint();
     });
@@ -466,6 +489,90 @@ function autoSelectSinglePaymentMode() {
   }
 }
 
+/**
+ * Affiche le bandeau d’explication pour une reprise de paiement.
+ *
+ * @param {{title?: string, body?: string, severity?: string}|null} hint
+ * @return {void}
+ */
+function showPaymentResumeGuide(hint) {
+  const panel = document.getElementById('paymentResumeGuide');
+  const titleEl = document.getElementById('paymentResumeGuideTitle');
+  const bodyEl = document.getElementById('paymentResumeGuideBody');
+  if (!panel || !titleEl || !bodyEl) {
+    return;
+  }
+  if (!hint || (!hint.title && !hint.body)) {
+    panel.classList.add('hidden');
+    return;
+  }
+  titleEl.textContent = hint.title || 'Reprise du paiement';
+  bodyEl.textContent = hint.body || '';
+  panel.classList.remove('hidden', 'info', 'warning', 'success', 'danger');
+  const severity = hint.severity === 'danger'
+    ? 'danger'
+    : hint.severity === 'success'
+      ? 'success'
+      : hint.severity === 'info'
+        ? 'info'
+        : 'warning';
+  panel.classList.add(severity);
+}
+
+/**
+ * Prépare l’UI paiement après un lien de reprise (opérateurs + mode suggéré).
+ *
+ * @return {void}
+ */
+function applyResumePaymentContext() {
+  const ctx = App.resumePaymentContext;
+  if (!ctx) {
+    showPaymentResumeGuide(null);
+    return;
+  }
+
+  showPaymentResumeGuide(ctx.hint || null);
+  togglePaymentMethodsShell(false);
+
+  const phoneIn = document.getElementById('flexpayPhoneInput');
+  if (phoneIn && ctx.phone) {
+    phoneIn.value = String(ctx.phone).replace(/\D+/g, '');
+  }
+
+  const preferred = ctx.suggestedChannel || 'mobile_money';
+  const radio = document.querySelector(`input[name="paymentMode"][value="${preferred}"]`)
+    || document.querySelector('input[name="paymentMode"][value="mobile_money"]');
+
+  if (radio) {
+    radio.checked = true;
+    togglePaymentSections(radio.value);
+  } else {
+    togglePaymentSections('mobile_money');
+  }
+
+  if (radio && radio.value === 'mobile_money') {
+    if (App.activeEvent) {
+      mountFlexpayProviders(App.activeEvent.flexpay_mobile_providers || [], { requireChoice: true });
+    }
+    const operatorsHint = document.getElementById('flexpayOperatorsHint');
+    if (operatorsHint) {
+      operatorsHint.innerHTML =
+        '<strong>Étape importante :</strong> sélectionnez votre opérateur ci-dessous avant de lancer le paiement.';
+    }
+    showPaymentBanner(
+      'Choisissez votre <strong>opérateur Mobile Money</strong>, vérifiez le numéro, puis cliquez sur « Déclencher le paiement ». Vous pouvez aussi basculer vers la carte ou les espèces.',
+      'info'
+    );
+  } else if (radio && radio.value === 'card') {
+    showPaymentBanner(
+      'Vous pouvez réessayer par carte, ou choisir Mobile Money (avec opérateur) / espèces si la carte a échoué.',
+      'info'
+    );
+  }
+
+  App.resumePaymentContext = null;
+}
+
 function onEnterPaymentStep() {
   const ev = App.activeEvent;
   const labelEl = document.getElementById('paymentAmountLabel');
@@ -474,12 +581,16 @@ function onEnterPaymentStep() {
     return;
   }
   labelEl.textContent = `${formatRetraiteMoney(ev.price_to_pay, ev.currency)} · frais d’inscription`;
-  mountFlexpayProviders(ev.flexpay_mobile_providers || []);
+  const preservePollUi = App.paymentPollActive === true && !!App.paymentReference;
+  const hasResumeContext = !!App.resumePaymentContext;
+  mountFlexpayProviders(ev.flexpay_mobile_providers || [], {
+    requireChoice: hasResumeContext,
+  });
   togglePaymentMethodsShell(App.sponsorshipVoucherApplied === true);
 
-  const preservePollUi = App.paymentPollActive === true && !!App.paymentReference;
-  if (!preservePollUi) {
+  if (!preservePollUi && !hasResumeContext) {
     hidePaymentProgressPanel();
+    showPaymentResumeGuide(null);
     const phoneIn = document.getElementById('flexpayPhoneInput');
     if (phoneIn && !phoneIn.value.trim()) {
       phoneIn.value = '';
@@ -490,6 +601,12 @@ function onEnterPaymentStep() {
     togglePaymentSections(null);
     autoSelectSinglePaymentMode();
   }
+
+  if (hasResumeContext && !preservePollUi) {
+    hidePaymentProgressPanel();
+    applyResumePaymentContext();
+  }
+
   if (typeof refreshPaidProceedToBadgePanel === 'function') {
     void refreshPaidProceedToBadgePanel();
   }
@@ -836,17 +953,68 @@ async function confirmRecapAndProceed() {
   }
 }
 
-function formatFlexPayInitError(message, providerKey) {
-  const raw = String(message || '').toLowerCase();
-  if (raw.includes('type') && (raw.includes('ne correspond') || raw.includes('correspond pas'))) {
-    const providers = (App.activeEvent && App.activeEvent.flexpay_mobile_providers) || [];
-    const selected = providers.find(
-      (p) => String(p.type) === String(providerKey) || String(p.code) === String(providerKey)
-    );
-    const label = selected ? selected.label : 'opérateur sélectionné';
-    return `FlexPay a refusé la requête (type API attendu : « 1 » pour Mobile Money). Réseau choisi : ${label}. Vérifiez le numéro 243… et que le marchand FlexPay a bien le Mobile Money activé.`;
+/**
+ * Traduit une erreur d’initiation paiement en message compréhensible pour le participant.
+ *
+ * @param {string|null|undefined} message Message API
+ * @param {string|null|undefined} providerKey Code opérateur choisi
+ * @param {'mobile_money'|'card'|string} channel Canal de paiement
+ * @return {string}
+ */
+function formatPaymentFailureForClient(message, providerKey, channel) {
+  const raw = String(message || '').trim();
+  const lower = raw.toLowerCase();
+  const providers = (App.activeEvent && App.activeEvent.flexpay_mobile_providers) || [];
+  const selected = providers.find(
+    (p) => String(p.type) === String(providerKey) || String(p.code) === String(providerKey)
+  );
+  const networkLabel = selected ? selected.label : null;
+
+  if (lower.includes('taille') && lower.includes('téléphone')) {
+    return 'Le numéro Mobile Money est incorrect (longueur). Utilisez 12 chiffres commençant par 243, sans « + » ni espace.';
   }
-  return message || 'Impossible de lancer le paiement. Vérifiez le numéro et le réseau choisi.';
+  if (lower.includes('commencer par 243') || lower.includes('commence par 243')) {
+    return 'Le numéro doit commencer par 243 (ex. 243891234567). Retirez le 0 initial du numéro national.';
+  }
+  if (lower.includes('ne correspond') || lower.includes('correspond pas')) {
+    return networkLabel
+      ? `Ce numéro ne correspond pas au format habituel de ${networkLabel}. Vérifiez l’opérateur choisi ou changez de réseau ci-dessus.`
+      : 'Ce numéro ne correspond pas à l’opérateur sélectionné. Choisissez le bon réseau puis réessayez.';
+  }
+  if (lower.includes('solde') || lower.includes('insuffisant')) {
+    return 'Solde insuffisant ou compte non autorisé. Rechargez votre compte Mobile Money, ou choisissez un autre mode de paiement.';
+  }
+  if (lower.includes('annul') || lower.includes('refusé') || lower.includes('refuse')) {
+    return 'La transaction a été annulée ou refusée. Relancez après confirmation sur le téléphone, ou changez d’opérateur / de mode de paiement.';
+  }
+  if (lower.includes('timeout') || lower.includes('délai') || lower.includes('delai') || lower.includes('expir')) {
+    return 'Le délai de confirmation a expiré. Relancez le paiement et validez rapidement l’invite sur votre téléphone.';
+  }
+  if (channel === 'card' && (lower.includes('transaction erreur') || lower.includes('traitement'))) {
+    return 'Le paiement par carte n’a pas pu être préparé pour le moment. Réessayez plus tard, ou utilisez Mobile Money (choisissez un opérateur) ou les espèces avec preuve.';
+  }
+  if (!raw) {
+    return channel === 'card'
+      ? 'Impossible de préparer le paiement par carte. Essayez Mobile Money (sélectionnez un opérateur) ou les espèces.'
+      : 'Impossible de lancer le paiement. Vérifiez l’opérateur, le numéro 243… puis réessayez.';
+  }
+  return raw.replace(/FlexPay\s*/gi, '').trim() || 'Le paiement n’a pas pu démarrer. Réessayez ou changez de mode.';
+}
+
+function formatFlexPayInitError(message, providerKey) {
+  return formatPaymentFailureForClient(message, providerKey, 'mobile_money');
+}
+
+/**
+ * Construit un message HTML d’échec de paiement pour le bandeau participant.
+ *
+ * @param {string} title Titre court
+ * @param {string} body Explication
+ * @param {string} nextSteps Conseils d’action
+ * @return {string}
+ */
+function buildPaymentFailureBannerHtml(title, body, nextSteps) {
+  return `<strong>${title}</strong><br>${body}<br><span style="display:block;margin-top:.45rem">${nextSteps}</span>`;
 }
 
 async function triggerMobilePayment() {
@@ -920,9 +1088,19 @@ async function triggerMobilePayment() {
       btn.disabled = false;
       btn.innerHTML = originalBtnHtml;
     }
+    const clientMsg = formatFlexPayInitError(json.message, App.selectedFlexpayType);
+    showPaymentBanner(
+      buildPaymentFailureBannerHtml(
+        'Paiement Mobile Money non démarré',
+        clientMsg,
+        'Que faire ? Vérifiez l’<strong>opérateur</strong> sélectionné et le numéro 243…, puis réessayez. Sinon passez à la <strong>carte</strong> ou aux <strong>espèces</strong>.'
+      ),
+      'warning'
+    );
     retraiteNotifyError({
       title: 'Paiement Mobile Money',
-      text: formatFlexPayInitError(json.message, App.selectedFlexpayType),
+      text: clientMsg,
+      footer: 'Sélectionnez clairement votre opérateur (M-Pesa, Airtel, Orange…) avant de relancer.',
       persistent: true,
     });
     return;
@@ -981,9 +1159,19 @@ async function triggerCardPayment() {
     res = { ok: false };
   }
   if (!res.ok || !json.data) {
+    const clientMsg = formatPaymentFailureForClient(json.message, null, 'card');
+    showPaymentBanner(
+      buildPaymentFailureBannerHtml(
+        'Paiement carte non démarré',
+        clientMsg,
+        'Que faire ? Choisissez <strong>Mobile Money</strong> puis un opérateur, ou utilisez les <strong>espèces</strong> avec une preuve. Vous pourrez aussi réessayer la carte plus tard.'
+      ),
+      'warning'
+    );
     retraiteNotifyError({
       title: 'Paiement carte',
-      text: json.message || 'Impossible de préparer le paiement par carte.',
+      text: clientMsg,
+      footer: 'Astuce : basculez sur Mobile Money et sélectionnez votre opérateur (M-Pesa, Airtel, Orange…).',
       persistent: true,
     });
     if (btn && !leavingPage) {
@@ -1309,10 +1497,22 @@ function startMobilePaymentStatusPolling(reference, mode, originalBtnHtml, pollO
       }
       setPaymentProgressStep(2, 'Paiement annulé par l’opérateur.');
       showPaymentBanner(
-        'Ce paiement a été annulé côté opérateur. Vous pouvez relancer, ou changer immédiatement de moyen de paiement (carte / espèces).',
+        buildPaymentFailureBannerHtml(
+          'Paiement annulé',
+          'L’opérateur a annulé la transaction (refus sur le téléphone, délai dépassé, solde insuffisant ou numéro incorrect).',
+          'Que faire maintenant ? 1) Vérifiez votre solde. 2) Resélectionnez votre <strong>opérateur</strong> ci-dessus. 3) Relancez « Déclencher le paiement », ou passez à la <strong>carte</strong> / <strong>espèces</strong>.'
+        ),
         'warning'
       );
-      if (hint) hint.textContent = 'Paiement annulé.';
+      if (hint) {
+        hint.innerHTML =
+          'Astuce : choisissez clairement l’opérateur (M-Pesa, Airtel, Orange…) avant de relancer.';
+      }
+      const mmRadio = document.getElementById('payModeMm');
+      if (mmRadio) {
+        mmRadio.checked = true;
+        togglePaymentSections('mobile_money');
+      }
     }
     mobilePayPollInFlight = false;
   };
@@ -1373,13 +1573,19 @@ async function handleCardReturnFlash() {
     );
   }
 
-  showPaymentBanner(
-    ret.status === 'missing'
-      ? 'Référence de paiement introuvable : reprenez l’étape carte ou utilisez un autre mode.'
-      : 'Retour carte : transaction annulée ou refusée. Réessayez par carte ou choisissez un autre moyen de paiement.',
-    'warning'
-  );
   App.paymentReference = ret.ref;
+  App.resumePaymentContext = {
+    suggestedChannel: 'mobile_money',
+    phone: null,
+    hint: {
+      title: ret.status === 'missing' ? 'Paiement introuvable' : 'Paiement carte non abouti',
+      body:
+        ret.status === 'missing'
+          ? 'Nous n’avons pas retrouvé cette transaction. Vous pouvez reprendre ci-dessous avec Mobile Money (choisissez un opérateur), carte ou espèces.'
+          : 'La transaction carte a été annulée ou refusée (fonds insuffisants, refus banque, abandon…). Vous pouvez réessayer la carte ou continuer avec Mobile Money en choisissant votre opérateur.',
+      severity: 'warning',
+    },
+  };
 
   setTimeout(() => {
     if (typeof goToStep === 'function') goToStep(4);
@@ -1398,12 +1604,14 @@ async function resumeAfterCardPayment(reference) {
     retraiteNotifyError({
       title: 'Reprise d’inscription',
       text: json.message || 'Résumé de paiement introuvable.',
+      footer: 'Demandez à l’équipe un nouveau lien de reprise, ou recommencez l’inscription.',
       persistent: true,
     });
     return;
   }
 
-  const participant = json.data && json.data.participant;
+  const data = json.data || {};
+  const participant = data.participant;
   if (participant && participant.id) App.participantId = participant.id;
   if (App.participantId) {
     sessionStorage.setItem('retraite_participant_id', String(App.participantId));
@@ -1414,8 +1622,7 @@ async function resumeAfterCardPayment(reference) {
   const receiptPaid =
     participant &&
     participant.paiement_valide &&
-    json.data &&
-    json.data.etat === 'payee';
+    data.etat === 'payee';
 
   if (receiptPaid) {
     showPaymentBanner(
@@ -1427,10 +1634,27 @@ async function resumeAfterCardPayment(reference) {
     return;
   }
 
+  const hint = data.resume_hint || {
+    title: 'Finalisez votre paiement',
+    body: 'Choisissez un mode de paiement ci-dessous. Pour Mobile Money, sélectionnez d’abord votre opérateur.',
+    severity: 'info',
+    suggested_channel: 'mobile_money',
+  };
+
+  App.resumePaymentContext = {
+    suggestedChannel: hint.suggested_channel || data.channel || 'mobile_money',
+    phone: data.phone || (participant && participant.telephone) || null,
+    hint: {
+      title: hint.title,
+      body: hint.body,
+      severity: hint.severity || 'warning',
+    },
+  };
+
   retraiteNotifyToast(
     participant && participant.full_name
-      ? `Bon retour ${participant.full_name} — reprenez votre paiement ci-dessous.`
-      : 'Reprenez votre paiement ci-dessous.',
+      ? `Bon retour ${participant.full_name} — choisissez un opérateur ou un mode de paiement pour continuer.`
+      : 'Choisissez un opérateur ou un mode de paiement pour continuer.',
     'info'
   );
   if (typeof goToStep === 'function') goToStep(4);

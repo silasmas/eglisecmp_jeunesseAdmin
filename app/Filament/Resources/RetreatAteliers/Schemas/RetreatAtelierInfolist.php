@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\RetreatAteliers\Schemas;
 
 use App\Filament\Infolists\Components\UserStackedEntry;
+use App\Services\RetreatPlacementAssignmentService;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\ViewEntry;
@@ -31,6 +32,17 @@ class RetreatAtelierInfolist
                             ->state(fn ($record): int => $record->participants()->count())
                             ->badge()
                             ->color('info'),
+                        TextEntry::make('age_mismatch_count')
+                            ->label('Mauvaise affectation')
+                            ->state(fn ($record): int => app(RetreatPlacementAssignmentService::class)
+                                ->countMismatchedParticipantsForAtelier($record))
+                            ->badge()
+                            ->color(fn (int $state): string => $state > 0 ? 'danger' : 'success')
+                            ->formatStateUsing(fn (int $state): string => $state > 0
+                                ? sprintf('%d hors tranche', $state)
+                                : 'Aucune conforme')
+                            ->helperText(fn ($record): string => app(RetreatPlacementAssignmentService::class)
+                                ->summarizeMismatchedParticipantsForAtelier($record)),
                         UserStackedEntry::make('participants')
                             ->label('Profils affectes')
                             ->state(fn ($record) => $record->participants)

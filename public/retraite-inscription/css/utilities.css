@@ -28,6 +28,7 @@
 .info-box.info { background: #E3F2FD; color: #0D47A1; }
 .info-box.warning { background: #FFF3E0; color: #E65100; }
 .info-box.success { background: var(--success-light); color: var(--success); }
+.info-box.danger { background: #FFEBEE; color: #B71C1C; }
 .info-box i { font-size: 1.1rem; margin-top: 1px; }
 
 /* ═══════════════════════════════════════════

@@ -109,6 +109,7 @@ class RetreatPublicRegistrationController extends Controller
         }
 
         $participant = $payment->participant;
+        $resumeHint = $this->buildPaymentResumeHint($payment, $participant);
 
         return response()->json([
             'data' => [
@@ -118,7 +119,10 @@ class RetreatPublicRegistrationController extends Controller
                 'amount_paid' => $payment->amount_paid,
                 'currency' => $payment->currency,
                 'channel' => $payment->channel,
+                'phone' => $payment->phone,
+                'provider_message' => $payment->provider_message,
                 'paid_at' => $payment->paid_at?->toISOString(),
+                'resume_hint' => $resumeHint,
                 'event' => $payment->event ? [
                     'name' => $payment->event->name,
                     'start_at' => $payment->event->start_at?->toISOString(),
@@ -128,9 +132,81 @@ class RetreatPublicRegistrationController extends Controller
                     'id' => $participant->id,
                     'full_name' => $participant->full_name,
                     'paiement_valide' => $participant->paiement_valide,
+                    'telephone' => $participant->telephone,
                 ] : null,
             ],
         ]);
+    }
+
+    /**
+     * Message clair pour le participant qui reprend un paiement non abouti.
+     *
+     * @param  RetreatPayment  $payment  Paiement concerné
+     * @param  RetreatParticipant|null  $participant  Participant lié
+     * @return array{title: string, body: string, severity: string, suggested_channel: string|null}
+     */
+    protected function buildPaymentResumeHint(RetreatPayment $payment, ?RetreatParticipant $participant): array
+    {
+        $channel = (string) ($payment->channel ?? '');
+        $etat = (string) ($payment->etat ?? '');
+        $providerMessage = trim((string) preg_replace('/FlexPay\s*/iu', '', (string) ($payment->provider_message ?? '')));
+        $channelLabel = match ($channel) {
+            'mobile_money' => 'Mobile Money',
+            'card' => 'carte bancaire',
+            'cash' => 'espèces',
+            default => 'paiement',
+        };
+
+        if ($participant?->paiement_valide || $etat === 'payee') {
+            return [
+                'title' => 'Paiement déjà confirmé',
+                'body' => 'Votre inscription est déjà encaissée. Vous pouvez accéder à votre billet.',
+                'severity' => 'success',
+                'suggested_channel' => null,
+            ];
+        }
+
+        if ($etat === 'en_cours') {
+            return [
+                'title' => 'Paiement encore en attente',
+                'body' => $channel === 'mobile_money'
+                    ? 'Une demande '.$channelLabel.' a déjà été envoyée. Si vous n’avez pas reçu l’invite sur le téléphone, choisissez à nouveau votre opérateur (M-Pesa, Airtel, Orange…) et relancez. Vous pouvez aussi changer de mode de paiement.'
+                    : 'Votre '.$channelLabel.' n’est pas encore confirmé. Choisissez un mode ci-dessous pour continuer : Mobile Money (avec opérateur), carte ou espèces.',
+                'severity' => 'warning',
+                'suggested_channel' => $channel !== '' ? $channel : 'mobile_money',
+            ];
+        }
+
+        if ($etat === 'annulee') {
+            return [
+                'title' => 'Paiement annulé',
+                'body' => 'La transaction a été annulée'
+                    .($channel !== '' ? ' côté '.$channelLabel : '')
+                    .'. Cela arrive souvent si vous refusez l’invite, si le délai expire ou si le solde est insuffisant.'
+                    .(filled($providerMessage) ? ' Détail : '.$providerMessage : '')
+                    .' Choisissez un opérateur Mobile Money ou un autre mode de paiement pour réessayer.',
+                'severity' => 'warning',
+                'suggested_channel' => 'mobile_money',
+            ];
+        }
+
+        if ($etat === 'echouee') {
+            return [
+                'title' => 'Paiement non abouti',
+                'body' => 'La tentative de '.$channelLabel.' n’a pas abouti.'
+                    .(filled($providerMessage) ? ' Motif reçu : '.$providerMessage : ' Aucun motif détaillé n’a été renvoyé par l’opérateur.')
+                    .' Sélectionnez un opérateur Mobile Money (ou un autre mode) puis relancez le paiement.',
+                'severity' => 'danger',
+                'suggested_channel' => 'mobile_money',
+            ];
+        }
+
+        return [
+            'title' => 'Finalisez votre inscription',
+            'body' => 'Votre dossier est enregistré mais le paiement n’est pas encore confirmé. Choisissez un mode ci-dessous : pour Mobile Money, sélectionnez d’abord votre opérateur (M-Pesa, Airtel Money, Orange Money…), puis saisissez votre numéro.',
+            'severity' => 'info',
+            'suggested_channel' => 'mobile_money',
+        ];
     }
 
     public function activeEvent(Request $request): JsonResponse

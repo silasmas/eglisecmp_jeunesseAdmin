@@ -2,17 +2,15 @@
 
 namespace App\Filament\Resources\RetreatAteliers\Tables;
 
-use App\Filament\Pages\ManageRetreatAtelierQuarantine;
-use App\Filament\Tables\Columns\UserStackedColumn;
 use App\Filament\Support\ResendStaffAccessCredentialsFilamentAction;
+use App\Filament\Support\RetreatAtelierAgeMismatchFilamentActions;
+use App\Filament\Tables\Columns\UserStackedColumn;
 use App\Services\RetreatPlacementAssignmentService;
 use App\Support\RetreatActiveEventScope;
-use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
-use Filament\Notifications\Notification;
 use Filament\Support\Enums\Alignment;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\IconColumn;
@@ -26,7 +24,7 @@ class RetreatAteliersTable
     {
         return $table
             ->modifyQueryUsing(fn ($query) => RetreatActiveEventScope::applyToAteliers($query)
-                ->with(['responsable', 'event'])
+                ->with(['responsable', 'event', 'participants'])
                 ->withCount([
                     'participants as participants_count' => fn ($participantQuery) => RetreatActiveEventScope::applyToParticipantCount($participantQuery),
                 ]))
@@ -44,6 +42,17 @@ class RetreatAteliersTable
                     ->state(fn ($record): string => self::formatAgeRange($record))
                     ->badge()
                     ->color(fn ($record): string => filled($record->age_min) || filled($record->age_max) ? 'info' : 'gray'),
+                TextColumn::make('age_mismatch_count')
+                    ->label('Mauvaise affectation')
+                    ->state(fn ($record): int => app(RetreatPlacementAssignmentService::class)
+                        ->countMismatchedParticipantsForAtelier($record))
+                    ->badge()
+                    ->color(fn (int $state): string => $state > 0 ? 'danger' : 'success')
+                    ->formatStateUsing(fn (int $state): string => $state > 0
+                        ? sprintf('%d hors tranche', $state)
+                        : 'OK')
+                    ->tooltip(fn ($record): string => app(RetreatPlacementAssignmentService::class)
+                        ->summarizeMismatchedParticipantsForAtelier($record)),
                 UserColumn::make('responsable')
                     ->label('Responsable')
                     ->wrapped(),
@@ -90,29 +99,8 @@ class RetreatAteliersTable
             ->recordActions([
                 ViewAction::make()->modal()->modalWidth(Width::FiveExtraLarge)->modalAlignment(Alignment::Center),
                 ResendStaffAccessCredentialsFilamentAction::make(),
-                Action::make('moveMismatchedToQuarantine')
-                    ->label('Hors tranche → quarantaine')
-                    ->icon('heroicon-o-shield-exclamation')
-                    ->color('warning')
-                    ->visible(fn ($record): bool => app(RetreatPlacementAssignmentService::class)
-                        ->countMismatchedParticipantsForAtelier($record) > 0)
-                    ->requiresConfirmation()
-                    ->modalDescription('Les participants seront retirés de cet atelier et visibles dans « Quarantaine ateliers » avec propositions.')
-                    ->action(function ($record): void {
-                        $placement = app(RetreatPlacementAssignmentService::class);
-                        $stats = $placement->reassignMismatchedAtelierParticipants($record);
-
-                        Notification::make()
-                            ->title('Quarantaine mise à jour')
-                            ->body(sprintf('%d en quarantaine. Validez les propositions dans Quarantaine ateliers.', $stats['quarantined']))
-                            ->actions([
-                                Action::make('openQuarantine')
-                                    ->label('Ouvrir')
-                                    ->url(ManageRetreatAtelierQuarantine::getUrl()),
-                            ])
-                            ->warning()
-                            ->send();
-                    }),
+                RetreatAtelierAgeMismatchFilamentActions::reassignIntelligentlyAction(),
+                RetreatAtelierAgeMismatchFilamentActions::quarantineOnlyAction(),
                 EditAction::make()->modal()->modalWidth(Width::SevenExtraLarge)->modalAlignment(Alignment::Center),
             ])
             ->toolbarActions([

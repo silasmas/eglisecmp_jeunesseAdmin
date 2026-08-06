@@ -348,6 +348,17 @@
           </div>
         </div>
 
+        <div id="paymentResumeGuide" class="info-box warning mb-3 hidden" role="status" aria-live="polite">
+          <i class="bi bi-info-circle"></i>
+          <div>
+            <strong id="paymentResumeGuideTitle">Reprise du paiement</strong>
+            <p id="paymentResumeGuideBody" class="mb-2 mt-1"></p>
+            <p class="field-hint mb-0" id="paymentResumeGuideHint">
+              Pour Mobile Money : choisissez d’abord votre opérateur ci-dessous, puis saisissez le numéro et lancez le paiement.
+            </p>
+          </div>
+        </div>
+
         <div class="info-box info mb-3" id="sponsorshipVoucherPanel">
           <div class="field full mb-0">
             <label class="field-label" for="sponsorshipVoucherInput">
@@ -382,8 +393,11 @@
           </div>
 
         <div id="mobileMoneyBlock" class="hidden mt-3">
-          <p class="field-label"><i class="bi bi-phone"></i> Opérateur Mobile Money</p>
-          <div id="flexpayProvidersMount" class="payment-methods mb-3"></div>
+          <p class="field-label payment-operators-title"><i class="bi bi-phone"></i> Choisissez votre opérateur Mobile Money <span class="required">*</span></p>
+          <p class="field-hint payment-operators-hint" id="flexpayOperatorsHint">
+            Touchez le réseau à utiliser (M-Pesa, Airtel Money, Orange Money…). Le numéro doit correspondre à l’opérateur choisi.
+          </p>
+          <div id="flexpayProvidersMount" class="payment-methods mb-3" role="listbox" aria-label="Opérateurs Mobile Money"></div>
           <div class="field">
             <label class="field-label" for="flexpayPhoneInput">Numéro Mobile Money (12 chiffres, commence par 243)<span class="required">*</span></label>
             <input type="tel" id="flexpayPhoneInput" inputmode="numeric" class="field-input" placeholder="2438XX XXX XXX" autocomplete="tel">

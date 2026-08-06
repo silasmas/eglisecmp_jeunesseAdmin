@@ -21,6 +21,8 @@ window.App = {
   paymentReference: null,
   paymentModeCompleted: null,
   paymentPollActive: false,
+  /** Contexte de reprise après lien admin / retour carte (explication + canal suggéré). */
+  resumePaymentContext: null,
   activeEvent: null,
   selectedFlexpayType: null,
   badgeView: null,
