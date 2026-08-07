@@ -103,7 +103,8 @@ Route::prefix('studio-badge')
     ->name('studio-badge.')
     ->middleware(['auth', 'badge_studio'])
     ->group(function (): void {
-        Route::get('/', RetreatBadgeStudioController::class)->name('index');
+        Route::get('/', [RetreatBadgeStudioController::class, 'classic'])->name('index');
+        Route::get('/hd', [RetreatBadgeStudioController::class, 'hd'])->name('hd');
         Route::get('api/session', [RetreatBadgeStudioApiController::class, 'sessionContext'])
             ->name('api.session');
         Route::get('api/participants', [RetreatBadgeStudioApiController::class, 'participants'])

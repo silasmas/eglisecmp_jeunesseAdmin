@@ -45,7 +45,13 @@ export async function downloadBadgeExport(
   const safeName = filenameBase.replace(/[^\w\-]+/g, '_');
   const pngDataUrl = canvasToDataUrl(canvas, 'export');
 
-  if (format === 'png') {
+  if (format === 'png' || format === 'zip') {
+    if (format === 'zip') {
+      await downloadBulkBadgesZip([{ canvas, filenameBase: safeName }], safeName);
+
+      return;
+    }
+
     const link = document.createElement('a');
     link.download = `${safeName}.png`;
     link.href = pngDataUrl;
@@ -133,6 +139,57 @@ export async function downloadBulkBadgesPng(items: BulkExportItem[]): Promise<vo
       });
     }
   }
+}
+
+/**
+ * Convertit un data URL en Blob.
+ *
+ * @param dataUrl Data URL PNG/JPEG
+ * @returns Blob correspondant
+ */
+function dataUrlToBlob(dataUrl: string): Blob {
+  const [header, base64] = dataUrl.split(',');
+  const mime = header.match(/:(.*?);/)?.[1] || 'image/png';
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
+  return new Blob([bytes], { type: mime });
+}
+
+/**
+ * Télécharge plusieurs badges dans une archive ZIP.
+ *
+ * @param items Badges rendus
+ * @param archiveName Nom du fichier ZIP
+ * @returns void
+ */
+export async function downloadBulkBadgesZip(
+  items: BulkExportItem[],
+  archiveName = 'badges-cmp',
+): Promise<void> {
+  if (items.length === 0) {
+    return;
+  }
+
+  const JSZip = (await import('jszip')).default;
+  const zip = new JSZip();
+
+  items.forEach((item, index) => {
+    const safeName = item.filenameBase.replace(/[^\w\-]+/g, '_') || `badge-${index + 1}`;
+    const pngDataUrl = canvasToDataUrl(item.canvas, 'export');
+    zip.file(`${safeName}.png`, dataUrlToBlob(pngDataUrl));
+  });
+
+  const blob = await zip.generateAsync({ type: 'blob' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `${archiveName.replace(/[^\w\-]+/g, '_')}.zip`;
+  link.click();
+  window.setTimeout(() => URL.revokeObjectURL(link.href), 1000);
 }
 
 /**

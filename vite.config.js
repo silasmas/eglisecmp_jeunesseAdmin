@@ -11,6 +11,7 @@ export default defineConfig({
         'resources/js/app.js',
         'resources/css/studio-badge.css',
         'resources/js/studio-badge/main.tsx',
+        'resources/js/studio-badge-hd/main.tsx',
       ],
       refresh: true,
     }),

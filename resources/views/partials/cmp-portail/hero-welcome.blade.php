@@ -40,7 +40,8 @@
       </a>
       @auth
         @can('View:BadgeStudio')
-          <a class="admin-link" href="{{ route('studio-badge.index') }}">Studio badges</a>
+          <a class="admin-link" href="{{ route('studio-badge.index') }}">Studio classique</a>
+          <a class="admin-link" href="{{ route('studio-badge.hd') }}">Studio HD</a>
         @endcan
       @endauth
       <a class="admin-link" href="{{ url('/admin') }}">Administration</a>

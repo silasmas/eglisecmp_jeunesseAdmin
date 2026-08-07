@@ -39,7 +39,8 @@ class RetreatBadgeStudioWidget extends Widget
      * Données passées à la vue Blade du widget.
      *
      * @return array{
-     *   studioUrl: string,
+     *   classicUrl: string,
+     *   hdUrl: string,
      *   eventName: string|null,
      *   participantsCount: int,
      *   userName: string
@@ -59,7 +60,8 @@ class RetreatBadgeStudioWidget extends Widget
         }
 
         return [
-            'studioUrl' => route('studio-badge.index'),
+            'classicUrl' => route('studio-badge.index'),
+            'hdUrl' => route('studio-badge.hd'),
             'eventName' => $event?->name,
             'participantsCount' => (int) $participantsQuery->count(),
             'userName' => (string) ($user?->name ?? $user?->email ?? 'Utilisateur'),

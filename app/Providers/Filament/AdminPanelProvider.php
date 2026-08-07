@@ -76,6 +76,12 @@ class AdminPanelProvider extends PanelProvider
                     ->group('Gestion pastorale')
                     ->sort(12)
                     ->visible(fn (): bool => (auth()->user()?->is_active && auth()->user()?->can('View:BadgeStudio')) ?? false),
+                NavigationItem::make('Studio badges HD')
+                    ->url(fn (): string => route('studio-badge.hd'))
+                    ->icon('heroicon-o-sparkles')
+                    ->group('Gestion pastorale')
+                    ->sort(13)
+                    ->visible(fn (): bool => (auth()->user()?->is_active && auth()->user()?->can('View:BadgeStudio')) ?? false),
             ])
             ->middleware([
                 EncryptCookies::class,

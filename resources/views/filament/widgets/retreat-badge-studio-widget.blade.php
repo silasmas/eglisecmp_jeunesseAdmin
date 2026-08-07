@@ -8,11 +8,11 @@
                         class="h-5 w-5 text-primary-600 dark:text-primary-400"
                     />
                     <h3 class="text-base font-semibold text-gray-950 dark:text-white">
-                        Studio badges
+                        Studios badges
                     </h3>
                 </div>
                 <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    Générez et imprimez les badges de la session courante
+                    Deux studios séparés pour la session courante
                     @if ($eventName)
                         — <span class="font-medium text-gray-700 dark:text-gray-200">{{ $eventName }}</span>
                     @else
@@ -28,11 +28,19 @@
             <div class="flex flex-wrap items-center gap-2">
                 <x-filament::button
                     tag="a"
-                    href="{{ $studioUrl }}"
-                    icon="heroicon-o-arrow-top-right-on-square"
+                    href="{{ $classicUrl }}"
+                    icon="heroicon-o-rectangle-stack"
+                    color="gray"
+                >
+                    Studio classique
+                </x-filament::button>
+                <x-filament::button
+                    tag="a"
+                    href="{{ $hdUrl }}"
+                    icon="heroicon-o-sparkles"
                     color="primary"
                 >
-                    Ouvrir le studio
+                    Studio HD
                 </x-filament::button>
             </div>
         </div>

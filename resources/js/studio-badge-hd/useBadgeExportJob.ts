@@ -1,11 +1,11 @@
-import { useCallback, useRef, useState, type RefObject } from 'react';
-import { canvasToDataUrl } from './captureBadge';
+import { useCallback, useRef, useState } from 'react';
+import { canvasToDataUrl, preloadCaptureEngine } from './captureBadge';
 import {
-  captureBadgeCanvas,
   createPrintPreviewWindow,
   downloadBadgeExport,
   downloadBulkBadgesPdf,
   downloadBulkBadgesPng,
+  downloadBulkBadgesZip,
   isExportCancellable,
   updatePrintWindowProgress,
   writePrintPreview,
@@ -18,32 +18,34 @@ import {
   singleStepPercent,
   waitNextPaint,
 } from './exportProgress';
+import { renderParticipantBadgeCanvas, type RenderBadgeCanvasOptions } from './renderBadgeCanvas';
 import type { ExportFormat, ExportJobState, Participant } from './types';
 
 const POPUP_BLOCKED_MESSAGE = 'Autorisez les fenêtres popup pour ce site (icône dans la barre d\'adresse), puis réessayez.';
 
+export type BadgeExportContext = Omit<RenderBadgeCanvasOptions, 'assetBaseUrl'> & {
+  participant: Participant;
+};
+
 interface UseBadgeExportJobOptions {
-  badgeRef: RefObject<HTMLDivElement | null>;
   participants: Participant[];
   activeParticipant: Participant | null;
-  activeParticipantId: string;
-  setActiveParticipantId: (id: string) => void;
   exportFormat: ExportFormat;
-  waitForPreviewReady: (expectedParticipantId: string) => Promise<void>;
+  assetBaseUrl: string;
+  /** Résout layout + styles pour un participant (global ou override individuel). */
+  resolveExportContext: (participant: Participant) => BadgeExportContext;
   setCaptureMode: (enabled: boolean) => void;
 }
 
 /**
- * Gère export, impression et overlay de progression (annulation jusqu'à 40 %).
+ * Gère export, impression et overlay de progression via le moteur canvas HD.
  */
 export function useBadgeExportJob({
-  badgeRef,
   participants,
   activeParticipant,
-  activeParticipantId,
-  setActiveParticipantId,
   exportFormat,
-  waitForPreviewReady,
+  assetBaseUrl,
+  resolveExportContext,
   setCaptureMode,
 }: UseBadgeExportJobOptions) {
   const [exportJob, setExportJob] = useState<ExportJobState | null>(null);
@@ -97,6 +99,7 @@ export function useBadgeExportJob({
   ) => {
     cancelRequestedRef.current = false;
     setCaptureMode(true);
+    preloadCaptureEngine();
     setExportJob({
       kind,
       mode,
@@ -135,18 +138,25 @@ export function useBadgeExportJob({
     }, patch.cancelled || patch.error ? 3200 : 1800);
   }, [setCaptureMode, syncPrintWindow]);
 
-  const captureCurrentBadge = useCallback(async (purpose: 'print' | 'export' = 'export') => {
-    if (!badgeRef.current) {
-      return null;
-    }
+  /**
+   * Génère le canvas HD d'un participant sans basculer l'aperçu DOM.
+   */
+  const renderParticipantCanvas = useCallback(async (participant: Participant) => {
+    const context = resolveExportContext(participant);
 
-    return captureBadgeCanvas(badgeRef.current, purpose);
-  }, [badgeRef]);
-
-  const prepareParticipantForCapture = useCallback(async (participantId: string) => {
-    setActiveParticipantId(participantId);
-    await waitForPreviewReady(participantId);
-  }, [setActiveParticipantId, waitForPreviewReady]);
+    return renderParticipantBadgeCanvas(participant, {
+      assetBaseUrl,
+      layout: context.layout,
+      nameFontCss: context.nameFontCss,
+      nameColor: context.nameColor,
+      numberColor: context.numberColor,
+      photoShape: context.photoShape,
+      showPhoto: context.showPhoto,
+      showWorkshop: context.showWorkshop,
+      showChambre: context.showChambre,
+      categoryStyle: context.categoryStyle,
+    });
+  }, [assetBaseUrl, resolveExportContext]);
 
   const exportCurrentBadge = useCallback(async () => {
     if (!activeParticipant || exportJob) {
@@ -172,18 +182,12 @@ export function useBadgeExportJob({
         return;
       }
 
-      setProgress(singleStepPercent('capture'), 'Capture du badge en cours…');
+      setProgress(singleStepPercent('capture'), 'Rendu haute résolution…');
 
-      const canvas = await captureCurrentBadge('export');
+      const canvas = await renderParticipantCanvas(activeParticipant);
 
       if (shouldAbort(singleStepPercent('capture'))) {
         finishJob({ cancelled: true, statusLabel: 'Export annulé.' });
-
-        return;
-      }
-
-      if (!canvas) {
-        finishJob({ error: 'Impossible de capturer le badge.', statusLabel: 'Échec de la capture.' });
 
         return;
       }
@@ -207,7 +211,7 @@ export function useBadgeExportJob({
     beginJob,
     shouldAbort,
     setProgress,
-    captureCurrentBadge,
+    renderParticipantCanvas,
     exportFormat,
     finishJob,
   ]);
@@ -217,7 +221,6 @@ export function useBadgeExportJob({
       return;
     }
 
-    const originalActiveId = activeParticipantId;
     const total = selectedIds.length;
     const exportItems: BulkExportItem[] = [];
 
@@ -232,7 +235,6 @@ export function useBadgeExportJob({
 
         if (shouldAbort(percentStart)) {
           finishJob({ cancelled: true, statusLabel: 'Export annulé par l\'utilisateur.' });
-          setActiveParticipantId(originalActiveId);
 
           return;
         }
@@ -242,47 +244,44 @@ export function useBadgeExportJob({
         setProgress(
           percentStart,
           participant
-            ? `Préparation ${index + 1} / ${total} — ${participant.prenom} ${participant.nom}`
-            : `Préparation ${index + 1} / ${total}`,
+            ? `Rendu ${index + 1} / ${total} — ${participant.prenom} ${participant.nom}`
+            : `Rendu ${index + 1} / ${total}`,
           { current: index, total },
         );
 
-        await prepareParticipantForCapture(id);
+        if (!participant) {
+          continue;
+        }
 
         const percentCapture = bulkLinearPercent(index, total, 0.45);
 
         if (shouldAbort(percentCapture)) {
           finishJob({ cancelled: true, statusLabel: 'Export annulé par l\'utilisateur.' });
-          setActiveParticipantId(originalActiveId);
 
           return;
         }
 
         setProgress(
           percentCapture,
-          `Capture ${index + 1} / ${total}…`,
+          `Rendu HD ${index + 1} / ${total}…`,
           { current: index, total },
         );
 
-        const canvas = await captureCurrentBadge('export');
-
-        if (participant && canvas) {
-          exportItems.push({
-            canvas,
-            filenameBase: `badge-${participant.prenom}-${participant.nom}`,
-          });
-        }
+        const canvas = await renderParticipantCanvas(participant);
+        exportItems.push({
+          canvas,
+          filenameBase: `badge-${participant.prenom}-${participant.nom}`,
+        });
 
         setProgress(
           bulkLinearPercent(index + 1, total, 0),
-          `Badge ${index + 1} / ${total} capturé`,
+          `Badge ${index + 1} / ${total} généré`,
           { current: index + 1, total },
         );
       }
 
       if (exportItems.length === 0) {
-        finishJob({ error: 'Aucun badge capturé.', statusLabel: 'Échec de l\'export groupé.' });
-        setActiveParticipantId(originalActiveId);
+        finishJob({ error: 'Aucun badge généré.', statusLabel: 'Échec de l\'export groupé.' });
 
         return;
       }
@@ -294,32 +293,29 @@ export function useBadgeExportJob({
 
       if (exportFormat === 'pdf') {
         await downloadBulkBadgesPdf(exportItems, `badges-cmp-${exportItems.length}`);
+      } else if (exportFormat === 'zip') {
+        await downloadBulkBadgesZip(exportItems, `badges-cmp-${exportItems.length}`);
       } else {
         await downloadBulkBadgesPng(exportItems);
       }
 
-      setActiveParticipantId(originalActiveId);
       finishJob({
         statusLabel: `${exportItems.length} badge(s) exporté(s) en ${exportFormat.toUpperCase()}.`,
         percent: 100,
       });
     } catch (error) {
-      setActiveParticipantId(originalActiveId);
       const message = error instanceof Error ? error.message : 'Erreur lors de l\'export groupé.';
       finishJob({ error: message, statusLabel: message });
     }
   }, [
-    activeParticipantId,
     exportJob,
     beginJob,
     participants,
     setProgress,
     shouldAbort,
-    prepareParticipantForCapture,
-    captureCurrentBadge,
+    renderParticipantCanvas,
     exportFormat,
     finishJob,
-    setActiveParticipantId,
   ]);
 
   const printCurrentBadge = useCallback(async () => {
@@ -360,20 +356,13 @@ export function useBadgeExportJob({
         return;
       }
 
-      setProgress(singleStepPercent('capture'), 'Capture du badge en cours…', {}, { current: 0, total: 1 });
+      setProgress(singleStepPercent('capture'), 'Rendu haute résolution…', {}, { current: 0, total: 1 });
 
-      const canvas = await captureCurrentBadge('print');
+      const canvas = await renderParticipantCanvas(activeParticipant);
 
       if (shouldAbort(singleStepPercent('capture'))) {
         printWindow.close();
         finishJob({ cancelled: true, statusLabel: 'Impression annulée.' });
-
-        return;
-      }
-
-      if (!canvas) {
-        printWindow.close();
-        finishJob({ error: 'Impossible de capturer le badge.', statusLabel: 'Échec de la capture.' });
 
         return;
       }
@@ -403,7 +392,7 @@ export function useBadgeExportJob({
     beginJob,
     shouldAbort,
     setProgress,
-    captureCurrentBadge,
+    renderParticipantCanvas,
     finishJob,
     syncPrintWindow,
   ]);
@@ -415,7 +404,6 @@ export function useBadgeExportJob({
 
     const printWindow = createPrintPreviewWindow();
     printWindowRef.current = printWindow;
-    const originalActiveId = activeParticipantId;
     const pages: PrintPagePayload[] = [];
     const total = selectedIds.length;
 
@@ -440,7 +428,6 @@ export function useBadgeExportJob({
         if (shouldAbort(percentStart)) {
           printWindow.close();
           finishJob({ cancelled: true, statusLabel: 'Impression annulée par l\'utilisateur.' });
-          setActiveParticipantId(originalActiveId);
 
           return;
         }
@@ -450,43 +437,41 @@ export function useBadgeExportJob({
         setProgress(
           percentStart,
           participant
-            ? `Préparation ${index + 1} / ${total} — ${participant.prenom} ${participant.nom}`
-            : `Préparation ${index + 1} / ${total}`,
+            ? `Rendu ${index + 1} / ${total} — ${participant.prenom} ${participant.nom}`
+            : `Rendu ${index + 1} / ${total}`,
           { current: index, total },
           { current: index, total },
         );
 
-        await prepareParticipantForCapture(id);
+        if (!participant) {
+          continue;
+        }
 
         const percentCapture = bulkLinearPercent(index, total, 0.45);
 
         if (shouldAbort(percentCapture)) {
           printWindow.close();
           finishJob({ cancelled: true, statusLabel: 'Impression annulée par l\'utilisateur.' });
-          setActiveParticipantId(originalActiveId);
 
           return;
         }
 
         setProgress(
           percentCapture,
-          `Capture ${index + 1} / ${total}…`,
+          `Rendu HD ${index + 1} / ${total}…`,
           { current: index, total },
           { current: index, total },
         );
 
-        const canvas = await captureCurrentBadge('print');
-
-        if (participant && canvas) {
-          pages.push({
-            dataUrl: canvasToDataUrl(canvas, 'print'),
-            label: `${participant.prenom} ${participant.nom}`,
-          });
-        }
+        const canvas = await renderParticipantCanvas(participant);
+        pages.push({
+          dataUrl: canvasToDataUrl(canvas, 'print'),
+          label: `${participant.prenom} ${participant.nom}`,
+        });
 
         setProgress(
           bulkLinearPercent(index + 1, total, 0),
-          `Badge ${index + 1} / ${total} capturé`,
+          `Badge ${index + 1} / ${total} généré`,
           { current: index + 1, total },
           { current: index + 1, total },
         );
@@ -494,8 +479,7 @@ export function useBadgeExportJob({
 
       if (pages.length === 0) {
         printWindow.close();
-        finishJob({ error: 'Aucun badge n\'a pu être capturé.', statusLabel: 'Échec de la capture.' });
-        setActiveParticipantId(originalActiveId);
+        finishJob({ error: 'Aucun badge n\'a pu être généré.', statusLabel: 'Échec de la génération.' });
 
         return;
       }
@@ -503,7 +487,6 @@ export function useBadgeExportJob({
       if (shouldAbort(39)) {
         printWindow.close();
         finishJob({ cancelled: true, statusLabel: 'Impression annulée.' });
-        setActiveParticipantId(originalActiveId);
 
         return;
       }
@@ -521,29 +504,23 @@ export function useBadgeExportJob({
         },
       });
 
-      setActiveParticipantId(originalActiveId);
-
       finishJob({
         statusLabel: `Aperçu d\'impression : ${pages.length} page${pages.length > 1 ? 's' : ''}.`,
         percent: 100,
       });
     } catch (error) {
       printWindow.close();
-      setActiveParticipantId(originalActiveId);
       const message = error instanceof Error ? error.message : 'Erreur lors de l\'impression groupée.';
       finishJob({ error: message, statusLabel: message });
     }
   }, [
-    activeParticipantId,
     exportJob,
     beginJob,
     participants,
     setProgress,
     shouldAbort,
-    prepareParticipantForCapture,
-    captureCurrentBadge,
+    renderParticipantCanvas,
     finishJob,
-    setActiveParticipantId,
     syncPrintWindow,
   ]);
 

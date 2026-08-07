@@ -1,5 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import type { ChangeEvent, PointerEvent } from 'react';
+import { getBadgeComponentUrls } from './badgeAssets';
+import {
+  BADGE_CATEGORY_STYLES,
+  getCategoryLabelForParticipant,
+  normalizeCategoryKey,
+} from './badgeCategories';
 import BadgeLayerSkeleton from './BadgeLayerSkeleton';
 import { fetchAllParticipants } from './api';
 import {
@@ -12,21 +18,37 @@ import {
 } from './constants';
 import ExportJobOverlay from './ExportJobOverlay';
 import { preloadCaptureEngine } from './exportBadge';
-import type { BadgeElement, EditScope, ExportFormat, LayoutItem, Participant, PhotoShape } from './types';
-import { useBadgeExportJob } from './useBadgeExportJob';
+import type {
+  BadgeElement,
+  BadgeFrameStyle,
+  EditScope,
+  ExportFormat,
+  LayoutItem,
+  Participant,
+  PhotoShape,
+} from './types';
+import { useBadgeExportJob, type BadgeExportContext } from './useBadgeExportJob';
 import { useBadgePreviewReady } from './useBadgePreviewReady';
-import { useWaitForPreviewReady } from './useWaitForPreviewReady';
 import { clamp, copyLayout, getInitials, itemStyle, mapApiParticipant } from './utils';
 
 interface BadgeStudioAppProps {
   templateUrl: string;
+  assetBaseUrl: string;
   apiParticipantsUrl: string;
+  sessionEventName?: string;
+  sessionUserName?: string;
 }
 
 /**
- * Studio de génération des badges participants (données API Laravel).
+ * Studio de génération des badges participants (données API Laravel + moteur canvas HD).
  */
-export default function BadgeStudioApp({ templateUrl, apiParticipantsUrl }: BadgeStudioAppProps) {
+export default function BadgeStudioApp({
+  templateUrl,
+  assetBaseUrl,
+  apiParticipantsUrl,
+  sessionEventName = '',
+  sessionUserName = '',
+}: BadgeStudioAppProps) {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [activeParticipantId, setActiveParticipantId] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -51,12 +73,15 @@ export default function BadgeStudioApp({ templateUrl, apiParticipantsUrl }: Badg
   } | null>(null);
   const [templateImage, setTemplateImage] = useState(templateUrl);
   const [nameFont, setNameFont] = useState(FONT_OPTIONS[0].value);
-  const [photoShape, setPhotoShape] = useState<PhotoShape>('square');
+  const [photoShape, setPhotoShape] = useState<PhotoShape>('circle');
   const [exportFormat, setExportFormat] = useState<ExportFormat>('png');
+  const [categoryStyle, setCategoryStyle] = useState<BadgeFrameStyle>('classic');
   const [zoom, setZoom] = useState(100);
-  const [nameColor, setNameColor] = useState('#1c1c1c');
-  const [numberColor, setNumberColor] = useState('#8c1418');
+  const [nameColor, setNameColor] = useState('#ffffff');
+  const [numberColor, setNumberColor] = useState('#373737');
   const [badgeWidth, setBadgeWidth] = useState(920);
+  const [loadedEventName, setLoadedEventName] = useState(sessionEventName);
+  const componentUrls = useMemo(() => getBadgeComponentUrls(assetBaseUrl), [assetBaseUrl]);
 
   // Search & Filter States
   const [searchQuery, setSearchQuery] = useState('');
@@ -93,9 +118,12 @@ export default function BadgeStudioApp({ templateUrl, apiParticipantsUrl }: Badg
     setLoadError('');
 
     try {
-      const rows = await fetchAllParticipants(apiParticipantsUrl);
-      const mapped = rows.map((row, index) => mapApiParticipant(row, index));
+      const result = await fetchAllParticipants(apiParticipantsUrl);
+      const mapped = result.participants.map((row, index) => mapApiParticipant(row, index));
       setParticipants(mapped);
+      if (result.eventName) {
+        setLoadedEventName(result.eventName);
+      }
       setActiveParticipantId(prev => {
         if (mapped.length === 0) {
           return '';
@@ -149,8 +177,24 @@ export default function BadgeStudioApp({ templateUrl, apiParticipantsUrl }: Badg
   );
 
   const isPreviewLoading = useBadgePreviewReady(activeParticipant, templateImage);
-  const waitForPreviewReady = useWaitForPreviewReady(isPreviewLoading, activeParticipantId, badgeRef);
   const showBadgeLayers = !isPreviewLoading || isCaptureMode;
+
+  const resolveExportContext = useCallback((participant: Participant): BadgeExportContext => {
+    const layoutForParticipant = participantLayouts[participant.id] ?? layout;
+
+    return {
+      participant,
+      layout: layoutForParticipant,
+      nameFontCss: nameFont,
+      nameColor,
+      numberColor,
+      photoShape,
+      categoryStyle,
+      showPhoto: true,
+      showWorkshop: true,
+      showChambre: true,
+    };
+  }, [participantLayouts, layout, nameFont, nameColor, numberColor, photoShape, categoryStyle]);
 
   const {
     exportJob,
@@ -162,13 +206,11 @@ export default function BadgeStudioApp({ templateUrl, apiParticipantsUrl }: Badg
     requestCancelExport,
     dismissExportJob,
   } = useBadgeExportJob({
-    badgeRef,
     participants,
     activeParticipant,
-    activeParticipantId,
-    setActiveParticipantId,
     exportFormat,
-    waitForPreviewReady,
+    assetBaseUrl,
+    resolveExportContext,
     setCaptureMode: setIsCaptureMode,
   });
 
@@ -461,9 +503,15 @@ export default function BadgeStudioApp({ templateUrl, apiParticipantsUrl }: Badg
         {/* ════════════════ SIDEBAR ════════════════ */}
         <aside className="badge-studio-sidebar">
           <div className="badge-studio-brand">
-            <span className="badge-studio-kicker">Studio classique (V1)</span>
+            <span className="badge-studio-kicker">Studio HD (V2 badgecmp)</span>
             <h1>Génération des badges participants</h1>
-            <p>Déplacez les éléments directement sur le badge. Personnalisez polices, couleurs et formes.</p>
+            <p>
+              Session
+              {loadedEventName || sessionEventName
+                ? ` : ${loadedEventName || sessionEventName}`
+                : ' : édition opérationnelle'}
+              {sessionUserName ? ` · ${sessionUserName}` : ''}
+            </p>
           </div>
 
           <div className="badge-studio-panel">
@@ -642,6 +690,7 @@ export default function BadgeStudioApp({ templateUrl, apiParticipantsUrl }: Badg
                 >
                   <option value="png">PNG</option>
                   <option value="pdf">PDF</option>
+                  <option value="zip">ZIP</option>
                 </select>
               </label>
               <button
@@ -732,13 +781,21 @@ export default function BadgeStudioApp({ templateUrl, apiParticipantsUrl }: Badg
                     </div>
 
                     <div
-                      className={`badge-layer badge-name-layer${selectedElement === 'name' ? ' selected' : ''}`}
+                      className={`badge-layer badge-name-layer badge-name-layer--composed${selectedElement === 'name' ? ' selected' : ''}`}
                       style={{ ...itemStyle(effectiveLayout.name, badgeWidth), fontFamily: nameFont, color: nameColor }}
                       onPointerDown={event => handlePointerDown(event, 'name')}
                       onPointerMove={handlePointerMove}
                       onPointerUp={handlePointerUp}
                     >
-                      {activeParticipant.prenom} {activeParticipant.nom}
+                      <img
+                        src={componentUrls.nameBanner}
+                        alt=""
+                        className="badge-layer-asset"
+                        draggable={false}
+                      />
+                      <span className="badge-layer-label">
+                        {activeParticipant.prenom} {activeParticipant.nom}
+                      </span>
                       {selectedElement === 'name' && (
                         <div
                           className="badge-resize-handle bottom-right"
@@ -750,13 +807,35 @@ export default function BadgeStudioApp({ templateUrl, apiParticipantsUrl }: Badg
                     </div>
 
                     <div
-                      className={`badge-layer badge-number-layer${selectedElement === 'atelier' ? ' selected' : ''}`}
+                      className="badge-layer badge-category-preview"
+                      style={{
+                        left: '30.2%',
+                        top: `${(effectiveLayout.name.y + effectiveLayout.name.h + 1.2).toFixed(1)}%`,
+                        width: '39.6%',
+                        height: '3.8%',
+                      }}
+                      aria-hidden="true"
+                    >
+                      {getCategoryLabelForParticipant(
+                        normalizeCategoryKey(activeParticipant.role || activeParticipant.category),
+                        activeParticipant.sexe,
+                      )}
+                    </div>
+
+                    <div
+                      className={`badge-layer badge-number-layer badge-number-layer--composed${selectedElement === 'atelier' ? ' selected' : ''}`}
                       style={{ ...itemStyle(effectiveLayout.atelier, badgeWidth), color: numberColor }}
                       onPointerDown={event => handlePointerDown(event, 'atelier')}
                       onPointerMove={handlePointerMove}
                       onPointerUp={handlePointerUp}
                     >
-                      {activeParticipant.atelier}
+                      <img
+                        src={componentUrls.atelierBanner}
+                        alt=""
+                        className="badge-layer-asset"
+                        draggable={false}
+                      />
+                      <strong className="badge-layer-label">{activeParticipant.atelier || '—'}</strong>
                       {selectedElement === 'atelier' && (
                         <div
                           className="badge-resize-handle bottom-right"
@@ -768,13 +847,19 @@ export default function BadgeStudioApp({ templateUrl, apiParticipantsUrl }: Badg
                     </div>
 
                     <div
-                      className={`badge-layer badge-number-layer${selectedElement === 'chambre' ? ' selected' : ''}`}
+                      className={`badge-layer badge-number-layer badge-number-layer--composed${selectedElement === 'chambre' ? ' selected' : ''}`}
                       style={{ ...itemStyle(effectiveLayout.chambre, badgeWidth), color: numberColor }}
                       onPointerDown={event => handlePointerDown(event, 'chambre')}
                       onPointerMove={handlePointerMove}
                       onPointerUp={handlePointerUp}
                     >
-                      {activeParticipant.chambre}
+                      <img
+                        src={componentUrls.chambreBanner}
+                        alt=""
+                        className="badge-layer-asset"
+                        draggable={false}
+                      />
+                      <strong className="badge-layer-label">{activeParticipant.chambre}</strong>
                       {selectedElement === 'chambre' && (
                         <div
                           className="badge-resize-handle bottom-right"
@@ -884,6 +969,20 @@ export default function BadgeStudioApp({ templateUrl, apiParticipantsUrl }: Badg
                     ))}
                   </div>
                 </div>
+
+                <label className="badge-select-control">
+                  <span>Style de cadre</span>
+                  <select
+                    value={categoryStyle}
+                    onChange={event => setCategoryStyle(event.target.value as BadgeFrameStyle)}
+                  >
+                    {(Object.keys(BADGE_CATEGORY_STYLES) as BadgeFrameStyle[]).map(styleKey => (
+                      <option key={styleKey} value={styleKey}>
+                        {BADGE_CATEGORY_STYLES[styleKey].label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
                 {/* Text color selector */}
                 <div className="badge-color-row">
