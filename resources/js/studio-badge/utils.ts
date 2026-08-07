@@ -17,6 +17,9 @@ export function mapApiParticipant(item: ApiParticipant, index: number): Particip
     chambre: item.chambre || '—',
     atelier: item.atelier > 0 ? item.atelier : 0,
     source: item.source,
+    sexe: item.sexe ?? null,
+    role: item.role ?? null,
+    category: item.role ?? null,
   };
 }
 

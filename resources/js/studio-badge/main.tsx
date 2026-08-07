@@ -5,12 +5,21 @@ import StudioBadgeErrorBoundary from './StudioBadgeErrorBoundary';
 const rootEl = document.getElementById('studio-badge-root');
 
 if (rootEl) {
-  const templateUrl = rootEl.dataset.templateUrl || '/assets/studio-badge/badge-participant.png';
+  const templateUrl = rootEl.dataset.templateUrl || '/assets/studio-badge/composants/fond-badge.png';
+  const assetBaseUrl = rootEl.dataset.assetBaseUrl || '/assets/studio-badge';
   const apiParticipants = rootEl.dataset.apiParticipants || '';
+  const sessionEventName = rootEl.dataset.sessionEventName || '';
+  const sessionUserName = rootEl.dataset.sessionUserName || '';
 
   createRoot(rootEl).render(
     <StudioBadgeErrorBoundary>
-      <BadgeStudioApp templateUrl={templateUrl} apiParticipantsUrl={apiParticipants} />
+      <BadgeStudioApp
+        templateUrl={templateUrl}
+        assetBaseUrl={assetBaseUrl}
+        apiParticipantsUrl={apiParticipants}
+        sessionEventName={sessionEventName}
+        sessionUserName={sessionUserName}
+      />
     </StudioBadgeErrorBoundary>,
   );
 }

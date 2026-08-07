@@ -20,6 +20,7 @@ use Filament\Navigation\NavigationItem;
 use Filament\Support\Assets\Css;
 use Filament\Support\Assets\Js;
 use Filament\Support\Colors\Color;
+use App\Filament\Widgets\RetreatBadgeStudioWidget;
 use App\Filament\Widgets\RetreatPaymentFailuresWidget;
 use Filament\Widgets\AccountWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -65,6 +66,7 @@ class AdminPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([
                 AccountWidget::class,
+                RetreatBadgeStudioWidget::class,
                 RetreatPaymentFailuresWidget::class,
             ])
             ->navigationItems([
@@ -73,8 +75,7 @@ class AdminPanelProvider extends PanelProvider
                     ->icon('heroicon-o-identification')
                     ->group('Gestion pastorale')
                     ->sort(12)
-                    ->visible(fn (): bool => auth()->user()?->can('View:BadgeStudio') ?? false)
-                    ->openUrlInNewTab(),
+                    ->visible(fn (): bool => (auth()->user()?->is_active && auth()->user()?->can('View:BadgeStudio')) ?? false),
             ])
             ->middleware([
                 EncryptCookies::class,

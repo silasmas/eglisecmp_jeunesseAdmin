@@ -413,7 +413,7 @@
 
 /* â”€â”€ Name & number layers â”€â”€ */
 .badge-name-layer {
-  color: #1c1c1c;
+  color: #ffffff;
   font-weight: 900;
   line-height: 1;
   text-align: center;
@@ -421,11 +421,74 @@
   white-space: nowrap;
 }
 .badge-number-layer {
-  color: #8c1418;
+  color: #373737;
   font-weight: 900;
   line-height: 1;
   text-align: center;
-  transform: rotate(12deg);
+}
+
+.badge-name-layer--composed,
+.badge-number-layer--composed {
+  display: block;
+  overflow: visible;
+  white-space: normal;
+}
+
+.badge-layer-asset {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+  user-select: none;
+}
+
+.badge-name-layer--composed .badge-layer-label {
+  position: absolute;
+  inset: 18% 8.5% 22%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: inherit;
+  font-family: inherit;
+  color: inherit;
+  font-size: inherit;
+  line-height: 1.05;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.badge-number-layer--composed .badge-layer-label {
+  position: absolute;
+  left: 17%;
+  right: 17%;
+  top: 38%;
+  bottom: 32%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  color: inherit;
+  font-size: 1.15em;
+  pointer-events: none;
+}
+
+.badge-category-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0 0 999px 999px;
+  background: #4b5563;
+  color: #fff;
+  font-size: clamp(0.55rem, 1.6vw, 0.85rem);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  pointer-events: none;
+  z-index: 2;
 }
 
 /* â”€â”€ Zoom controls â”€â”€ */

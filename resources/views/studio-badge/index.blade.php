@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>Studio badges — CMP Jeunesse</title>
-  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Bungee&family=Inter:wght@400;600;800;900&family=Montserrat:wght@400;700;900&family=Oswald:wght@400;600;700&family=Playfair+Display:wght@700;900&family=Poppins:wght@300;400;500;600;700;800;900&family=Raleway:wght@700;900&family=Roboto+Condensed:wght@700;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=Bebas+Neue&family=Bungee&family=Inter:wght@400;600;800;900&family=Montserrat:wght@400;700;900&family=Oswald:wght@400;600;700&family=Playfair+Display:wght@700;900&family=Poppins:wght@300;400;500;600;700;800;900&family=Raleway:wght@700;900&family=Roboto+Condensed:wght@700;900&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
   @vite(['resources/css/studio-badge.css', 'resources/js/studio-badge/main.tsx'])
   <style>
@@ -55,12 +55,16 @@
 <body>
   <nav class="studio-badge-topnav" aria-label="Navigation studio badges">
     <div>
-      <a href="{{ $portalUrl }}">← Portail retraite</a>
+      <a href="{{ $adminUrl }}">← Tableau de bord</a>
       ·
-      <a href="{{ $adminUrl }}">Administration</a>
+      <a href="{{ $portalUrl }}">Portail retraite</a>
+      @if (!empty($sessionEventName))
+        ·
+        <span style="font-size:0.78rem;color:#64748b;">Session : <strong style="color:#0f172a;">{{ $sessionEventName }}</strong></span>
+      @endif
     </div>
     <div class="studio-badge-topnav-actions">
-      <span style="font-size:0.78rem;color:#94a3b8;">{{ auth()->user()->name ?? auth()->user()->email }}</span>
+      <span style="font-size:0.78rem;color:#94a3b8;">{{ $sessionUserName ?: (auth()->user()->name ?? auth()->user()->email) }}</span>
       <form method="post" action="{{ $logoutUrl }}">
         @csrf
         <button type="submit">Déconnexion</button>
@@ -72,7 +76,11 @@
     id="studio-badge-root"
     class="studio-badge-root-mount"
     data-template-url="{{ $templateUrl }}"
+    data-asset-base-url="{{ $assetBaseUrl }}"
     data-api-participants="{{ route('studio-badge.api.participants') }}"
+    data-api-session="{{ $sessionApiUrl }}"
+    data-session-event-name="{{ $sessionEventName ?? '' }}"
+    data-session-user-name="{{ $sessionUserName }}"
   ></div>
 </body>
 </html>

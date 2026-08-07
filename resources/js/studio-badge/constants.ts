@@ -1,3 +1,4 @@
+import { getStudioInitialLayoutFromBadgecmp } from './badgeLayout';
 import type { BadgeElement, LayoutItem } from './types';
 
 export const COLORS = ['#8B3A2B', '#255C63', '#9A6A1F', '#4C3B8F', '#7A2848', '#1F6B45', '#2E4C7E'];
@@ -8,6 +9,7 @@ export const FONT_OPTIONS = [
   { label: 'Bebas Neue', value: 'Bebas Neue, Impact, sans-serif' },
   { label: 'Anton', value: 'Anton, Impact, sans-serif' },
   { label: 'Oswald', value: 'Oswald, Arial Narrow, sans-serif' },
+  { label: 'Archivo Black', value: 'Archivo Black, Arial, sans-serif' },
   { label: 'Roboto Condensed', value: 'Roboto Condensed, Arial Narrow, sans-serif' },
   { label: 'Inter Black', value: 'Inter, Arial, sans-serif' },
   { label: 'Raleway ExtraBold', value: 'Raleway, Poppins, sans-serif' },
@@ -30,13 +32,8 @@ export const TEXT_COLORS = [
   { label: 'Bleu', value: '#1a3a6b' },
 ];
 
-/** Positions par défaut calées sur le modèle « Grande Retraite » (badge-participant.png). */
-export const INITIAL_LAYOUT: Record<BadgeElement, LayoutItem> = {
-  photo: { x: 26.5, y: 33.5, w: 47, h: 26.5, font: 42 },
-  name: { x: 15.5, y: 60.5, w: 69, h: 6.2, font: 34 },
-  atelier: { x: 30.5, y: 73.5, w: 17.5, h: 7.5, font: 30 },
-  chambre: { x: 52, y: 73.5, w: 17.5, h: 7.5, font: 30 },
-};
+/** Positions par défaut calées sur fond-badge.png (moteur badgecmp). */
+export const INITIAL_LAYOUT: Record<BadgeElement, LayoutItem> = getStudioInitialLayoutFromBadgecmp();
 
 export const ELEMENT_LABELS: Record<BadgeElement, string> = {
   photo: 'Photo',

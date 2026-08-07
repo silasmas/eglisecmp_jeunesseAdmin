@@ -2,19 +2,53 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ChurchEvent;
 use App\Models\RetreatParticipant;
 use App\Services\PublicStorageUrl;
+use App\Support\RetreatActiveEventScope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * API JSON du studio badges (participants pour génération des visuels).
+ * API JSON du studio badges (participants de la session / édition opérationnelle).
  */
 class RetreatBadgeStudioApiController extends Controller
 {
     /**
-     * Liste paginée des participants pour le studio badges.
+     * Métadonnées de session pour le studio (utilisateur + édition courante).
+     *
+     * @return JsonResponse
+     */
+    public function sessionContext(): JsonResponse
+    {
+        $user = request()->user();
+        $event = ChurchEvent::resolveOperationalLogisticsEvent();
+
+        $participantsQuery = RetreatActiveEventScope::applyToParticipants(
+            RetreatParticipant::query()->where('is_active', true)
+        );
+
+        if ($event !== null) {
+            $participantsQuery->where('event_id', $event->getKey());
+        }
+
+        return response()->json([
+            'user' => [
+                'id' => $user?->getKey(),
+                'name' => $user?->name,
+                'email' => $user?->email,
+            ],
+            'event' => $event === null ? null : [
+                'id' => $event->getKey(),
+                'name' => $event->name,
+            ],
+            'participants_total' => (int) $participantsQuery->count(),
+        ]);
+    }
+
+    /**
+     * Liste paginée des participants pour le studio badges (édition courante uniquement).
      */
     public function participants(Request $request): JsonResponse
     {
@@ -31,16 +65,25 @@ class RetreatBadgeStudioApiController extends Controller
         $search = isset($validated['search']) ? trim((string) $validated['search']) : '';
         $chambreFilter = isset($validated['chambre']) ? trim((string) $validated['chambre']) : '';
         $atelierFilter = isset($validated['atelier']) ? trim((string) $validated['atelier']) : '';
+        $event = ChurchEvent::resolveOperationalLogisticsEvent();
 
-        $participants = RetreatParticipant::query()
-            ->with(['chambre', 'atelier'])
-            ->where('is_active', true)
+        $query = RetreatActiveEventScope::applyToParticipants(
+            RetreatParticipant::query()
+                ->with(['chambre', 'atelier'])
+                ->where('is_active', true)
+        );
+
+        if ($event !== null) {
+            $query->where('event_id', $event->getKey());
+        }
+
+        $participants = $query
             ->when(
                 array_key_exists('paiement_valide', $validated),
-                fn (Builder $query): Builder => $query->where('paiement_valide', (bool) $validated['paiement_valide']),
+                fn (Builder $builder): Builder => $builder->where('paiement_valide', (bool) $validated['paiement_valide']),
             )
-            ->when($search !== '', function (Builder $query) use ($search): void {
-                $query->where(function (Builder $inner) use ($search): void {
+            ->when($search !== '', function (Builder $builder) use ($search): void {
+                $builder->where(function (Builder $inner) use ($search): void {
                     $inner
                         ->where('nom', 'like', "%{$search}%")
                         ->orWhere('prenom', 'like', "%{$search}%")
@@ -49,11 +92,11 @@ class RetreatBadgeStudioApiController extends Controller
                         ->orWhere('telephone', 'like', "%{$search}%");
                 });
             })
-            ->when($chambreFilter !== '' && $chambreFilter !== 'all', function (Builder $query) use ($chambreFilter): void {
-                $query->whereHas('chambre', fn (Builder $chambreQuery): Builder => $chambreQuery->where('nom', $chambreFilter));
+            ->when($chambreFilter !== '' && $chambreFilter !== 'all', function (Builder $builder) use ($chambreFilter): void {
+                $builder->whereHas('chambre', fn (Builder $chambreQuery): Builder => $chambreQuery->where('nom', $chambreFilter));
             })
-            ->when($atelierFilter !== '' && $atelierFilter !== 'all', function (Builder $query) use ($atelierFilter): void {
-                $query->whereHas('atelier', fn (Builder $atelierQuery): Builder => $atelierQuery->where('numero', (int) $atelierFilter));
+            ->when($atelierFilter !== '' && $atelierFilter !== 'all', function (Builder $builder) use ($atelierFilter): void {
+                $builder->whereHas('atelier', fn (Builder $atelierQuery): Builder => $atelierQuery->where('numero', (int) $atelierFilter));
             })
             ->orderBy('prenom')
             ->orderBy('nom')
@@ -74,6 +117,10 @@ class RetreatBadgeStudioApiController extends Controller
                 'atelier' => $atelierNumero !== null ? (int) $atelierNumero : 0,
                 'paiementValide' => (bool) $participant->paiement_valide,
                 'source' => $participant->paiement_valide ? 'Validé' : 'En attente',
+                'sexe' => $participant->sexe ? (string) $participant->sexe : null,
+                'role' => $participant->role_participant
+                    ? (string) $participant->role_participant
+                    : null,
             ];
         })->values();
 
@@ -84,6 +131,8 @@ class RetreatBadgeStudioApiController extends Controller
                 'last_page' => $participants->lastPage(),
                 'per_page' => $participants->perPage(),
                 'total' => $participants->total(),
+                'event_id' => $event?->getKey(),
+                'event_name' => $event?->name,
             ],
         ]);
     }

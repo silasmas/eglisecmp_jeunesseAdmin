@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ChurchEvent;
 use Illuminate\View\View;
 
 /**
- * Affiche le studio badges (interface React) pour les super administrateurs.
+ * Affiche le studio badges (interface React) pour les utilisateurs autorisés.
  */
 class RetreatBadgeStudioController extends Controller
 {
@@ -14,11 +15,18 @@ class RetreatBadgeStudioController extends Controller
      */
     public function __invoke(): View
     {
+        $user = request()->user();
+        $event = ChurchEvent::resolveOperationalLogisticsEvent();
+
         return view('studio-badge.index', [
-            'templateUrl' => asset('assets/studio-badge/badge-participant.png'),
+            'templateUrl' => asset('assets/studio-badge/composants/fond-badge.png'),
+            'assetBaseUrl' => asset('assets/studio-badge'),
             'portalUrl' => url('/'),
             'adminUrl' => url('/admin'),
             'logoutUrl' => route('studio-badge.logout'),
+            'sessionUserName' => (string) ($user?->name ?? $user?->email ?? ''),
+            'sessionEventName' => $event?->name,
+            'sessionApiUrl' => route('studio-badge.api.session'),
         ]);
     }
 }

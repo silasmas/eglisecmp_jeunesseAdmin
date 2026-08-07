@@ -104,6 +104,8 @@ Route::prefix('studio-badge')
     ->middleware(['auth', 'badge_studio'])
     ->group(function (): void {
         Route::get('/', RetreatBadgeStudioController::class)->name('index');
+        Route::get('api/session', [RetreatBadgeStudioApiController::class, 'sessionContext'])
+            ->name('api.session');
         Route::get('api/participants', [RetreatBadgeStudioApiController::class, 'participants'])
             ->name('api.participants');
         Route::post('logout', function () {
@@ -111,7 +113,7 @@ Route::prefix('studio-badge')
             request()->session()->invalidate();
             request()->session()->regenerateToken();
 
-            return redirect('/');
+            return redirect('/admin/login');
         })->name('logout');
     });
 
