@@ -1,0 +1,129 @@
+{
+  "_chunk-DTwqp90w.js": {
+    "file": "assets/chunk-DTwqp90w.js",
+    "name": "chunk"
+  },
+  "_jsx-runtime-pComzgX0.js": {
+    "file": "assets/jsx-runtime-pComzgX0.js",
+    "name": "jsx-runtime",
+    "imports": [
+      "_chunk-DTwqp90w.js"
+    ]
+  },
+  "_preload-helper-CTTryutC.js": {
+    "file": "assets/preload-helper-CTTryutC.js",
+    "name": "preload-helper"
+  },
+  "_typeof-BunQ5UM8.js": {
+    "file": "assets/typeof-BunQ5UM8.js",
+    "name": "typeof"
+  },
+  "node_modules/canvg/lib/index.es.js": {
+    "file": "assets/index.es-DFP6CYKY.js",
+    "name": "index.es",
+    "src": "node_modules/canvg/lib/index.es.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "_chunk-DTwqp90w.js",
+      "_typeof-BunQ5UM8.js"
+    ]
+  },
+  "node_modules/dompurify/dist/purify.es.mjs": {
+    "file": "assets/purify.es-CVqZJ1v7.js",
+    "name": "purify.es",
+    "src": "node_modules/dompurify/dist/purify.es.mjs",
+    "isDynamicEntry": true
+  },
+  "node_modules/html2canvas/dist/html2canvas.js": {
+    "file": "assets/html2canvas-BWF0nMQb.js",
+    "name": "html2canvas",
+    "src": "node_modules/html2canvas/dist/html2canvas.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "_chunk-DTwqp90w.js"
+    ]
+  },
+  "node_modules/jspdf/dist/jspdf.es.min.js": {
+    "file": "assets/jspdf.es.min-DvnCgu0h.js",
+    "name": "jspdf.es.min",
+    "src": "node_modules/jspdf/dist/jspdf.es.min.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "_chunk-DTwqp90w.js",
+      "_preload-helper-CTTryutC.js",
+      "_typeof-BunQ5UM8.js"
+    ],
+    "dynamicImports": [
+      "node_modules/html2canvas/dist/html2canvas.js",
+      "node_modules/dompurify/dist/purify.es.mjs",
+      "node_modules/canvg/lib/index.es.js"
+    ]
+  },
+  "node_modules/jszip/dist/jszip.min.js": {
+    "file": "assets/jszip.min-D50Gzyan.js",
+    "name": "jszip.min",
+    "src": "node_modules/jszip/dist/jszip.min.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "_chunk-DTwqp90w.js"
+    ]
+  },
+  "resources/css/app.css": {
+    "file": "assets/app-BATBmD8J.css",
+    "name": "app",
+    "names": [
+      "app.css"
+    ],
+    "src": "resources/css/app.css",
+    "isEntry": true
+  },
+  "resources/css/studio-badge.css": {
+    "file": "assets/studio-badge-4Ns5Y2Eg.css",
+    "name": "studio-badge",
+    "names": [
+      "studio-badge.css"
+    ],
+    "src": "resources/css/studio-badge.css",
+    "isEntry": true
+  },
+  "resources/js/app.js": {
+    "file": "assets/app-B4UNOqlV.js",
+    "name": "app",
+    "src": "resources/js/app.js",
+    "isEntry": true,
+    "imports": [
+      "_chunk-DTwqp90w.js"
+    ]
+  },
+  "resources/js/studio-badge-hd/main.tsx": {
+    "file": "assets/main-JUuNx2cv.js",
+    "name": "main",
+    "src": "resources/js/studio-badge-hd/main.tsx",
+    "isEntry": true,
+    "imports": [
+      "_chunk-DTwqp90w.js",
+      "_preload-helper-CTTryutC.js",
+      "_jsx-runtime-pComzgX0.js"
+    ],
+    "dynamicImports": [
+      "node_modules/html2canvas/dist/html2canvas.js",
+      "node_modules/jspdf/dist/jspdf.es.min.js",
+      "node_modules/jszip/dist/jszip.min.js"
+    ]
+  },
+  "resources/js/studio-badge/main.tsx": {
+    "file": "assets/main-C4RCvp4A.js",
+    "name": "main",
+    "src": "resources/js/studio-badge/main.tsx",
+    "isEntry": true,
+    "imports": [
+      "_chunk-DTwqp90w.js",
+      "_preload-helper-CTTryutC.js",
+      "_jsx-runtime-pComzgX0.js"
+    ],
+    "dynamicImports": [
+      "node_modules/html2canvas/dist/html2canvas.js",
+      "node_modules/jspdf/dist/jspdf.es.min.js"
+    ]
+  }
+}
