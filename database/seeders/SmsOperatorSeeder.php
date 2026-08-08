@@ -10,9 +10,6 @@ use Illuminate\Support\Facades\DB;
  */
 class SmsOperatorSeeder extends Seeder
 {
-    /**
-     * @return void
-     */
     public function run(): void
     {
         $token = (string) env('KECCEL_TOKEN', env('SEED_KECCEL_TOKEN', 'KR9DP24WQK5BF4A'));
@@ -24,8 +21,8 @@ class SmsOperatorSeeder extends Seeder
                 'name' => 'Keccel',
                 'provider' => 'keccel',
                 'send_url' => 'https://api.keccel.com/sms/v2/message.asp',
-                'balance_url' => 'https://api.keccel.com/sms/balance.asp',
-                'delivery_url' => 'https://api.keccel.com/sms/delivery.asp',
+                'balance_url' => 'https://api.keccel.com/sms/v2/balance.asp',
+                'delivery_url' => 'https://api.keccel.com/sms/v2/delivery.asp',
                 'token' => $token,
                 'sender' => $sender,
                 'send_method' => 'POST',

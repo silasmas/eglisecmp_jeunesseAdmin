@@ -68,7 +68,7 @@ class KeccelSmsService
     }
 
     /**
-     * Consulte le solde Keccel et persiste remaining_sms (peut être négatif si compte expiré).
+     * Consulte le solde Keccel (API v2 prioritaire) et persiste remaining_sms (>= 0 uniquement).
      *
      * @param  SmsOperator|null  $operator  Opérateur ciblé (sinon actif)
      * @return int|null Solde numérique ou null si non parsable
@@ -87,39 +87,57 @@ class KeccelSmsService
             'from' => $from,
             'FROM' => $from,
         ];
-
-        // Docs Keccel : GET sur balance.asp ; on tente GET puis POST en secours.
         $timeout = (int) config('services.sms.timeout', 15);
-        $url = (string) $operator->balance_url;
-        $response = Http::timeout($timeout)
-            ->withToken($token)
-            ->acceptJson()
-            ->get($url, $payload);
 
-        if ($response->failed() || $this->looksRejected($response)) {
-            $response = Http::timeout($timeout)
-                ->withToken($token)
-                ->asJson()
-                ->post($url, $payload);
-        }
+        $urls = $this->balanceEndpointCandidates((string) $operator->balance_url);
+        $lastResponse = null;
+        $rejectedNegative = null;
 
-        if ($response->failed() || $this->looksRejected($response)) {
+        foreach ($urls as $url) {
+            $response = $this->requestBalance($url, $payload, $token, $timeout);
+            $lastResponse = $response;
+
+            if ($response->failed() || $this->looksRejected($response)) {
+                continue;
+            }
+
+            $balance = $this->extractBalance($response);
+            if ($balance === null) {
+                continue;
+            }
+
+            // Un solde négatif (ex. -7 sur l’ancienne URL non-v2) n’est pas fiable : on ignore.
+            if ($balance < 0) {
+                $rejectedNegative = $balance;
+
+                continue;
+            }
+
             $operator->update([
+                'remaining_sms' => $balance,
+                'balance_url' => $this->preferV2SmsUrl((string) $operator->balance_url, 'balance'),
+                'delivery_url' => $this->preferV2SmsUrl((string) ($operator->delivery_url ?: config('services.sms.delivery_url')), 'delivery'),
                 'last_balance_checked_at' => now(),
                 'last_balance_response' => $response->body(),
             ]);
 
-            throw new RuntimeException($this->providerErrorMessage($response) ?: 'Impossible de consulter le solde SMS.');
+            return $balance;
         }
 
-        $balance = $this->extractBalance($response);
         $operator->update([
-            'remaining_sms' => $balance,
             'last_balance_checked_at' => now(),
-            'last_balance_response' => $response->body(),
+            'last_balance_response' => $lastResponse?->body(),
         ]);
 
-        return $balance;
+        if ($rejectedNegative !== null) {
+            throw new RuntimeException(
+                "Keccel a renvoyé un solde incohérent ({$rejectedNegative}). Solde précédent conservé. Vérifiez l’URL v2 : https://api.keccel.com/sms/v2/balance.asp"
+            );
+        }
+
+        $hint = $lastResponse ? $this->providerErrorMessage($lastResponse) : null;
+
+        throw new RuntimeException($hint ?: 'Impossible de consulter le solde SMS.');
     }
 
     /**
@@ -207,7 +225,10 @@ class KeccelSmsService
     public function refreshDelivery(SmsMessageLog $log): SmsMessageLog
     {
         $operator = $log->operator ?: $this->resolveOperator();
-        $deliveryUrl = $operator ? (string) $operator->delivery_url : (string) config('services.sms.delivery_url');
+        $deliveryUrl = $this->preferV2SmsUrl(
+            $operator ? (string) $operator->delivery_url : (string) config('services.sms.delivery_url'),
+            'delivery'
+        );
         $token = $operator ? trim((string) $operator->token) : trim((string) config('services.sms.token'));
         $from = $operator ? trim((string) $operator->sender) : trim((string) config('services.sms.from', 'CMP'));
 
@@ -215,7 +236,14 @@ class KeccelSmsService
             throw new RuntimeException('Aucune URL de vérification de livraison SMS n’est configurée.');
         }
         if (blank($log->provider_reference)) {
-            throw new RuntimeException('Référence Keccel du SMS introuvable.');
+            $recovered = $this->extractProviderReferenceFromBody($log->provider_response);
+            if ($recovered) {
+                $log->update(['provider_reference' => $recovered]);
+                $log->provider_reference = $recovered;
+            }
+        }
+        if (blank($log->provider_reference)) {
+            throw new RuntimeException('Référence Keccel du SMS introuvable (messageID manquant).');
         }
 
         $payload = [
@@ -223,10 +251,11 @@ class KeccelSmsService
             'FROM' => $from,
             'token' => $token,
             'messageid' => $log->provider_reference,
+            'messageID' => $log->provider_reference,
         ];
         $timeout = (int) config('services.sms.timeout', 15);
 
-        // Docs Keccel : GET ; POST en secours pour les configs historiques.
+        // Docs Keccel : GET v2/delivery.asp ; POST en secours.
         $response = Http::timeout($timeout)
             ->withToken($token)
             ->acceptJson()
@@ -429,26 +458,144 @@ class KeccelSmsService
         $this->lastLog = $log->fresh();
     }
 
+    /**
+     * Extrait le messageID Keccel (casse réelle : messageID) depuis une réponse HTTP.
+     *
+     * @param  Response  $response  Réponse d’envoi
+     */
     protected function extractProviderReference(Response $response): ?string
     {
-        $json = $response->json();
+        return $this->extractProviderReferenceFromBody($response->body());
+    }
+
+    /**
+     * Parse messageID depuis un corps JSON/texte (utile aussi pour rattrapage des logs).
+     *
+     * @param  string|null  $body  Corps brut Keccel
+     */
+    public function extractProviderReferenceFromBody(?string $body): ?string
+    {
+        $body = trim((string) $body);
+        if ($body === '') {
+            return null;
+        }
+
+        $json = json_decode($body, true);
         if (is_array($json)) {
-            foreach (['messageid', 'message_id', 'messageId', 'id', 'reference', 'ref'] as $key) {
-                if (! empty($json[$key])) {
-                    return (string) $json[$key];
+            $normalized = [];
+            foreach ($json as $key => $value) {
+                $normalized[strtolower((string) $key)] = $value;
+            }
+
+            foreach (['messageid', 'message_id', 'id', 'reference', 'ref'] as $key) {
+                if (! empty($normalized[$key]) && is_scalar($normalized[$key])) {
+                    return trim((string) $normalized[$key]);
                 }
             }
         }
 
-        if (preg_match('/(?:messageid|message_id|id)\s*[=:]\s*([A-Za-z0-9_-]+)/i', $response->body(), $m)) {
+        if (preg_match('/"messageID"\s*:\s*"([^"]+)"/i', $body, $m)) {
+            return trim($m[1]);
+        }
+
+        if (preg_match('/(?:messageid|message_id)\s*[=:]\s*([A-Za-z0-9_-]+)/i', $body, $m)) {
+            return trim($m[1]);
+        }
+
+        if (preg_match('/^\s*([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\s*$/i', $body, $m)) {
             return $m[1];
         }
 
-        if (preg_match('/^\s*([0-9]{3,})\s*$/', $response->body(), $m)) {
+        if (preg_match('/^\s*([0-9]{3,})\s*$/', $body, $m)) {
             return $m[1];
         }
 
         return null;
+    }
+
+    /**
+     * Rattrape provider_reference depuis provider_response pour les logs déjà envoyés.
+     *
+     * @return int Nombre de logs mis à jour
+     */
+    public function backfillMissingProviderReferences(): int
+    {
+        $updated = 0;
+
+        SmsMessageLog::query()
+            ->where(function ($q): void {
+                $q->whereNull('provider_reference')->orWhere('provider_reference', '');
+            })
+            ->whereNotNull('provider_response')
+            ->orderBy('id')
+            ->chunkById(100, function ($logs) use (&$updated): void {
+                foreach ($logs as $log) {
+                    $ref = $this->extractProviderReferenceFromBody($log->provider_response);
+                    if ($ref === null || $ref === '') {
+                        continue;
+                    }
+
+                    $log->update(['provider_reference' => $ref]);
+                    $updated++;
+                }
+            });
+
+        return $updated;
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function balanceEndpointCandidates(string $configuredUrl): array
+    {
+        $candidates = [
+            $this->preferV2SmsUrl($configuredUrl, 'balance'),
+            'https://api.keccel.com/sms/v2/balance.asp',
+            $configuredUrl,
+        ];
+
+        return array_values(array_unique(array_filter($candidates)));
+    }
+
+    /**
+     * @param  array<string, string>  $payload
+     */
+    protected function requestBalance(string $url, array $payload, string $token, int $timeout): Response
+    {
+        $response = Http::timeout($timeout)
+            ->withToken($token)
+            ->acceptJson()
+            ->get($url, $payload);
+
+        if ($response->failed() || $this->looksRejected($response)) {
+            $response = Http::timeout($timeout)
+                ->withToken($token)
+                ->asJson()
+                ->post($url, $payload);
+        }
+
+        return $response;
+    }
+
+    /**
+     * Force l’URL Keccel vers /sms/v2/{balance|delivery}.asp quand l’ancienne route est détectée.
+     *
+     * @param  string  $url  URL configurée
+     * @param  string  $resource  balance|delivery
+     */
+    protected function preferV2SmsUrl(string $url, string $resource): string
+    {
+        $url = trim($url);
+        if ($url === '') {
+            return $resource === 'delivery'
+                ? 'https://api.keccel.com/sms/v2/delivery.asp'
+                : 'https://api.keccel.com/sms/v2/balance.asp';
+        }
+
+        $pattern = '#/sms/(?!v2/)'.$resource.'\.asp#i';
+        $replaced = preg_replace($pattern, '/sms/v2/'.$resource.'.asp', $url);
+
+        return is_string($replaced) && $replaced !== '' ? $replaced : $url;
     }
 
     /**

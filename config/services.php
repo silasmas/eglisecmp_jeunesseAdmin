@@ -46,8 +46,8 @@ return [
     'sms' => [
         'notification_url' => env('SMS_NOTIFICATION_WEBHOOK_URL', env('SMS_URL')),
         'url' => env('SMS_URL'),
-        'balance_url' => env('SMS_BALANCE_URL', env('BALANCE_URL')),
-        'delivery_url' => env('SMS_DELIVERY_URL', 'https://api.keccel.com/sms/delivery.asp'),
+        'balance_url' => env('SMS_BALANCE_URL', env('BALANCE_URL', 'https://api.keccel.com/sms/v2/balance.asp')),
+        'delivery_url' => env('SMS_DELIVERY_URL', 'https://api.keccel.com/sms/v2/delivery.asp'),
         'token' => env('SMS_TOKEN'),
         'from' => env('SMS_FROM', 'CMP'),
         'timeout' => env('SMS_TIMEOUT', 15),
