@@ -10,15 +10,13 @@ use Illuminate\Database\Seeder;
  */
 class ProductionBaseSeeder extends Seeder
 {
-    /**
-     * @return void
-     */
     public function run(): void
     {
         $this->call([
             ShieldRbacSeeder::class,
             AdminUserSeeder::class,
             SmsOperatorSeeder::class,
+            SmsTemplateSeeder::class,
             RetreatEssentialSeeder::class,
         ]);
 

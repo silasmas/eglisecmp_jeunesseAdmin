@@ -196,6 +196,20 @@ class KeccelSmsService
             : $request->asJson()->post($url, $payload);
     }
 
+    /**
+     * Normalise un numéro vers le format Keccel (243…).
+     *
+     * @param  string  $raw  Numéro saisi
+     * @return string Digits normalisés ou chaîne vide si invalide
+     */
+    public function normalizePhone(string $raw): string
+    {
+        return $this->normalizeRecipient($raw);
+    }
+
+    /**
+     * @param  string  $raw  Numéro brut
+     */
     protected function normalizeRecipient(string $raw): string
     {
         $digits = preg_replace('/\D+/', '', trim($raw)) ?: '';

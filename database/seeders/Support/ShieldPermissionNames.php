@@ -51,6 +51,7 @@ final class ShieldPermissionNames
             'RetreatActivityAttendance',
             'SmsOperator',
             'SmsMessageLog',
+            'SmsTemplate',
             'RetreatVoluntaryDonation',
             'ApiDocs',
         ];
@@ -65,6 +66,7 @@ final class ShieldPermissionNames
     {
         return [
             'SmsOtpTest',
+            'SendSmsCampaign',
             'RetreatInscriptionSurveillance',
             'MyWatchesPage',
         ];
