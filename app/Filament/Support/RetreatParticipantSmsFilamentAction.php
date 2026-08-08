@@ -7,6 +7,7 @@ use App\Models\RetreatParticipant;
 use App\Models\SmsTemplate;
 use App\Services\KeccelSmsService;
 use App\Services\Sms\SmsTemplateRenderer;
+use App\Support\RetreatActiveEventScope;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Forms\Components\Placeholder;
@@ -14,6 +15,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Throwable;
@@ -49,27 +51,111 @@ class RetreatParticipantSmsFilamentAction
     }
 
     /**
-     * Action bulk : campagne sur la sélection.
+     * Action bulk table : cocher plusieurs lignes puis envoyer.
      *
      * @param  string  $name  Identifiant Filament
      */
     public static function makeBulk(string $name = 'envoyer_sms_bulk'): BulkAction
     {
         return BulkAction::make($name)
-            ->label('Envoyer SMS')
+            ->label('Envoyer SMS à la sélection')
             ->icon('heroicon-o-paper-airplane')
+            ->color('primary')
             ->modalHeading('Envoyer un SMS à la sélection')
-            ->modalDescription('Les participants sans téléphone seront ignorés. Message mis en file d’attente.')
-            ->fillForm(fn (): array => [
-                'use_free_body' => false,
-                'sms_template_id' => SmsTemplate::query()->active()->orderBy('name')->value('id'),
-                'body' => (string) (SmsTemplate::query()->active()->orderBy('name')->value('body') ?? ''),
-            ])
+            ->modalDescription('Cochez d’abord les lignes dans le tableau. Les participants sans téléphone seront ignorés. Au-delà d’un destinataire, l’envoi part en file d’attente.')
+            ->fillForm(fn (): array => self::defaultFormState())
             ->form(fn (): array => self::formSchema(null))
             ->action(function (Collection $records, array $data): void {
                 self::sendToParticipants($records, (string) ($data['body'] ?? ''));
             })
             ->deselectRecordsAfterCompletion();
+    }
+
+    /**
+     * Action en-tête de liste : choisir plusieurs participants (sans cocher le tableau).
+     *
+     * @param  string  $name  Identifiant Filament
+     */
+    public static function makeHeader(string $name = 'envoyer_sms_groupe'): Action
+    {
+        return Action::make($name)
+            ->label('Envoyer SMS groupé')
+            ->icon('heroicon-o-chat-bubble-left-right')
+            ->color('primary')
+            ->modalHeading('Envoyer un SMS à plusieurs participants')
+            ->modalDescription('Sélectionnez un ou plusieurs participants avec téléphone. Idéal pour un atelier / une chambre déjà filtrée dans votre tête : cherchez-les ici.')
+            ->fillForm(fn (): array => array_merge(self::defaultFormState(), [
+                'participant_ids' => [],
+            ]))
+            ->form(fn (): array => [
+                Select::make('participant_ids')
+                    ->label('Destinataires')
+                    ->helperText('Recherche par nom, prénom ou téléphone. Multi-sélection.')
+                    ->multiple()
+                    ->required()
+                    ->searchable()
+                    ->preload()
+                    ->optionsLimit(80)
+                    ->getSearchResultsUsing(function (string $search): array {
+                        return self::participantsWithPhoneQuery()
+                            ->where(function (Builder $q) use ($search): void {
+                                $term = '%'.trim($search).'%';
+                                $q->where('prenom', 'like', $term)
+                                    ->orWhere('nom', 'like', $term)
+                                    ->orWhere('postnom', 'like', $term)
+                                    ->orWhere('telephone', 'like', $term);
+                            })
+                            ->orderBy('prenom')
+                            ->limit(80)
+                            ->get()
+                            ->mapWithKeys(fn (RetreatParticipant $p): array => [
+                                $p->id => trim(($p->prenom ?? '').' '.($p->nom ?? '')).' — '.($p->telephone ?? ''),
+                            ])
+                            ->all();
+                    })
+                    ->getOptionLabelsUsing(function (array $values): array {
+                        return RetreatParticipant::query()
+                            ->whereIn('id', $values)
+                            ->get()
+                            ->mapWithKeys(fn (RetreatParticipant $p): array => [
+                                $p->id => trim(($p->prenom ?? '').' '.($p->nom ?? '')).' — '.($p->telephone ?? ''),
+                            ])
+                            ->all();
+                    })
+                    ->live(),
+                ...self::formSchema(null),
+            ])
+            ->action(function (array $data): void {
+                $ids = array_map('intval', $data['participant_ids'] ?? []);
+                $participants = RetreatParticipant::query()->whereIn('id', $ids)->get();
+                self::sendToParticipants($participants, (string) ($data['body'] ?? ''));
+            });
+    }
+
+    /**
+     * @return array{use_free_body: bool, sms_template_id: int|null, body: string}
+     */
+    protected static function defaultFormState(): array
+    {
+        $template = SmsTemplate::query()->active()->orderBy('name')->first();
+
+        return [
+            'use_free_body' => false,
+            'sms_template_id' => $template?->id,
+            'body' => (string) ($template?->body ?? ''),
+        ];
+    }
+
+    /**
+     * @return Builder<RetreatParticipant>
+     */
+    protected static function participantsWithPhoneQuery(): Builder
+    {
+        return RetreatActiveEventScope::applyToParticipants(
+            RetreatParticipant::query()
+                ->whereNotNull('telephone')
+                ->where('telephone', '!=', '')
+        );
     }
 
     /**

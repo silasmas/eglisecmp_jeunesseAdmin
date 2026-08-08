@@ -3,18 +3,19 @@
 namespace App\Filament\Resources\RetreatParticipants\Pages;
 
 use App\Filament\Pages\ManageRetreatAtelierQuarantine;
+use App\Filament\Resources\RetreatAteliers\RetreatAtelierResource;
+use App\Filament\Resources\RetreatChambres\RetreatChambreResource;
 use App\Filament\Resources\RetreatParticipantDeletionLogs\RetreatParticipantDeletionLogResource;
 use App\Filament\Resources\RetreatParticipants\RetreatParticipantResource;
 use App\Filament\Resources\RetreatParticipants\Widgets\RetreatParticipantsStats;
-use App\Filament\Resources\RetreatChambres\RetreatChambreResource;
-use App\Filament\Resources\RetreatAteliers\RetreatAtelierResource;
+use App\Filament\Support\RetreatParticipantSmsFilamentAction;
 use App\Models\RetreatAtelier;
 use App\Models\RetreatChambre;
 use App\Models\RetreatParticipant;
 use App\Models\User;
 use App\Notifications\ParticipantAssignmentMailNotification;
-use App\Services\RetreatAtelierQuarantineNotifier;
 use App\Services\PanelNotificationDispatcher;
+use App\Services\PublicStorageUrl;
 use App\Services\RetreatPlacementAssignmentService;
 use App\Support\AvatarFallback;
 use Filament\Actions\Action;
@@ -26,10 +27,10 @@ use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Support\Enums\Alignment;
 use Filament\Support\Enums\Width;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Notification as NotificationFacade;
 use Illuminate\Support\Str;
-use Illuminate\Database\Eloquent\Builder;
 use Zvizvi\UserFields\Components\UserSelect;
 
 class ListRetreatParticipants extends ListRecords
@@ -39,6 +40,7 @@ class ListRetreatParticipants extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            RetreatParticipantSmsFilamentAction::makeHeader(),
             Action::make('deletionHistory')
                 ->label('Historique suppressions')
                 ->icon('heroicon-o-archive-box-x-mark')
@@ -357,7 +359,7 @@ class ListRetreatParticipants extends ListRecords
         if (filled($path)) {
             return Str::startsWith($path, ['http://', 'https://', '/'])
                 ? $path
-                : (app(\App\Services\PublicStorageUrl::class)->fromPath($path) ?? AvatarFallback::url());
+                : (app(PublicStorageUrl::class)->fromPath($path) ?? AvatarFallback::url());
         }
 
         return AvatarFallback::url();

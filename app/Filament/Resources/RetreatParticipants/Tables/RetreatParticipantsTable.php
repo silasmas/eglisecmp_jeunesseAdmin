@@ -555,6 +555,8 @@ class RetreatParticipantsTable
                     ->tooltip('Actions'),
             ])
             ->toolbarActions([
+                // Visible dès qu’au moins une ligne est cochée (hors menu « … »).
+                RetreatParticipantSmsFilamentAction::makeBulk(),
                 BulkActionGroup::make([
                     BulkAction::make('envoyer_billets')
                         ->label('Envoyer les billets')
@@ -584,7 +586,6 @@ class RetreatParticipantsTable
                                 $failures,
                             );
                         }),
-                    RetreatParticipantSmsFilamentAction::makeBulk(),
                     BulkAction::make('affecter_chambre')
                         ->label('Affecter chambre (auto)')
                         ->icon('heroicon-o-home-modern')
