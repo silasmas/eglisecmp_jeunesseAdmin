@@ -63,7 +63,8 @@ class SmsMessageLogsTable
                         'DELIVERED' => 'Arrivé',
                         'READ' => 'Lu',
                         'FAILED' => 'Échec livraison',
-                        'ERROR' => 'Erreur',
+                        'ERROR' => 'Erreur requête DLR',
+                        'NOT_FOUND' => 'DLR indisponible',
                         'PENDING' => 'En attente',
                         'UNKNOWN', '' => '—',
                         default => (string) $state,
@@ -71,7 +72,9 @@ class SmsMessageLogsTable
                     ->placeholder('—')
                     ->color(fn (?string $state): string => match (strtoupper((string) $state)) {
                         'DELIVERED', 'READ' => 'success',
-                        'FAILED', 'ERROR', 'REJECTED', 'EXPIRED' => 'danger',
+                        'FAILED', 'REJECTED', 'EXPIRED' => 'danger',
+                        'ERROR' => 'danger',
+                        'NOT_FOUND' => 'gray',
                         'PENDING', 'BUFFERED', 'ENROUTE', 'ACCEPTED' => 'warning',
                         default => 'gray',
                     }),
@@ -142,11 +145,29 @@ class SmsMessageLogsTable
                             return;
                         }
 
-                        Notification::make()
+                        $dlr = strtoupper((string) ($updated->delivery_status ?: ''));
+                        $label = match ($dlr) {
+                            'DELIVERED' => 'Arrivé sur le téléphone',
+                            'FAILED' => 'Échec de livraison',
+                            'NOT_FOUND' => 'DLR indisponible chez Keccel (SMS peut quand même être reçu)',
+                            'PENDING' => 'Encore en attente côté opérateur',
+                            'ERROR' => 'Erreur de requête DLR',
+                            default => ($updated->delivery_status ?: 'inconnu'),
+                        };
+
+                        $notification = Notification::make()
                             ->title('Accusé de réception actualisé')
-                            ->body('Livraison : '.($updated->delivery_status ?: 'inconnu').' — statut : '.$updated->status)
-                            ->success()
-                            ->send();
+                            ->body('Livraison : '.$label.' — statut envoi : '.$updated->status);
+
+                        if (in_array($dlr, ['DELIVERED', 'READ'], true)) {
+                            $notification->success();
+                        } elseif (in_array($dlr, ['FAILED', 'ERROR'], true)) {
+                            $notification->danger();
+                        } else {
+                            $notification->warning();
+                        }
+
+                        $notification->send();
                     }),
                 Action::make('details')
                     ->label('Détails')

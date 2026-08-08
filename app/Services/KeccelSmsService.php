@@ -217,7 +217,10 @@ class KeccelSmsService
     }
 
     /**
-     * Interroge Keccel (delivery.asp) pour l’accusé de réception d’un SMS logué.
+     * Interroge Keccel (v2/delivery.asp) pour l’accusé de réception d’un SMS logué.
+     *
+     * Keccel v2 attend un POST JSON avec les clés `from`, `token`, `messageid` (minuscules).
+     * Un GET/form renvoie « FROM parameter is empty » même si from est fourni.
      *
      * @param  SmsMessageLog  $log  Log d’envoi avec provider_reference
      * @return SmsMessageLog Log actualisé
@@ -229,11 +232,21 @@ class KeccelSmsService
             $operator ? (string) $operator->delivery_url : (string) config('services.sms.delivery_url'),
             'delivery'
         );
-        $token = $operator ? trim((string) $operator->token) : trim((string) config('services.sms.token'));
-        $from = $operator ? trim((string) $operator->sender) : trim((string) config('services.sms.from', 'CMP'));
+        $token = trim((string) (
+            $operator?->token
+            ?: config('services.sms.token')
+        ));
+        $from = trim((string) (
+            $log->sender
+            ?: $operator?->sender
+            ?: config('services.sms.from', 'CMP')
+        ));
 
         if (blank($deliveryUrl)) {
             throw new RuntimeException('Aucune URL de vérification de livraison SMS n’est configurée.');
+        }
+        if (blank($from)) {
+            throw new RuntimeException('Expéditeur (from) manquant pour vérifier l’accusé SMS.');
         }
         if (blank($log->provider_reference)) {
             $recovered = $this->extractProviderReferenceFromBody($log->provider_response);
@@ -246,35 +259,31 @@ class KeccelSmsService
             throw new RuntimeException('Référence Keccel du SMS introuvable (messageID manquant).');
         }
 
+        // Clés exactes attendues par l’API v2 (tests réels) : from + messageid en minuscules.
         $payload = [
             'from' => $from,
-            'FROM' => $from,
             'token' => $token,
-            'messageid' => $log->provider_reference,
-            'messageID' => $log->provider_reference,
+            'messageid' => (string) $log->provider_reference,
         ];
         $timeout = (int) config('services.sms.timeout', 15);
 
-        // Docs Keccel : GET v2/delivery.asp ; POST en secours.
         $response = Http::timeout($timeout)
-            ->withToken($token)
             ->acceptJson()
-            ->get($deliveryUrl, $payload);
-
-        if ($response->failed() || $this->extractDeliveryStatus($response) === 'ERROR') {
-            $response = Http::timeout($timeout)
-                ->withToken($token)
-                ->asJson()
-                ->post($deliveryUrl, $payload);
-        }
+            ->asJson()
+            ->post($deliveryUrl, $payload);
 
         $deliveryStatus = $this->extractDeliveryStatus($response);
+        $queryFailed = $this->isDeliveryQueryError($deliveryStatus);
+
         $log->update([
-            'status' => $this->statusFromDelivery($deliveryStatus, $log->status),
+            // Ne pas marquer l’envoi en échec si c’est juste le DLR introuvable / erreur de requête.
+            'status' => $queryFailed ? $log->status : $this->statusFromDelivery($deliveryStatus, $log->status),
             'delivery_status' => $deliveryStatus,
             'delivery_checked_at' => now(),
             'delivery_response' => $response->body(),
-            'error_message' => $response->failed() ? 'Impossible de vérifier la livraison du SMS.' : $log->error_message,
+            'error_message' => $queryFailed
+                ? null
+                : ($response->failed() ? 'Impossible de vérifier la livraison du SMS.' : $log->error_message),
         ]);
 
         return $log->fresh();
@@ -649,6 +658,11 @@ class KeccelSmsService
         return null;
     }
 
+    /**
+     * Normalise le statut DLR Keccel.
+     *
+     * @param  Response  $response  Réponse delivery.asp
+     */
     protected function extractDeliveryStatus(Response $response): string
     {
         if ($response->failed()) {
@@ -656,26 +670,50 @@ class KeccelSmsService
         }
 
         $json = $response->json();
+        $raw = '';
         if (is_array($json) && ! empty($json['status'])) {
-            return strtoupper((string) $json['status']);
+            $raw = trim((string) $json['status']);
+        } elseif (preg_match('/status\s*[=:]\s*"?([^"\r\n]+)"?/i', $response->body(), $m)) {
+            $raw = trim($m[1]);
+        } else {
+            $raw = trim($response->body());
         }
 
-        if (preg_match('/status\s*[=:]\s*([A-Za-z]+)/i', $response->body(), $m)) {
-            return strtoupper($m[1]);
-        }
+        $upper = strtoupper($raw);
 
-        $body = strtoupper(trim($response->body()));
-        if (str_contains($body, 'DELIVERED')) {
+        if ($upper === '' || $upper === 'UNKNOWN') {
+            return 'UNKNOWN';
+        }
+        if (str_contains($upper, 'DELIVERED')) {
             return 'DELIVERED';
         }
-        if (str_contains($body, 'FAILED')) {
-            return 'FAILED';
+        if (str_contains($upper, 'NOT FOUND') || str_contains($upper, 'NOTFOUND')) {
+            return 'NOT_FOUND';
         }
-        if (str_contains($body, 'ERROR')) {
+        if (str_starts_with($upper, 'ERROR') || str_contains($upper, 'PARAMETER IS EMPTY')) {
             return 'ERROR';
         }
+        if (str_contains($upper, 'FAILED') || str_contains($upper, 'REJECTED') || str_contains($upper, 'EXPIRED')) {
+            return 'FAILED';
+        }
+        if (str_contains($upper, 'PENDING') || str_contains($upper, 'ENROUTE') || str_contains($upper, 'BUFFERED')) {
+            return 'PENDING';
+        }
+        if (str_contains($upper, 'READ')) {
+            return 'READ';
+        }
 
-        return $body !== '' ? substr($body, 0, 40) : 'UNKNOWN';
+        return substr($upper, 0, 40);
+    }
+
+    /**
+     * Indique une erreur/absence de DLR, pas un échec de livraison téléphone.
+     *
+     * @param  string  $deliveryStatus  Statut normalisé
+     */
+    protected function isDeliveryQueryError(string $deliveryStatus): bool
+    {
+        return in_array($deliveryStatus, ['ERROR', 'NOT_FOUND', 'UNKNOWN'], true);
     }
 
     /**
@@ -688,7 +726,7 @@ class KeccelSmsService
     {
         return match ($deliveryStatus) {
             'DELIVERED', 'READ' => 'delivered',
-            'FAILED', 'ERROR', 'REJECTED', 'EXPIRED' => 'failed',
+            'FAILED', 'REJECTED', 'EXPIRED' => 'failed',
             'PENDING', 'BUFFERED', 'ENROUTE', 'ACCEPTED' => 'sent',
             default => $currentStatus,
         };
