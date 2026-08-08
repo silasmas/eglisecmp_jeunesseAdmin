@@ -1,8 +1,8 @@
 <?php
 
+use App\Http\Controllers\ProductionBaseSyncController;
 use App\Http\Controllers\RetreatAdminParticipantBilletController;
 use App\Http\Controllers\RetreatAdminPaymentProofController;
-use App\Http\Controllers\ProductionBaseSyncController;
 use App\Http\Controllers\RetreatBadgeStudioApiController;
 use App\Http\Controllers\RetreatBadgeStudioController;
 use App\Http\Controllers\RetreatInscriptionAccessController;
@@ -91,6 +91,21 @@ Route::get('/inscription-retraite/billet/{token}', RetreatInscriptionBilletContr
 Route::get('/inscription-retraite/acces/{token}', RetreatInscriptionAccessController::class)
     ->where('token', '[A-Za-z0-9]{32}')
     ->name('retraite.inscription.acces');
+
+/**
+ * Liens courts SMS (évite la coupure d’URL en multi-segments).
+ * /b|a|j/{token} → billet | accès | justificatif ; /i → portail inscription.
+ */
+Route::redirect('/i', '/inscription-retraite')->name('retraite.sms.inscription');
+Route::get('/b/{token}', fn (string $token) => redirect()->route('retraite.inscription.billet', ['token' => $token], 302))
+    ->where('token', '[A-Za-z0-9]{32}')
+    ->name('retraite.sms.billet');
+Route::get('/a/{token}', fn (string $token) => redirect()->route('retraite.inscription.acces', ['token' => $token], 302))
+    ->where('token', '[A-Za-z0-9]{32}')
+    ->name('retraite.sms.acces');
+Route::get('/j/{token}', fn (string $token) => redirect()->route('retraite.inscription.justificatif', ['token' => $token], 302))
+    ->where('token', '[A-Za-z0-9]{32}')
+    ->name('retraite.sms.justificatif');
 
 /** Retour FlexPay après paiement carte (parcours inscription retraite) — montant peut être 100 ou 100.00 */
 Route::get('/inscription-retraite/paiement-carte/{reference}/{amount}/{currency}/{status}', RetreatInscriptionCardReturnController::class)

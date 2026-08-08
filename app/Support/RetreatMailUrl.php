@@ -9,8 +9,6 @@ class RetreatMailUrl
 {
     /**
      * URL publique de base (doit inclure le sous-dossier /public si l'app y est déployée).
-     *
-     * @return string
      */
     public static function base(): string
     {
@@ -25,8 +23,6 @@ class RetreatMailUrl
 
     /**
      * Portail d'accueil / vérification ouvrier.
-     *
-     * @return string
      */
     public static function portal(): string
     {
@@ -35,8 +31,6 @@ class RetreatMailUrl
 
     /**
      * Administration Filament.
-     *
-     * @return string
      */
     public static function admin(): string
     {
@@ -45,8 +39,6 @@ class RetreatMailUrl
 
     /**
      * Portail d'inscription retraite.
-     *
-     * @return string
      */
     public static function inscription(): string
     {
@@ -54,11 +46,48 @@ class RetreatMailUrl
     }
 
     /**
+     * Lien court portail inscription (SMS).
+     */
+    public static function shortInscription(): string
+    {
+        return self::base().'/i';
+    }
+
+    /**
+     * Lien court billet SMS (/b/{token}).
+     *
+     * @param  string  $token  download_token 32 car.
+     */
+    public static function shortBillet(string $token): string
+    {
+        return self::base().'/b/'.rawurlencode($token);
+    }
+
+    /**
+     * Lien court accès SMS (/a/{token}).
+     *
+     * @param  string  $token  download_token 32 car.
+     */
+    public static function shortAcces(string $token): string
+    {
+        return self::base().'/a/'.rawurlencode($token);
+    }
+
+    /**
+     * Lien court justificatif SMS (/j/{token}).
+     *
+     * @param  string  $token  download_token 32 car.
+     */
+    public static function shortJustificatif(string $token): string
+    {
+        return self::base().'/j/'.rawurlencode($token);
+    }
+
+    /**
      * Génère une URL nommée absolue avec la base publique configurée.
      *
-     * @param string $name Nom de route Laravel
-     * @param array<string, mixed> $parameters Paramètres de route
-     * @return string
+     * @param  string  $name  Nom de route Laravel
+     * @param  array<string, mixed>  $parameters  Paramètres de route
      */
     public static function route(string $name, array $parameters = []): string
     {
@@ -70,8 +99,7 @@ class RetreatMailUrl
     /**
      * URL absolue d'une route API publique (webhooks FlexPay, etc.).
      *
-     * @param string $path Chemin relatif après /api/ (ex. v1/retreat/inscription/webhooks/flexpay-callback)
-     * @return string
+     * @param  string  $path  Chemin relatif après /api/ (ex. v1/retreat/inscription/webhooks/flexpay-callback)
      */
     public static function api(string $path): string
     {
@@ -80,8 +108,6 @@ class RetreatMailUrl
 
     /**
      * Webhook FlexPay pour les paiements inscription retraite.
-     *
-     * @return string
      */
     public static function flexpayInscriptionWebhook(): string
     {

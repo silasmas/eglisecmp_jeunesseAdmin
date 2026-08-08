@@ -30,8 +30,15 @@ class SmsTemplateSeeder extends Seeder
             [
                 'name' => 'Debut retraite + billet',
                 'slug' => 'debut-retraite-billet',
-                'description' => 'Annonce le début ; billet pour inscrits ; portail pour non-inscrits / numéros manuels.',
-                'body' => 'CMP: {{evenement}} commence! Inscrit: billet {{lien_billet}} Infos/inscription: {{lien_inscription}}',
+                'description' => 'Annonce courte (1 lien billet). Eviter 2 URL longues dans le meme SMS.',
+                'body' => 'CMP {{prenom}}: {{evenement}} demarre! Billet: {{lien_billet}}',
+                'is_active' => true,
+            ],
+            [
+                'name' => 'Debut retraite (tous / manuels)',
+                'slug' => 'debut-retraite-tous',
+                'description' => 'Pour participants + numéros manuels (portail court /i, sans billet perso).',
+                'body' => 'CMP: {{evenement}} demarre! Infos: {{lien_inscription}}',
                 'is_active' => true,
             ],
         ];

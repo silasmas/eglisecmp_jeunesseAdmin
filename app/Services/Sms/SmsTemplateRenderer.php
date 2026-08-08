@@ -117,7 +117,7 @@ class SmsTemplateRenderer
      */
     public function resolveParticipantValues(?RetreatParticipant $participant): array
     {
-        $lienInscription = RetreatMailUrl::inscription();
+        $lienInscription = RetreatMailUrl::shortInscription();
 
         if ($participant === null) {
             return array_merge($this->emptyValues(), [
@@ -133,8 +133,9 @@ class SmsTemplateRenderer
         $postnom = trim((string) ($participant->postnom ?? ''));
         $token = trim((string) ($participant->download_token ?? ''));
 
+        // Sans « ° » ni accents forcés : reste en GSM-7 (160 car./SMS) autant que possible.
         $atelier = $participant->atelier
-            ? 'Atelier n°'.$participant->atelier->numero
+            ? 'Atelier n'.$participant->atelier->numero
             : '';
         $chambre = $participant->chambre
             ? (string) ($participant->chambre->nom ?? '')
@@ -143,18 +144,17 @@ class SmsTemplateRenderer
             ? (string) ($participant->event->name ?? '')
             : $this->defaultEventName();
 
+        // Liens courts /b|/a|/j — les URL longues se coupent en SMS multi-segments.
         $lienBillet = '';
         if ($participant->paiement_valide && $token !== '') {
-            $lienBillet = RetreatMailUrl::route('retraite.inscription.billet', [
-                'token' => $token,
-            ]);
+            $lienBillet = RetreatMailUrl::shortBillet($token);
         }
 
         $lienJustificatif = $token !== ''
-            ? RetreatMailUrl::route('retraite.inscription.justificatif', ['token' => $token])
+            ? RetreatMailUrl::shortJustificatif($token)
             : '';
         $lienAcces = $token !== ''
-            ? RetreatMailUrl::route('retraite.inscription.acces', ['token' => $token])
+            ? RetreatMailUrl::shortAcces($token)
             : '';
 
         return [
