@@ -3,6 +3,9 @@
 namespace App\Providers\Filament;
 
 use App\Filament\AvatarProviders\SilhouetteAvatarProvider;
+use App\Filament\Widgets\RetreatBadgeStudioWidget;
+use App\Filament\Widgets\RetreatFinanceOverviewWidget;
+use App\Filament\Widgets\RetreatPaymentFailuresWidget;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use Caresome\FilamentAuthDesigner\AuthDesignerPlugin;
 use Caresome\FilamentAuthDesigner\Data\AuthPageConfig;
@@ -13,15 +16,13 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationItem;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
-use Filament\Navigation\NavigationItem;
 use Filament\Support\Assets\Css;
 use Filament\Support\Assets\Js;
 use Filament\Support\Colors\Color;
-use App\Filament\Widgets\RetreatBadgeStudioWidget;
-use App\Filament\Widgets\RetreatPaymentFailuresWidget;
 use Filament\Widgets\AccountWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -66,6 +67,7 @@ class AdminPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([
                 AccountWidget::class,
+                RetreatFinanceOverviewWidget::class,
                 RetreatBadgeStudioWidget::class,
                 RetreatPaymentFailuresWidget::class,
             ])
