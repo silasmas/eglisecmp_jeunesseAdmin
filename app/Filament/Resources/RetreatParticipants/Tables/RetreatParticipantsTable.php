@@ -3,23 +3,24 @@
 namespace App\Filament\Resources\RetreatParticipants\Tables;
 
 use App\Filament\Resources\RetreatParticipants\RetreatParticipantResource;
+use App\Filament\Support\QuarantinedAtelierAssignmentAction;
+use App\Filament\Support\RetreatBilletPreviewFilamentAction;
+use App\Filament\Support\RetreatInscriptionResumeFilamentAction;
+use App\Filament\Support\RetreatParticipantDeletionActions;
+use App\Filament\Support\RetreatParticipantSmsFilamentAction;
 use App\Models\RetreatParticipant;
 use App\Models\User;
-use App\Services\RetreatParticipantRegistrationService;
-use App\Filament\Support\QuarantinedAtelierAssignmentAction;
 use App\Services\RetreatAtelierProposalService;
+use App\Services\RetreatParticipantRegistrationService;
 use App\Services\RetreatPlacementAssignmentService;
 use App\Support\AvatarFallback;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
-use Filament\Forms\Components\Checkbox;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
-use App\Filament\Support\RetreatBilletPreviewFilamentAction;
-use App\Filament\Support\RetreatInscriptionResumeFilamentAction;
-use App\Filament\Support\RetreatParticipantDeletionActions;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Support\Enums\Alignment;
@@ -433,6 +434,7 @@ class RetreatParticipantsTable
                             RetreatBilletPreviewFilamentAction::make('preview_billet_modal'),
                         ]),
                     EditAction::make(),
+                    RetreatParticipantSmsFilamentAction::make(),
                     RetreatInscriptionResumeFilamentAction::make(),
                     WatchAction::make(),
                     UnwatchAction::make(),
@@ -582,6 +584,7 @@ class RetreatParticipantsTable
                                 $failures,
                             );
                         }),
+                    RetreatParticipantSmsFilamentAction::makeBulk(),
                     BulkAction::make('affecter_chambre')
                         ->label('Affecter chambre (auto)')
                         ->icon('heroicon-o-home-modern')
@@ -670,13 +673,11 @@ class RetreatParticipantsTable
             ]);
     }
 
-
     /**
      * Affiche le resultat d'une affectation automatique (succes ou impossibilite).
      *
-     * @param string $title Titre de la notification
-     * @param array{success: bool, message: string} $result Resultat du service
-     * @return void
+     * @param  string  $title  Titre de la notification
+     * @param  array{success: bool, message: string}  $result  Resultat du service
      */
     protected static function notifyPlacementResult(string $title, array $result): void
     {
@@ -696,10 +697,9 @@ class RetreatParticipantsTable
     /**
      * Resume d'une affectation automatique en masse.
      *
-     * @param string $title Titre de la notification
-     * @param int $success Nombre de reussites
-     * @param list<string> $failures Messages d'echec par participant
-     * @return void
+     * @param  string  $title  Titre de la notification
+     * @param  int  $success  Nombre de reussites
+     * @param  list<string>  $failures  Messages d'echec par participant
      */
     protected static function notifyBulkPlacementResult(string $title, int $success, array $failures): void
     {
@@ -746,7 +746,7 @@ class RetreatParticipantsTable
     }
 
     /**
-     * @param RetreatParticipant $record Participant
+     * @param  RetreatParticipant  $record  Participant
      * @return string Statut badge : received|pending|na
      */
     protected static function resolveBadgeStatus(RetreatParticipant $record): string

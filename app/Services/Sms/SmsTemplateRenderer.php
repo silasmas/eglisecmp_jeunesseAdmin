@@ -32,10 +32,10 @@ class SmsTemplateRenderer
             'atelier' => 'Atelier',
             'chambre' => 'Chambre',
             'evenement' => 'Événement',
-            'lien_billet' => 'Lien billet (paiement validé)',
-            'lien_justificatif' => 'Lien justificatif',
-            'lien_acces' => 'Lien accès',
-            'lien_inscription' => 'Lien portail inscription (tous destinataires)',
+            'lien_billet' => 'Lien court billet (/b/…) — page billet si paiement validé',
+            'lien_justificatif' => 'Lien court justificatif (/j/…)',
+            'lien_acces' => 'Lien court contrôle d’entrée (/a/…) — page scan QR (pas le billet)',
+            'lien_inscription' => 'Lien court portail inscription (/i) — tous destinataires',
         ];
     }
 

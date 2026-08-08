@@ -93,17 +93,17 @@ Route::get('/inscription-retraite/acces/{token}', RetreatInscriptionAccessContro
     ->name('retraite.inscription.acces');
 
 /**
- * Liens courts SMS (évite la coupure d’URL en multi-segments).
- * /b|a|j/{token} → billet | accès | justificatif ; /i → portail inscription.
+ * Liens courts SMS : mêmes pages que /inscription-retraite/... (sans redirection fragile).
+ * /b = billet, /a = contrôle d’accès (scan entrée), /j = justificatif, /i = portail inscription.
  */
 Route::redirect('/i', '/inscription-retraite')->name('retraite.sms.inscription');
-Route::get('/b/{token}', fn (string $token) => redirect()->route('retraite.inscription.billet', ['token' => $token], 302))
+Route::get('/b/{token}', RetreatInscriptionBilletController::class)
     ->where('token', '[A-Za-z0-9]{32}')
     ->name('retraite.sms.billet');
-Route::get('/a/{token}', fn (string $token) => redirect()->route('retraite.inscription.acces', ['token' => $token], 302))
+Route::get('/a/{token}', RetreatInscriptionAccessController::class)
     ->where('token', '[A-Za-z0-9]{32}')
     ->name('retraite.sms.acces');
-Route::get('/j/{token}', fn (string $token) => redirect()->route('retraite.inscription.justificatif', ['token' => $token], 302))
+Route::get('/j/{token}', RetreatInscriptionJustificatifController::class)
     ->where('token', '[A-Za-z0-9]{32}')
     ->name('retraite.sms.justificatif');
 

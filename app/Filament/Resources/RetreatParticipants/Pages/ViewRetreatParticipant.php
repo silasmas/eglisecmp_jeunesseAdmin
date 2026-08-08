@@ -5,9 +5,10 @@ namespace App\Filament\Resources\RetreatParticipants\Pages;
 use App\Filament\Resources\RetreatParticipants\RetreatParticipantResource;
 use App\Filament\Support\RetreatBilletPreviewFilamentAction;
 use App\Filament\Support\RetreatInscriptionResumeFilamentAction;
+use App\Filament\Support\RetreatParticipantSmsFilamentAction;
 use App\Models\User;
-use App\Support\RetreatBilletPageBuilder;
 use App\Services\RetreatParticipantRegistrationService;
+use App\Support\RetreatBilletPageBuilder;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
@@ -21,6 +22,7 @@ class ViewRetreatParticipant extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            RetreatParticipantSmsFilamentAction::make(),
             RetreatInscriptionResumeFilamentAction::make(),
             RetreatBilletPreviewFilamentAction::make('preview_billet')
                 ->label('Prévisualiser le billet')

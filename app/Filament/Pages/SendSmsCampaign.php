@@ -86,12 +86,15 @@ class SendSmsCampaign extends Page
     {
         return $schema->components([
             Section::make('Message')
+                ->description('Rédigez un SMS court (idéalement 1 segment). Un seul lien par message.')
                 ->schema([
                     Toggle::make('use_free_body')
                         ->label('Corps libre (ignorer le modèle)')
+                        ->helperText('Activez pour écrire un message ponctuel sans charger un modèle enregistré.')
                         ->live(),
                     Select::make('sms_template_id')
                         ->label('Modèle SMS')
+                        ->helperText('Modèles gérés dans Notifications → Modèles SMS. Le corps se remplit automatiquement à la sélection.')
                         ->options(fn (): array => SmsTemplate::query()
                             ->active()
                             ->orderBy('name')
@@ -114,17 +117,23 @@ class SendSmsCampaign extends Page
                         ->rows(4)
                         ->required()
                         ->live(debounce: 400)
-                        ->helperText('Variables : {{prenom}}, {{nom}}, {{lien_billet}}, {{evenement}}, etc.'),
+                        ->helperText(
+                            'Variables : {{prenom}}, {{nom}}, {{evenement}}, {{atelier}}, {{chambre}}, '
+                            .'{{lien_billet}} (page billet /b/…), {{lien_acces}} (contrôle d’entrée /a/… — pas le billet), '
+                            .'{{lien_inscription}} (portail /i). Évitez 2 URL dans le même SMS.'
+                        ),
                 ]),
-            Section::make('Filtres participants')
-                ->description('Événements opérationnels uniquement.')
+            Section::make('Destinataires participants')
+                ->description('Filtrez par atelier, chambre, paiement, puis envoyez à tous les filtrés ou cochez une sélection. Événements opérationnels uniquement.')
                 ->schema([
                     TextInput::make('search')
                         ->label('Recherche')
-                        ->placeholder('Prénom, nom ou téléphone…')
+                        ->placeholder('Prénom, nom, postnom ou téléphone…')
+                        ->helperText('Affine la liste ci-dessous (et le total « tous les filtrés »).')
                         ->live(debounce: 400),
                     Select::make('atelier_id')
                         ->label('Atelier')
+                        ->helperText('Limite l’envoi aux participants de cet atelier. Puis activez « Tous les participants filtrés » ou cochez la liste.')
                         ->options(fn (): array => RetreatActiveEventScope::applyToAteliers(RetreatAtelier::query())
                             ->orderBy('numero')
                             ->get()
@@ -137,6 +146,7 @@ class SendSmsCampaign extends Page
                         ->nullable(),
                     Select::make('chambre_id')
                         ->label('Chambre')
+                        ->helperText('Limite l’envoi aux occupants de cette chambre (combinable avec atelier / paiement).')
                         ->options(fn (): array => RetreatActiveEventScope::applyToChambres(RetreatChambre::query())
                             ->orderBy('nom')
                             ->pluck('nom', 'id')
@@ -146,6 +156,7 @@ class SendSmsCampaign extends Page
                         ->nullable(),
                     Select::make('paiement_filter')
                         ->label('Paiement')
+                        ->helperText('Utile pour n’envoyer {{lien_billet}} qu’aux paiements validés (sinon le lien billet est vide).')
                         ->options([
                             'valide' => 'Paiement validé',
                             'non_valide' => 'Paiement non validé',
@@ -154,10 +165,12 @@ class SendSmsCampaign extends Page
                         ->nullable(),
                     Toggle::make('select_all_filtered')
                         ->label('Tous les participants filtrés')
-                        ->helperText(fn (): string => $this->filteredParticipantsQuery()->count().' participant(s) correspondent aux filtres.')
+                        ->helperText(fn (): string => 'Envoie à tous ceux qui matchent les filtres ci-dessus (pas seulement les 150 affichés). Actuellement : '
+                            .$this->filteredParticipantsQuery()->count().' participant(s) avec téléphone.')
                         ->live(),
                     CheckboxList::make('selected_participant_ids')
                         ->label('Sélection manuelle')
+                        ->helperText('Cochez des noms dans la liste (max. 150 affichés). Masqué si « Tous les participants filtrés » est activé.')
                         ->options(fn (): array => $this->filteredParticipantsQuery()
                             ->orderBy('prenom')
                             ->limit(150)
@@ -173,22 +186,31 @@ class SendSmsCampaign extends Page
                         ->live(),
                 ])
                 ->columns(2),
-            Section::make('Numéros manuels')
+            Section::make('Numéros manuels (non participants)')
+                ->description('Ajoutez des contacts hors base (parents, invités…). Combinable avec les participants filtrés.')
                 ->schema([
                     Textarea::make('manual_phones')
-                        ->label('Numéros (un par ligne ou séparés par virgule)')
+                        ->label('Numéros')
                         ->rows(4)
                         ->live(debounce: 400)
-                        ->helperText('Normalisés en 243… — pour non-inscrits : {{prenom}}/{{lien_billet}} vides, {{lien_inscription}} et {{evenement}} restent disponibles.'),
+                        ->placeholder("2438XXXXXXXX\n089XXXXXXX")
+                        ->helperText(
+                            'Un numéro par ligne (ou séparés par virgule). Normalisés en 243…. '
+                            .'Pour ces numéros : {{prenom}} / {{lien_billet}} / {{lien_acces}} sont vides ; '
+                            .'utilisez {{evenement}} et {{lien_inscription}}.'
+                        ),
                 ]),
             Section::make('Aperçu & confirmation')
+                ->description('Vérifiez le rendu et le nombre de segments avant d’envoyer (Unicode = segments plus courts).')
                 ->schema([
                     Placeholder::make('preview')
                         ->label('Aperçu (1er destinataire)')
-                        ->content(fn (): string => $this->previewText()),
+                        ->content(fn (): string => $this->previewText())
+                        ->helperText('Premier destinataire résolu (participant sélectionné en priorité, sinon numéro manuel).'),
                     Placeholder::make('stats')
                         ->label('Compteur & volume')
-                        ->content(fn (): string => $this->previewStats()),
+                        ->content(fn (): string => $this->previewStats())
+                        ->helperText('Estimation = destinataires × segments du message d’aperçu.'),
                 ])
                 ->footerActions([
                     Action::make('dispatchCampaign')
