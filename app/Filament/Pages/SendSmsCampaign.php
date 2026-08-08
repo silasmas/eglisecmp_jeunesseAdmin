@@ -46,8 +46,6 @@ class SendSmsCampaign extends Page
 
     protected static ?string $slug = 'envoyer-sms';
 
-    protected string $view = 'filament.pages.send-sms-campaign';
-
     public ?int $sms_template_id = null;
 
     public string $body = '';
@@ -181,7 +179,7 @@ class SendSmsCampaign extends Page
                         ->label('Numéros (un par ligne ou séparés par virgule)')
                         ->rows(4)
                         ->live(debounce: 400)
-                        ->helperText('Normalisés en 243… — variables participant vides pour ces numéros.'),
+                        ->helperText('Normalisés en 243… — pour non-inscrits : {{prenom}}/{{lien_billet}} vides, {{lien_inscription}} et {{evenement}} restent disponibles.'),
                 ]),
             Section::make('Aperçu & confirmation')
                 ->schema([

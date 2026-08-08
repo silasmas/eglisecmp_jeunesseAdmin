@@ -2,6 +2,7 @@
 
 namespace App\Services\Sms;
 
+use App\Models\ChurchEvent;
 use App\Models\RetreatParticipant;
 use App\Support\RetreatMailUrl;
 
@@ -34,6 +35,7 @@ class SmsTemplateRenderer
             'lien_billet' => 'Lien billet (paiement validé)',
             'lien_justificatif' => 'Lien justificatif',
             'lien_acces' => 'Lien accès',
+            'lien_inscription' => 'Lien portail inscription (tous destinataires)',
         ];
     }
 
@@ -115,8 +117,13 @@ class SmsTemplateRenderer
      */
     public function resolveParticipantValues(?RetreatParticipant $participant): array
     {
+        $lienInscription = RetreatMailUrl::inscription();
+
         if ($participant === null) {
-            return $this->emptyValues();
+            return array_merge($this->emptyValues(), [
+                'lien_inscription' => $lienInscription,
+                'evenement' => $this->defaultEventName(),
+            ]);
         }
 
         $participant->loadMissing(['atelier', 'chambre', 'event']);
@@ -134,7 +141,7 @@ class SmsTemplateRenderer
             : '';
         $evenement = $participant->event
             ? (string) ($participant->event->name ?? '')
-            : '';
+            : $this->defaultEventName();
 
         $lienBillet = '';
         if ($participant->paiement_valide && $token !== '') {
@@ -163,6 +170,7 @@ class SmsTemplateRenderer
             'lien_billet' => $lienBillet,
             'lien_justificatif' => $lienJustificatif,
             'lien_acces' => $lienAcces,
+            'lien_inscription' => $lienInscription,
         ];
     }
 
@@ -177,5 +185,19 @@ class SmsTemplateRenderer
         }
 
         return $empty;
+    }
+
+    /**
+     * Nom de l’événement opérationnel courant (utile pour numéros manuels).
+     */
+    protected function defaultEventName(): string
+    {
+        $event = ChurchEvent::query()
+            ->where('is_active', true)
+            ->whereNull('archived_at')
+            ->orderByDesc('id')
+            ->first();
+
+        return $event ? (string) $event->name : 'Grande Retraite des Jeunes';
     }
 }
