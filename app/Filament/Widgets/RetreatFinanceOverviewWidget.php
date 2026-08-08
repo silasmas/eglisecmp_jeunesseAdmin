@@ -14,11 +14,15 @@ use Illuminate\Support\Facades\Auth;
 use Throwable;
 
 /**
- * Dashboard finances : encaissements inscriptions/dons, échecs, détails par canal/devise.
+ * Dashboard finances : encaissements inscriptions/dons, canaux (carte, MM, cash), échecs.
  */
 class RetreatFinanceOverviewWidget extends StatsOverviewWidget
 {
     protected static ?int $sort = 0;
+
+    protected ?string $heading = 'Finances & comptabilité';
+
+    protected ?string $description = 'Suivi des encaissements retraite (événements opérationnels). Montants séparés par devise (USD / CDF).';
 
     protected ?string $pollingInterval = '120s';
 
@@ -38,6 +42,19 @@ class RetreatFinanceOverviewWidget extends StatsOverviewWidget
     }
 
     /**
+     * @return int|array<string, int>|null
+     */
+    protected function getColumns(): int|array|null
+    {
+        return [
+            'default' => 1,
+            'sm' => 2,
+            'xl' => 3,
+            '2xl' => 4,
+        ];
+    }
+
+    /**
      * @return array<int, Stat>
      */
     protected function getStats(): array
@@ -47,89 +64,122 @@ class RetreatFinanceOverviewWidget extends StatsOverviewWidget
         $payments = $data['payments'];
         $donations = $data['donations'];
 
+        $card = $finance->channelPaidOrEmpty($payments['paid_by_channel'], 'card');
+        $mobile = $finance->channelPaidOrEmpty($payments['paid_by_channel'], 'mobile_money');
+        $cash = $finance->channelPaidOrEmpty($payments['paid_by_channel'], 'cash');
+        $voucher = $finance->channelPaidOrEmpty($payments['paid_by_channel'], 'sponsorship_voucher');
+
         $stats = [
             Stat::make(
-                'Encaissé inscriptions',
+                'Total encaissé (inscriptions)',
                 $finance->formatMoneyMap($payments['collected_by_currency'])
             )
                 ->description(
-                    $payments['counts']['paid'].' paiement(s) payé(s) — événements opérationnels'
+                    'Somme de tous les paiements d’inscription au statut « payée » (tous canaux). '
+                    .$payments['counts']['paid'].' paiement(s) validé(s). Cliquez pour ouvrir la liste des paiements.'
                 )
                 ->color('success')
                 ->url($this->safeResourceUrl(RetreatPaymentResource::class)),
+
             Stat::make(
-                'En attente (à encaisser)',
-                $finance->formatMoneyMap($payments['expected_pending_by_currency'])
+                'Carte bancaire (FlexPay)',
+                $finance->formatMoneyMap($card['by_currency'])
             )
                 ->description(
-                    $payments['counts']['pending'].' transaction(s) init / en cours'
+                    'Argent réellement encaissé via paiement par carte (Visa/Mastercard FlexPay). '
+                    .$card['count'].' transaction(s) payée(s). Utile pour rapprocher les virements carte du compte.'
                 )
-                ->color('warning'),
+                ->color('info'),
+
             Stat::make(
-                'Échecs / annulés',
-                (string) $payments['counts']['failed']
+                'Mobile Money (FlexPay)',
+                $finance->formatMoneyMap($mobile['by_currency'])
             )
                 ->description(
-                    'Montant concerné : '.$finance->formatMoneyMap($payments['failed_expected_by_currency'])
-                    .($payments['unacked_failures'] > 0
-                        ? ' — '.$payments['unacked_failures'].' alerte(s) non traitée(s)'
-                        : '')
+                    'Encaissements M-Pesa / Airtel / Orange / Afri Money validés. '
+                    .$mobile['count'].' transaction(s) payée(s). À rapprocher des relevés opérateurs.'
                 )
-                ->color('danger')
-                ->url($this->safePageUrl(RetreatPaymentFailureMonitor::class)),
+                ->color('info'),
+
             Stat::make(
-                'Dons cash encaissés',
-                $finance->formatMoneyMap($donations['collected_by_currency'])
+                'Espèces (cash) validées',
+                $finance->formatMoneyMap($cash['by_currency'])
             )
                 ->description(
-                    $donations['counts']['paid_cash'].' don(s) payé(s)'
-                    .($donations['counts']['cash_to_validate'] > 0
-                        ? ' — '.$donations['counts']['cash_to_validate'].' cash à valider ('
-                            .$finance->formatMoneyMap($donations['cash_to_validate_by_currency']).')'
-                        : '')
+                    'Paiements cash d’inscription déjà validés en admin (caisse). '
+                    .$cash['count'].' reçu(s). Cliquez pour la file de validation cash.'
                 )
-                ->color('success')
-                ->url($this->safePageUrl(ManageRetreatDonationCashPayments::class)),
+                ->color('primary')
+                ->url($this->safePageUrl(ManageRetreatCashPayments::class)),
         ];
 
-        foreach ($payments['paid_by_channel'] as $channel => $channelData) {
+        if ($voucher['count'] > 0) {
             $stats[] = Stat::make(
-                'Encaissé · '.$finance->channelLabel($channel),
-                $finance->formatMoneyMap($channelData['by_currency'])
+                'Codes parrainage',
+                $finance->formatMoneyMap($voucher['by_currency'])
             )
-                ->description($channelData['count'].' paiement(s) payé(s)')
-                ->color(match ($channel) {
-                    'cash' => 'primary',
-                    'mobile_money' => 'info',
-                    'card' => 'gray',
-                    'sponsorship_voucher' => 'warning',
-                    default => 'gray',
-                });
+                ->description(
+                    'Inscriptions soldées par un code de prise en charge (don parrain). '
+                    .$voucher['count'].' — ne correspond pas toujours à un encaissement cash du jour.'
+                )
+                ->color('warning');
         }
 
         $stats[] = Stat::make(
-            'Cash inscriptions à suivre',
-            (string) ($payments['paid_by_channel']['cash']['count'] ?? 0)
-        )
-            ->description('Paiements cash déjà validés (détail dans Gestion cash)')
-            ->color('primary')
-            ->url($this->safePageUrl(ManageRetreatCashPayments::class));
-
-        $stats[] = Stat::make(
-            'Dons en nature / annulés',
-            (string) $donations['counts']['in_kind']
+            'En attente d’encaissement',
+            $finance->formatMoneyMap($payments['expected_pending_by_currency'])
         )
             ->description(
-                'Nature : '.$donations['counts']['in_kind']
-                .' — Annulés : '.$donations['counts']['cancelled']
-                .' — Électronique en attente : '.$donations['counts']['pending']
+                'Montants encore dus : paiements initiés ou en cours (carte/MM non confirmés, cash non validé). '
+                .$payments['counts']['pending'].' dossier(s). Ce n’est pas de l’argent déjà en caisse.'
+            )
+            ->color('warning');
+
+        $stats[] = Stat::make(
+            'Échecs & annulations',
+            (string) $payments['counts']['failed']
+        )
+            ->description(
+                'Nombre de paiements échoués ou annulés (pas encaissés). Montant théorique perdu/abandonné : '
+                .$finance->formatMoneyMap($payments['failed_expected_by_currency'])
+                .($payments['unacked_failures'] > 0
+                    ? ' — '.$payments['unacked_failures'].' alerte(s) à traiter.'
+                    : ' — aucune alerte en attente.')
+                .' Cliquez pour le moniteur d’échecs.'
+            )
+            ->color('danger')
+            ->url($this->safePageUrl(RetreatPaymentFailureMonitor::class));
+
+        $stats[] = Stat::make(
+            'Dons cash encaissés',
+            $finance->formatMoneyMap($donations['collected_by_currency'])
+        )
+            ->description(
+                'Dons volontaires en espèces/électroniques au statut « paid » (hors inscriptions). '
+                .$donations['counts']['paid_cash'].' don(s).'
+                .($donations['counts']['cash_to_validate'] > 0
+                    ? ' Attention : '.$donations['counts']['cash_to_validate'].' don(s) cash à valider ('
+                        .$finance->formatMoneyMap($donations['cash_to_validate_by_currency']).').'
+                    : '')
+            )
+            ->color('success')
+            ->url($this->safePageUrl(ManageRetreatDonationCashPayments::class));
+
+        $stats[] = Stat::make(
+            'Dons en attente / nature',
+            (string) ($donations['counts']['pending'] + $donations['counts']['in_kind'])
+        )
+            ->description(
+                'Suivi dons non encore clôturés : électronique en attente = '.$donations['counts']['pending']
                 .' ('.$finance->formatMoneyMap($donations['pending_by_currency']).')'
+                .' — en nature = '.$donations['counts']['in_kind']
+                .' — annulés = '.$donations['counts']['cancelled'].'.'
             )
             ->color('gray');
 
         if ($payments['counts']['refunded'] > 0) {
-            $stats[] = Stat::make('Remboursés', (string) $payments['counts']['refunded'])
-                ->description('État remboursee')
+            $stats[] = Stat::make('Remboursements', (string) $payments['counts']['refunded'])
+                ->description('Paiements marqués « remboursée » — à traiter côté comptabilité / caisse.')
                 ->color('warning');
         }
 

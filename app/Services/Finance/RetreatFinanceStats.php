@@ -182,11 +182,22 @@ class RetreatFinanceStats
     {
         return match ($channel) {
             'mobile_money' => 'Mobile Money',
-            'card' => 'Carte',
-            'cash' => 'Cash',
+            'card' => 'Carte bancaire',
+            'cash' => 'Espèces (cash)',
             'sponsorship_voucher' => 'Code parrainage',
             default => ucfirst(str_replace('_', ' ', $channel)),
         };
+    }
+
+    /**
+     * Données canal payé, avec zéro si aucun encaissement.
+     *
+     * @param  array<string, array{count: int, by_currency: array<string, float>}>  $paidByChannel
+     * @return array{count: int, by_currency: array<string, float>}
+     */
+    public function channelPaidOrEmpty(array $paidByChannel, string $channel): array
+    {
+        return $paidByChannel[$channel] ?? ['count' => 0, 'by_currency' => []];
     }
 
     /**
