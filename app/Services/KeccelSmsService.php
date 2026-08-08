@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\SmsMessageLog;
 use App\Models\SmsOperator;
+use Carbon\Carbon;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -66,6 +67,12 @@ class KeccelSmsService
         return $this->lastLog?->fresh();
     }
 
+    /**
+     * Consulte le solde Keccel et persiste remaining_sms (peut être négatif si compte expiré).
+     *
+     * @param  SmsOperator|null  $operator  Opérateur ciblé (sinon actif)
+     * @return int|null Solde numérique ou null si non parsable
+     */
     public function refreshBalance(?SmsOperator $operator = null): ?int
     {
         $operator ??= $this->resolveOperator();
@@ -73,14 +80,28 @@ class KeccelSmsService
             throw new RuntimeException('Aucune URL de consultation du solde SMS n’est configurée.');
         }
 
-        $response = Http::timeout((int) config('services.sms.timeout', 15))
-            ->withToken((string) $operator->token)
-            ->asJson()
-            ->post((string) $operator->balance_url, [
-                'token' => trim((string) $operator->token),
-                'from' => trim((string) $operator->sender),
-                'FROM' => trim((string) $operator->sender),
-            ]);
+        $token = trim((string) $operator->token);
+        $from = trim((string) $operator->sender);
+        $payload = [
+            'token' => $token,
+            'from' => $from,
+            'FROM' => $from,
+        ];
+
+        // Docs Keccel : GET sur balance.asp ; on tente GET puis POST en secours.
+        $timeout = (int) config('services.sms.timeout', 15);
+        $url = (string) $operator->balance_url;
+        $response = Http::timeout($timeout)
+            ->withToken($token)
+            ->acceptJson()
+            ->get($url, $payload);
+
+        if ($response->failed() || $this->looksRejected($response)) {
+            $response = Http::timeout($timeout)
+                ->withToken($token)
+                ->asJson()
+                ->post($url, $payload);
+        }
 
         if ($response->failed() || $this->looksRejected($response)) {
             $operator->update([
@@ -99,6 +120,44 @@ class KeccelSmsService
         ]);
 
         return $balance;
+    }
+
+    /**
+     * Extrait expiration / statut compte depuis la dernière réponse solde.
+     *
+     * @param  string|null  $body  Corps JSON Keccel
+     * @return array{expiration: ?string, account_status: ?string, is_expired: bool}
+     */
+    public function parseBalanceMeta(?string $body): array
+    {
+        $expiration = null;
+        $accountStatus = null;
+        $json = json_decode((string) $body, true);
+        if (is_array($json)) {
+            $expiration = isset($json['expiration']) ? trim((string) $json['expiration']) : null;
+            $accountStatus = isset($json['status']) ? trim((string) $json['status']) : null;
+            if ($expiration === '') {
+                $expiration = null;
+            }
+            if ($accountStatus === '') {
+                $accountStatus = null;
+            }
+        }
+
+        $isExpired = false;
+        if ($expiration !== null) {
+            try {
+                $isExpired = now()->greaterThan(Carbon::parse($expiration));
+            } catch (\Throwable) {
+                $isExpired = false;
+            }
+        }
+
+        return [
+            'expiration' => $expiration,
+            'account_status' => $accountStatus,
+            'is_expired' => $isExpired,
+        ];
     }
 
     public function describeResponse(?string $body): array
@@ -139,6 +198,12 @@ class KeccelSmsService
         ];
     }
 
+    /**
+     * Interroge Keccel (delivery.asp) pour l’accusé de réception d’un SMS logué.
+     *
+     * @param  SmsMessageLog  $log  Log d’envoi avec provider_reference
+     * @return SmsMessageLog Log actualisé
+     */
     public function refreshDelivery(SmsMessageLog $log): SmsMessageLog
     {
         $operator = $log->operator ?: $this->resolveOperator();
@@ -153,15 +218,26 @@ class KeccelSmsService
             throw new RuntimeException('Référence Keccel du SMS introuvable.');
         }
 
-        $response = Http::timeout((int) config('services.sms.timeout', 15))
+        $payload = [
+            'from' => $from,
+            'FROM' => $from,
+            'token' => $token,
+            'messageid' => $log->provider_reference,
+        ];
+        $timeout = (int) config('services.sms.timeout', 15);
+
+        // Docs Keccel : GET ; POST en secours pour les configs historiques.
+        $response = Http::timeout($timeout)
             ->withToken($token)
-            ->asJson()
-            ->post($deliveryUrl, [
-                'from' => $from,
-                'FROM' => $from,
-                'token' => $token,
-                'messageid' => $log->provider_reference,
-            ]);
+            ->acceptJson()
+            ->get($deliveryUrl, $payload);
+
+        if ($response->failed() || $this->extractDeliveryStatus($response) === 'ERROR') {
+            $response = Http::timeout($timeout)
+                ->withToken($token)
+                ->asJson()
+                ->post($deliveryUrl, $payload);
+        }
 
         $deliveryStatus = $this->extractDeliveryStatus($response);
         $log->update([
@@ -173,6 +249,47 @@ class KeccelSmsService
         ]);
 
         return $log->fresh();
+    }
+
+    /**
+     * Actualise les accusés pour une liste de logs (continue sur erreur individuelle).
+     *
+     * @param  iterable<int, SmsMessageLog|int>  $logsOrIds  Logs ou IDs
+     * @return array{checked: int, delivered: int, failed: int, errors: int}
+     */
+    public function refreshDeliveries(iterable $logsOrIds): array
+    {
+        $stats = ['checked' => 0, 'delivered' => 0, 'failed' => 0, 'errors' => 0];
+
+        foreach ($logsOrIds as $item) {
+            $log = $item instanceof SmsMessageLog
+                ? $item
+                : SmsMessageLog::query()->find((int) $item);
+
+            if (! $log || blank($log->provider_reference)) {
+                $stats['errors']++;
+
+                continue;
+            }
+
+            try {
+                $updated = $this->refreshDelivery($log);
+                $stats['checked']++;
+                $status = strtoupper((string) $updated->delivery_status);
+                if (in_array($status, ['DELIVERED', 'READ'], true)) {
+                    $stats['delivered']++;
+                } elseif (in_array($status, ['FAILED', 'ERROR'], true)) {
+                    $stats['failed']++;
+                }
+            } catch (\Throwable $e) {
+                report($e);
+                $stats['errors']++;
+            }
+
+            usleep(80000);
+        }
+
+        return $stats;
     }
 
     protected function resolveOperator(): ?SmsOperator
@@ -334,6 +451,11 @@ class KeccelSmsService
         return null;
     }
 
+    /**
+     * Parse un solde numérique (positif ou négatif) depuis la réponse Keccel.
+     *
+     * @param  Response  $response  Réponse HTTP
+     */
     protected function extractBalance(Response $response): ?int
     {
         $body = trim($response->body());
@@ -346,7 +468,7 @@ class KeccelSmsService
             }
         }
 
-        if (preg_match('/(?:balance|solde|remaining|credits?)\s*[=:]\s*([0-9]+)/i', $body, $m)) {
+        if (preg_match('/(?:balance|solde|remaining|credits?)\s*[=:]\s*(-?[0-9]+)/i', $body, $m)) {
             return (int) $m[1];
         }
 
@@ -373,8 +495,8 @@ class KeccelSmsService
             }
         }
 
-        if (preg_match('/^\s*([0-9]+)\s*$/', $body, $m)) {
-            return (int) $m[0];
+        if (preg_match('/^\s*(-?[0-9]+)\s*$/', $body, $m)) {
+            return (int) $m[1];
         }
 
         return null;
@@ -409,11 +531,18 @@ class KeccelSmsService
         return $body !== '' ? substr($body, 0, 40) : 'UNKNOWN';
     }
 
+    /**
+     * Mappe un statut DLR Keccel vers le statut métier du log.
+     *
+     * @param  string  $deliveryStatus  Statut fournisseur (DELIVERED, FAILED, …)
+     * @param  string  $currentStatus  Statut actuel du log
+     */
     protected function statusFromDelivery(string $deliveryStatus, string $currentStatus): string
     {
         return match ($deliveryStatus) {
-            'DELIVERED' => 'delivered',
-            'FAILED', 'ERROR' => 'failed',
+            'DELIVERED', 'READ' => 'delivered',
+            'FAILED', 'ERROR', 'REJECTED', 'EXPIRED' => 'failed',
+            'PENDING', 'BUFFERED', 'ENROUTE', 'ACCEPTED' => 'sent',
             default => $currentStatus,
         };
     }

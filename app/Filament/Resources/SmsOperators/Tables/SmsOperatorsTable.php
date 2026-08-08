@@ -40,7 +40,19 @@ class SmsOperatorsTable
                 TextColumn::make('remaining_sms')
                     ->label('SMS restants')
                     ->placeholder('—')
-                    ->sortable(),
+                    ->sortable()
+                    ->color(fn ($state): string => is_numeric($state) && (int) $state < 0 ? 'danger' : 'gray')
+                    ->description(function (SmsOperator $record): ?string {
+                        $meta = app(KeccelSmsService::class)->parseBalanceMeta($record->last_balance_response);
+                        if ($meta['is_expired']) {
+                            return 'Compte/crédits expirés'.($meta['expiration'] ? ' ('.$meta['expiration'].')' : '');
+                        }
+                        if (is_numeric($record->remaining_sms) && (int) $record->remaining_sms < 0) {
+                            return 'Solde négatif — recharger le compte Keccel';
+                        }
+
+                        return $meta['expiration'] ? 'Expire : '.$meta['expiration'] : null;
+                    }),
                 TextColumn::make('last_balance_checked_at')
                     ->label('Solde vérifié')
                     ->dateTime()
@@ -127,16 +139,31 @@ class SmsOperatorsTable
 
                         $record->refresh();
                         $description = $service->describeResponse($record->last_balance_response);
+                        $meta = $service->parseBalanceMeta($record->last_balance_response);
+                        $lines = [
+                            $balance === null ? 'Réponse reçue, solde non numérique.' : "SMS restants : {$balance}",
+                            'Type réponse : '.$description['type'],
+                            'Réponse : '.($description['preview'] ?: '—'),
+                        ];
+                        if ($meta['expiration']) {
+                            $lines[] = 'Expiration : '.$meta['expiration'];
+                        }
+                        if ($meta['account_status']) {
+                            $lines[] = 'Statut compte : '.$meta['account_status'];
+                        }
 
-                        Notification::make()
-                            ->title('Solde SMS actualisé')
-                            ->body(
-                                ($balance === null ? 'Réponse reçue, solde non numérique.' : "SMS restants : {$balance}")
-                                ."\nType réponse : ".$description['type']
-                                ."\nRéponse : ".($description['preview'] ?: '—')
-                            )
-                            ->success()
-                            ->send();
+                        $isWarning = ($balance !== null && $balance < 0) || $meta['is_expired'];
+                        $notification = Notification::make()
+                            ->title($isWarning ? 'Solde SMS actualisé (attention)' : 'Solde SMS actualisé')
+                            ->body(implode("\n", $lines));
+
+                        if ($isWarning) {
+                            $notification->warning();
+                        } else {
+                            $notification->success();
+                        }
+
+                        $notification->send();
                     }),
                 EditAction::make(),
             ])

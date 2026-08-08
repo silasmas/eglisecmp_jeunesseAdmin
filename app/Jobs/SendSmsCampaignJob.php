@@ -53,6 +53,7 @@ class SendSmsCampaignJob implements ShouldQueue
     ): void {
         $sent = 0;
         $failed = 0;
+        $logIds = [];
 
         foreach ($this->recipients as $index => $recipient) {
             $phone = (string) ($recipient['phone'] ?? '');
@@ -73,6 +74,10 @@ class SendSmsCampaignJob implements ShouldQueue
             try {
                 $sms->send($phone, $message, 'sms_campaign');
                 $sent++;
+                $logId = $sms->lastLog()?->id;
+                if ($logId) {
+                    $logIds[] = (int) $logId;
+                }
             } catch (Throwable $e) {
                 report($e);
                 $failed++;
@@ -93,10 +98,17 @@ class SendSmsCampaignJob implements ShouldQueue
             $notifier->notify(
                 [$user],
                 'Campagne SMS terminée',
-                "Envoyés : {$sent} — Échecs : {$failed} — Total : ".count($this->recipients),
+                "Envoyés : {$sent} — Échecs : {$failed} — Total : ".count($this->recipients)
+                .($logIds !== [] ? ' — accusés de réception en cours de vérification…' : ''),
                 null,
                 $failed > 0 ? 'warning' : 'success',
             );
+        }
+
+        // DLR Keccel souvent disponibles après quelques secondes/minutes.
+        if ($logIds !== []) {
+            RefreshSmsDeliveriesJob::dispatch($logIds, $this->requestedByUserId)
+                ->delay(now()->addMinutes(2));
         }
     }
 }

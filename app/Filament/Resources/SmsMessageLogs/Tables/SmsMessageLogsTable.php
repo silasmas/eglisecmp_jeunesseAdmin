@@ -2,13 +2,18 @@
 
 namespace App\Filament\Resources\SmsMessageLogs\Tables;
 
+use App\Jobs\RefreshSmsDeliveriesJob;
 use App\Models\SmsMessageLog;
 use App\Services\KeccelSmsService;
 use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
+use Filament\Actions\BulkActionGroup;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Auth;
 
 class SmsMessageLogsTable
 {
@@ -52,15 +57,29 @@ class SmsMessageLogsTable
                     ->badge()
                     ->placeholder('—'),
                 TextColumn::make('delivery_status')
-                    ->label('Livraison')
+                    ->label('Accusé (DLR)')
                     ->badge()
+                    ->formatStateUsing(fn (?string $state): string => match (strtoupper((string) $state)) {
+                        'DELIVERED' => 'Arrivé',
+                        'READ' => 'Lu',
+                        'FAILED' => 'Échec livraison',
+                        'ERROR' => 'Erreur',
+                        'PENDING' => 'En attente',
+                        'UNKNOWN', '' => '—',
+                        default => (string) $state,
+                    })
                     ->placeholder('—')
-                    ->color(fn (?string $state): string => match ($state) {
-                        'DELIVERED' => 'success',
-                        'FAILED', 'ERROR' => 'danger',
-                        'PENDING' => 'warning',
+                    ->color(fn (?string $state): string => match (strtoupper((string) $state)) {
+                        'DELIVERED', 'READ' => 'success',
+                        'FAILED', 'ERROR', 'REJECTED', 'EXPIRED' => 'danger',
+                        'PENDING', 'BUFFERED', 'ENROUTE', 'ACCEPTED' => 'warning',
                         default => 'gray',
                     }),
+                TextColumn::make('delivery_checked_at')
+                    ->label('DLR vérifié')
+                    ->dateTime()
+                    ->placeholder('—')
+                    ->toggleable(),
                 TextColumn::make('provider_reference')
                     ->label('Référence')
                     ->placeholder('—')
@@ -81,8 +100,17 @@ class SmsMessageLogsTable
                     ->options([
                         'pending' => 'En attente',
                         'sent' => 'Envoyé',
-                        'delivered' => 'Livré',
+                        'delivered' => 'Livré / arrivé',
                         'failed' => 'Échec',
+                    ]),
+                SelectFilter::make('delivery_status')
+                    ->label('Accusé')
+                    ->options([
+                        'PENDING' => 'En attente',
+                        'DELIVERED' => 'Arrivé',
+                        'READ' => 'Lu',
+                        'FAILED' => 'Échec',
+                        'ERROR' => 'Erreur',
                     ]),
                 SelectFilter::make('context')
                     ->label('Contexte')
@@ -90,11 +118,13 @@ class SmsMessageLogsTable
                         'dashboard_otp_test' => 'Test OTP dashboard',
                         'parent_contact_otp' => 'OTP parent/tuteur',
                         'retreat_payment_confirmation' => 'Confirmation paiement',
+                        'sms_campaign' => 'Campagne SMS',
+                        'operator_connection_test' => 'Test opérateur',
                     ]),
             ])
             ->recordActions([
                 Action::make('checkDelivery')
-                    ->label('Vérifier livraison')
+                    ->label('Vérifier accusé')
                     ->icon('heroicon-o-arrow-path')
                     ->visible(fn (SmsMessageLog $record): bool => filled($record->provider_reference))
                     ->action(function (SmsMessageLog $record): void {
@@ -104,7 +134,7 @@ class SmsMessageLogsTable
                             report($e);
 
                             Notification::make()
-                                ->title('Livraison non vérifiée')
+                                ->title('Accusé non vérifié')
                                 ->body($e->getMessage())
                                 ->danger()
                                 ->send();
@@ -113,8 +143,8 @@ class SmsMessageLogsTable
                         }
 
                         Notification::make()
-                            ->title('Statut de livraison actualisé')
-                            ->body('Statut : '.($updated->delivery_status ?: 'inconnu'))
+                            ->title('Accusé de réception actualisé')
+                            ->body('Livraison : '.($updated->delivery_status ?: 'inconnu').' — statut : '.$updated->status)
                             ->success()
                             ->send();
                     }),
@@ -125,6 +155,38 @@ class SmsMessageLogsTable
                     ->modalContent(fn ($record) => view('filament.resources.sms-message-logs.details', [
                         'record' => $record,
                     ])),
+            ])
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    BulkAction::make('refreshDeliveries')
+                        ->label('Vérifier accusés')
+                        ->icon('heroicon-o-signal')
+                        ->action(function (Collection $records): void {
+                            $ids = $records
+                                ->filter(fn (SmsMessageLog $log): bool => filled($log->provider_reference))
+                                ->pluck('id')
+                                ->map(fn ($id): int => (int) $id)
+                                ->values()
+                                ->all();
+
+                            if ($ids === []) {
+                                Notification::make()
+                                    ->title('Aucune référence Keccel')
+                                    ->warning()
+                                    ->send();
+
+                                return;
+                            }
+
+                            RefreshSmsDeliveriesJob::dispatch($ids, Auth::id() ? (int) Auth::id() : null);
+
+                            Notification::make()
+                                ->title('Vérification mise en file')
+                                ->body(count($ids).' SMS sélectionné(s).')
+                                ->success()
+                                ->send();
+                        }),
+                ]),
             ]);
     }
 }
