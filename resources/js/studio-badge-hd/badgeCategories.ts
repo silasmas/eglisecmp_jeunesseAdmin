@@ -126,6 +126,44 @@ export function getCategoryLabelForParticipant(
   return getBadgeCategory(key).label;
 }
 
+/** Surcharge locale du titre badge (studio uniquement, non persistée en base). */
+export interface BadgeTitleOverride {
+  categoryKey: BadgeCategoryKey;
+  /** Vide = libellé automatique selon catégorie + sexe. */
+  customLabel: string;
+}
+
+/**
+ * Résout la catégorie et le libellé affiché (auto ou override studio).
+ *
+ * @param roleOrCategory Rôle API / catégorie
+ * @param sexe Sexe participant
+ * @param override Surcharge studio optionnelle
+ */
+export function resolveBadgeTitle(
+  roleOrCategory: string | null | undefined,
+  sexe: string | null | undefined,
+  override?: BadgeTitleOverride | null,
+): { categoryKey: BadgeCategoryKey; label: string } {
+  const categoryKey = override?.categoryKey ?? normalizeCategoryKey(roleOrCategory);
+  const custom = String(override?.customLabel || '').trim();
+
+  return {
+    categoryKey,
+    label: custom !== ''
+      ? custom
+      : getCategoryLabelForParticipant(categoryKey, sexe),
+  };
+}
+
+/** Options du sélecteur de titre (clé → libellé catalogue). */
+export function badgeCategorySelectOptions(): Array<{ value: BadgeCategoryKey; label: string }> {
+  return (Object.keys(BADGE_CATEGORIES) as BadgeCategoryKey[]).map(key => ({
+    value: key,
+    label: BADGE_CATEGORIES[key].label,
+  }));
+}
+
 /**
  * Assombrit ou éclaircit une couleur hex.
  *

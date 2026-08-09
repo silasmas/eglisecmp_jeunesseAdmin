@@ -71,7 +71,13 @@ class RetreatParticipantForm
                             ->relationship('chambre', 'nom')
                             ->searchable()
                             ->preload(),
-                        TextInput::make('role_participant')->required(),
+                        TextInput::make('role_participant')
+                            ->label('Rôle participant')
+                            ->required()
+                            ->helperText(
+                                'Alimente le titre du badge (Studio HD). Ex. « ouvrier » / « encadrant » → Encadrant(e) selon le sexe ; '
+                                .'« accueil », « sécurité », etc. → libellé correspondant. Modifiable aussi dans le studio pour l’export.'
+                            ),
                         TextInput::make('participant_type')->required()->default('internal'),
                         TextInput::make('qr_code'),
                     ])

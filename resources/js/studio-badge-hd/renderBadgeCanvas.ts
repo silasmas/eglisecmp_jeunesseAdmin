@@ -1,8 +1,8 @@
 import { BADGE_RATIO_H, BADGE_RATIO_W, BADGE_TEXT_BASE, getBadgeComponentUrls } from './badgeAssets';
 import {
   getBadgeCategory,
-  getCategoryLabelForParticipant,
   normalizeCategoryKey,
+  resolveBadgeTitle,
   shadeBadgeColor,
   type BadgeCategoryStyle,
 } from './badgeCategories';
@@ -25,6 +25,10 @@ export interface RenderBadgeCanvasOptions {
   showWorkshop?: boolean;
   showChambre?: boolean;
   categoryStyle?: BadgeCategoryStyle;
+  /** Clé catégorie forcée (studio). */
+  categoryKeyOverride?: string | null;
+  /** Libellé titre forcé (studio), sinon calcul auto. */
+  categoryLabelOverride?: string | null;
 }
 
 const imageCache = new Map<string, HTMLImageElement>();
@@ -206,7 +210,17 @@ export async function renderParticipantBadgeCanvas(
     }
   }
 
-  const categoryKey = normalizeCategoryKey(participant.role || participant.category);
+  const resolvedTitle = resolveBadgeTitle(
+    options.categoryKeyOverride || participant.role || participant.category,
+    participant.sexe,
+    {
+      categoryKey: normalizeCategoryKey(
+        options.categoryKeyOverride || participant.role || participant.category,
+      ),
+      customLabel: String(options.categoryLabelOverride || ''),
+    },
+  );
+  const categoryKey = resolvedTitle.categoryKey;
   const category = getBadgeCategory(categoryKey);
   const badgeStyle: BadgeCategoryStyle = options.categoryStyle || category.style;
   const showPhoto = options.showPhoto !== false;
@@ -215,7 +229,7 @@ export async function renderParticipantBadgeCanvas(
   const showChambre = !isEncadrant && options.showChambre !== false;
   const showAssignments = showWorkshop || showChambre;
   const fullName = `${participant.prenom} ${participant.nom}`.trim() || 'Nom du participant';
-  const categoryLabel = getCategoryLabelForParticipant(categoryKey, participant.sexe);
+  const categoryLabel = resolvedTitle.label;
   const atelierValue = showWorkshop && participant.atelier > 0 ? String(participant.atelier) : '';
   const chambreValue = showChambre && participant.chambre && participant.chambre !== '—'
     ? participant.chambre

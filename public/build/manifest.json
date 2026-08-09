@@ -69,7 +69,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-BATBmD8J.css",
+    "file": "assets/app-CUaI2tOp.css",
     "name": "app",
     "names": [
       "app.css"
@@ -78,7 +78,7 @@
     "isEntry": true
   },
   "resources/css/studio-badge.css": {
-    "file": "assets/studio-badge-4Ns5Y2Eg.css",
+    "file": "assets/studio-badge-CJncX1j_.css",
     "name": "studio-badge",
     "names": [
       "studio-badge.css"
@@ -96,7 +96,7 @@
     ]
   },
   "resources/js/studio-badge-hd/main.tsx": {
-    "file": "assets/main-JUuNx2cv.js",
+    "file": "assets/main-LkNilGG-.js",
     "name": "main",
     "src": "resources/js/studio-badge-hd/main.tsx",
     "isEntry": true,

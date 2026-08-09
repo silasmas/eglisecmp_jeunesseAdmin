@@ -3,8 +3,12 @@ import type { ChangeEvent, PointerEvent } from 'react';
 import { getBadgeComponentUrls } from './badgeAssets';
 import {
   BADGE_CATEGORY_STYLES,
+  badgeCategorySelectOptions,
   getCategoryLabelForParticipant,
   normalizeCategoryKey,
+  resolveBadgeTitle,
+  type BadgeCategoryKey,
+  type BadgeTitleOverride,
 } from './badgeCategories';
 import BadgeLayerSkeleton from './BadgeLayerSkeleton';
 import { fetchAllParticipants } from './api';
@@ -76,6 +80,8 @@ export default function BadgeStudioApp({
   const [photoShape, setPhotoShape] = useState<PhotoShape>('circle');
   const [exportFormat, setExportFormat] = useState<ExportFormat>('png');
   const [categoryStyle, setCategoryStyle] = useState<BadgeFrameStyle>('classic');
+  /** Surcharges titre par participant (studio uniquement). */
+  const [titleOverrides, setTitleOverrides] = useState<Record<string, BadgeTitleOverride>>({});
   const [zoom, setZoom] = useState(100);
   const [nameColor, setNameColor] = useState('#ffffff');
   const [numberColor, setNumberColor] = useState('#373737');
@@ -176,11 +182,28 @@ export default function BadgeStudioApp({
     [participants, activeParticipantId]
   );
 
+  const activeBadgeTitle = useMemo(() => {
+    if (!activeParticipant) {
+      return { categoryKey: 'participant' as BadgeCategoryKey, label: 'Participant' };
+    }
+
+    return resolveBadgeTitle(
+      activeParticipant.role || activeParticipant.category,
+      activeParticipant.sexe,
+      titleOverrides[activeParticipant.id] ?? null,
+    );
+  }, [activeParticipant, titleOverrides]);
+
   const isPreviewLoading = useBadgePreviewReady(activeParticipant, templateImage);
   const showBadgeLayers = !isPreviewLoading || isCaptureMode;
 
   const resolveExportContext = useCallback((participant: Participant): BadgeExportContext => {
     const layoutForParticipant = participantLayouts[participant.id] ?? layout;
+    const title = resolveBadgeTitle(
+      participant.role || participant.category,
+      participant.sexe,
+      titleOverrides[participant.id] ?? null,
+    );
 
     return {
       participant,
@@ -193,8 +216,44 @@ export default function BadgeStudioApp({
       showPhoto: true,
       showWorkshop: true,
       showChambre: true,
+      categoryKeyOverride: title.categoryKey,
+      categoryLabelOverride: title.label,
     };
-  }, [participantLayouts, layout, nameFont, nameColor, numberColor, photoShape, categoryStyle]);
+  }, [participantLayouts, layout, nameFont, nameColor, numberColor, photoShape, categoryStyle, titleOverrides]);
+
+  const updateActiveTitleOverride = useCallback((patch: Partial<BadgeTitleOverride>) => {
+    if (!activeParticipant) {
+      return;
+    }
+
+    setTitleOverrides(prev => {
+      const current = prev[activeParticipant.id] ?? {
+        categoryKey: normalizeCategoryKey(activeParticipant.role || activeParticipant.category),
+        customLabel: '',
+      };
+
+      return {
+        ...prev,
+        [activeParticipant.id]: {
+          categoryKey: patch.categoryKey ?? current.categoryKey,
+          customLabel: patch.customLabel !== undefined ? patch.customLabel : current.customLabel,
+        },
+      };
+    });
+  }, [activeParticipant]);
+
+  const resetActiveTitleOverride = useCallback(() => {
+    if (!activeParticipant) {
+      return;
+    }
+
+    setTitleOverrides(prev => {
+      const next = { ...prev };
+      delete next[activeParticipant.id];
+
+      return next;
+    });
+  }, [activeParticipant]);
 
   const {
     exportJob,
@@ -816,10 +875,7 @@ export default function BadgeStudioApp({
                       }}
                       aria-hidden="true"
                     >
-                      {getCategoryLabelForParticipant(
-                        normalizeCategoryKey(activeParticipant.role || activeParticipant.category),
-                        activeParticipant.sexe,
-                      )}
+                      {activeBadgeTitle.label}
                     </div>
 
                     <div
@@ -983,6 +1039,66 @@ export default function BadgeStudioApp({
                     ))}
                   </select>
                 </label>
+
+                <div className="badge-title-editor">
+                  <span className="badge-control-section-title">Titre du badge</span>
+                  <p className="badge-helper-text">
+                    Par défaut, le titre vient du champ <strong>Rôle participant</strong> (
+                    <code>role_participant</code>
+                    ) dans la fiche Participant Filament — ex. « ouvrier », « encadrant », « accueil ».
+                    Le studio le normalise puis l’adapte au sexe (« Encadrant » / « Encadrante »).
+                    Modifiez ici pour l’aperçu et l’export uniquement (la base n’est pas modifiée).
+                    {activeParticipant?.role
+                      ? <> Rôle en base : <strong>{activeParticipant.role}</strong>.</>
+                      : <> Aucun rôle en base → titre « Participant(e) ».</>}
+                  </p>
+                  <label className="badge-select-control">
+                    <span>Catégorie</span>
+                    <select
+                      value={activeBadgeTitle.categoryKey}
+                      disabled={!activeParticipant || isExportLocked}
+                      onChange={event => {
+                        const key = event.target.value as BadgeCategoryKey;
+                        updateActiveTitleOverride({
+                          categoryKey: key,
+                          customLabel: getCategoryLabelForParticipant(key, activeParticipant?.sexe),
+                        });
+                      }}
+                    >
+                      {badgeCategorySelectOptions().map(option => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="badge-select-control">
+                    <span>Libellé affiché</span>
+                    <input
+                      type="text"
+                      value={
+                        activeParticipant
+                          ? (titleOverrides[activeParticipant.id]?.customLabel
+                            ?? activeBadgeTitle.label)
+                          : ''
+                      }
+                      disabled={!activeParticipant || isExportLocked}
+                      placeholder="Ex. Encadrante, Accueil…"
+                      maxLength={40}
+                      onChange={event => updateActiveTitleOverride({
+                        customLabel: event.target.value,
+                      })}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="badge-secondary-btn"
+                    disabled={!activeParticipant || !titleOverrides[activeParticipant.id] || isExportLocked}
+                    onClick={resetActiveTitleOverride}
+                  >
+                    Réinitialiser (rôle en base)
+                  </button>
+                </div>
 
                 {/* Text color selector */}
                 <div className="badge-color-row">

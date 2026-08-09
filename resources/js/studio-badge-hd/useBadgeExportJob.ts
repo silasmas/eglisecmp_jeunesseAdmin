@@ -155,6 +155,8 @@ export function useBadgeExportJob({
       showWorkshop: context.showWorkshop,
       showChambre: context.showChambre,
       categoryStyle: context.categoryStyle,
+      categoryKeyOverride: context.categoryKeyOverride,
+      categoryLabelOverride: context.categoryLabelOverride,
     });
   }, [assetBaseUrl, resolveExportContext]);
 
